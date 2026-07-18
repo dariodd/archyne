@@ -1,0 +1,36 @@
+## Downloads
+
+| Platform | File                                                                  |
+| -------- | --------------------------------------------------------------------- |
+| Windows  | `Archyne-Setup-<version>.exe`                                         |
+| macOS    | `Archyne-<version>-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel)   |
+| Linux    | `Archyne-<version>-x86_64.AppImage`, or `Archyne-<version>-amd64.deb` |
+
+Or run it without installing anything:
+
+```sh
+npx archyne
+```
+
+The web version needs no download at all: <https://dariodd.github.io/archyne/>
+
+### These installers are not code-signed
+
+Stated up front rather than discovered at the download prompt:
+
+- **Windows** — SmartScreen will warn that the publisher is unknown. Choose
+  _More info → Run anyway_.
+- **macOS** — Gatekeeper **refuses** to open the app, which is a refusal
+  rather than a warning. After moving it to Applications, run once:
+  `xattr -dr com.apple.quarantine /Applications/Archyne.app`
+- **Linux** — no signing is involved; AppImage and `.deb` install normally.
+
+Signing needs a purchased Windows certificate and an Apple Developer
+membership. Until those exist, the honest options are the web version, `npx
+archyne`, or accepting the warnings above.
+
+Everything runs locally either way — no server, no accounts, and no network
+requests of Archyne's own. See the
+[security architecture](../blob/main/docs/security-whitepaper.md).
+
+---

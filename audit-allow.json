@@ -1,0 +1,15 @@
+{
+  "$comment": [
+    "Advisories in production dependencies that scripts/audit-gate.mjs will not",
+    "block on. Add an entry only when the advisory cannot be reached from",
+    "Archyne's own code — not because a fix is inconvenient.",
+    "",
+    "  id       the GHSA identifier, as printed by `npm run audit`",
+    "  reason   why it is unreachable here, in one sentence a reviewer can check",
+    "  expires  ISO date; on and after it the gate fails again, so the",
+    "           exception gets re-read rather than becoming permanent",
+    "",
+    "Keep this list empty when you can. An entry is a promise to look again."
+  ],
+  "allow": []
+}

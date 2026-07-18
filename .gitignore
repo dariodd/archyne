@@ -1,0 +1,14 @@
+node_modules
+dist
+*.local
+*.tsbuildinfo
+release
+sbom.json
+
+# Output of the browser-driven e2e scripts (tests/e2e-*.mts)
+export-e2e.png
+e2e-out
+*-server.log
+
+# Personal working notes: kept beside the project, never published
+*.local.md

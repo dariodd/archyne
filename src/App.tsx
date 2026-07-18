@@ -1,0 +1,217 @@
+import { useEffect, useState } from "react";
+import { ReactFlowProvider } from "@xyflow/react";
+import { Toolbar } from "./components/Toolbar";
+import { Palette } from "./components/Palette";
+import { CanvasView } from "./components/CanvasView";
+import { CodePanel } from "./components/CodePanel";
+import { Inspector } from "./components/Inspector";
+import { StatusAnnouncer } from "./components/StatusAnnouncer";
+import { loadInitialCode, useGraphStore } from "./store";
+import {
+  buildExport,
+  DEFAULT_EXPORT_OPTIONS,
+  exportDataUrlForTest,
+  type ExportOptions,
+} from "./export";
+import { useThemeStore } from "./theme";
+import { initEmbedBridge, isEmbedded } from "./embed";
+import { useLayoutStore } from "./layoutStore";
+import { initDesktopFiles, isDirty, useFileStore } from "./files";
+import { toast, toastError } from "./toast";
+import { Toasts } from "./components/Toasts";
+import { ShortcutsDialog } from "./components/ShortcutsDialog";
+import { CommandPalette } from "./components/CommandPalette";
+import { useT } from "./i18n";
+
+export default function App() {
+  const applyCode = useGraphStore((s) => s.applyCode);
+  // Declared above the effects that reference it, not alongside the other
+  // render-time reads further down.
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showPalette, setShowPalette] = useState(false);
+
+  useEffect(() => {
+    void applyCode(loadInitialCode());
+  }, [applyCode]);
+
+  useEffect(() => {
+    if (isEmbedded()) initEmbedBridge();
+  }, []);
+
+  useEffect(() => {
+    // Pick up a file the desktop shell was launched with. No-op on the web.
+    initDesktopFiles();
+  }, []);
+
+  useEffect(() => {
+    // Only guards edits made since the last open/save. A scratch diagram is
+    // autosaved to localStorage, so warning about it would be noise.
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!isDirty()) return;
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  useEffect(() => {
+    // Apply the stored theme, follow OS changes under "system", and
+    // re-derive edge colors whenever the resolved theme flips.
+    document.documentElement.dataset.theme = useThemeStore.getState().resolved;
+    const unsub = useThemeStore.subscribe(() => useGraphStore.getState().refreshEdges());
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const onChange = () => useThemeStore.getState().sync();
+    mq.addEventListener("change", onChange);
+    return () => {
+      unsub();
+      mq.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Dev-only hooks for browser-driven e2e tests (see tests/e2e-export.mts).
+    if (!import.meta.env.DEV) return;
+    (window as unknown as Record<string, unknown>).__graphTest = {
+      ready: () => {
+        const s = useGraphStore.getState();
+        return s.nodes.length > 0 && s.nodes.every((n) => n.measured?.width);
+      },
+      exportPng: () => exportDataUrlForTest(useGraphStore.getState().nodes),
+      /** Drive the real export pipeline, either source, from a browser test. */
+      exportWith: (opts: Partial<ExportOptions>) => {
+        const s = useGraphStore.getState();
+        return buildExport({ ...DEFAULT_EXPORT_OPTIONS, ...opts }, s.nodes, s.code);
+      },
+      store: useGraphStore,
+      state: () => {
+        const s = useGraphStore.getState();
+        return {
+          kind: s.kind,
+          nodes: s.nodes.length,
+          edges: s.edges.length,
+          parseError: s.parseError,
+          warning: s.warning,
+        };
+      },
+    };
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable) return;
+      const s = useGraphStore.getState();
+
+      // Unmodified keys first: the shortcut sheet, and nudging the selection.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === "?") {
+          e.preventDefault();
+          setShowShortcuts(true);
+          return;
+        }
+        const nudge: Record<string, [number, number]> = {
+          ArrowUp: [0, -1],
+          ArrowDown: [0, 1],
+          ArrowLeft: [-1, 0],
+          ArrowRight: [1, 0],
+        };
+        const delta = nudge[e.key];
+        if (delta && s.nodes.some((n) => n.selected)) {
+          e.preventDefault();
+          // Shift moves a grid step; plain arrows move a single pixel, which
+          // is what you want when lining two nodes up by eye.
+          const step = e.shiftKey ? 12 : 1;
+          s.nudgeSelection(delta[0] * step, delta[1] * step);
+          return;
+        }
+        return;
+      }
+
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        void s.undo();
+      } else if (key === "y" || (key === "z" && e.shiftKey)) {
+        e.preventDefault();
+        void s.redo();
+      } else if (key === "c") {
+        s.copySelection();
+      } else if (key === "v") {
+        s.pasteClipboard();
+      } else if (key === "d") {
+        e.preventDefault();
+        s.copySelection();
+        s.pasteClipboard();
+      } else if (key === "a") {
+        e.preventDefault();
+        s.selectAll();
+      } else if (key === "s") {
+        // The browser's own Save is meaningless here and would save the page.
+        e.preventDefault();
+        void (e.shiftKey ? useFileStore.getState().saveAs() : useFileStore.getState().save())
+          .then(() => toast("toast.saved"))
+          .catch((err: unknown) => toastError("toast.saveFailed", err));
+      } else if (key === "k") {
+        e.preventDefault();
+        setShowPalette((open) => !open);
+      } else if (key === "o") {
+        e.preventDefault();
+        void useFileStore
+          .getState()
+          .open()
+          .catch(() => {
+            // "no-picker" browsers fall back to the toolbar's file input.
+            document.querySelector<HTMLInputElement>('input[type="file"]')?.click();
+          });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const booted = useGraphStore((s) => s.booted);
+  const paletteOpen = useLayoutStore((s) => s.paletteOpen);
+  const sideOpen = useLayoutStore((s) => s.sideOpen);
+  const closeDrawers = useLayoutStore((s) => s.closeDrawers);
+  const t = useT();
+
+  return (
+    <ReactFlowProvider>
+      {!booted && (
+        <div className="splash">
+          <img src="./logo.svg" alt="" className="splash-mark" />
+          <div className="splash-name">Archyne</div>
+          <div className="splash-sub">{t("app.loading")}</div>
+        </div>
+      )}
+      <div className="app">
+        <Toolbar />
+        <div
+          className={`main${paletteOpen ? " palette-open" : ""}${sideOpen ? " side-open" : ""}`}
+        >
+          <Palette />
+          <CanvasView />
+          <aside className="side" aria-label={t("panel.sourceAndInspector")}>
+            <CodePanel />
+            <Inspector />
+          </aside>
+          {/* Only rendered while a drawer is open, and only reachable at the
+              narrow breakpoint where drawers exist. */}
+          {(paletteOpen || sideOpen) && (
+            <button
+              type="button"
+              className="drawer-backdrop"
+              aria-label={t("palette.close")}
+              onClick={closeDrawers}
+            />
+          )}
+        </div>
+        <StatusAnnouncer />
+        <Toasts />
+        {showShortcuts && <ShortcutsDialog onClose={() => setShowShortcuts(false)} />}
+        {showPalette && <CommandPalette onClose={() => setShowPalette(false)} />}
+      </div>
+    </ReactFlowProvider>
+  );
+}

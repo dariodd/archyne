@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>render test</title>
+  </head>
+  <body>
+    <pre id="out">running…</pre>
+    <div id="target"></div>
+    <script type="module">
+      import { getMermaid } from "/src/model/fromMermaid";
+      const out = document.getElementById("out");
+      const code = new URLSearchParams(location.search).get("code") ?? "flowchart TD\n a-->b\n";
+      try {
+        const mermaid = await getMermaid();
+        const { svg } = await mermaid.render("t1", code);
+        out.textContent = "RENDER_OK " + svg.length;
+      } catch (e) {
+        out.textContent = "RENDER_FAIL " + (e?.message ?? String(e));
+      }
+    </script>
+  </body>
+</html>

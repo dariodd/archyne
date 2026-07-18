@@ -1,0 +1,123 @@
+{
+  "name": "archyne",
+  "version": "0.1.0-alpha.1",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "archyne": "bin/archyne.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dariodd/archyne.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dariodd/archyne/issues"
+  },
+  "homepage": "https://dariodd.github.io/archyne/",
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "diagram-editor",
+    "flowchart",
+    "uml",
+    "erd",
+    "c4-model",
+    "sequence-diagram",
+    "architecture-diagram",
+    "local-first",
+    "mcp",
+    "editor"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "size": "node scripts/check-bundle-size.mjs",
+    "icons:index": "node scripts/build-icon-index.mjs",
+    "audit": "node scripts/audit-gate.mjs",
+    "sbom": "node scripts/sbom.mjs",
+    "notices:check": "node scripts/sbom.mjs && node scripts/check-notices.mjs",
+    "notices:update": "node scripts/sbom.mjs && node scripts/update-notices.mjs",
+    "mcp": "tsx mcp/server.ts",
+    "mcp:smoke": "tsx mcp/smoke.ts",
+    "test:e2e:export": "tsx tests/e2e-export.mts",
+    "test:e2e:i18n": "tsx tests/e2e-i18n-export.mts",
+    "test:e2e:a11y": "tsx tests/e2e-a11y.mts",
+    "test:e2e:rtl": "tsx tests/e2e-rtl.mts",
+    "test:e2e:csp": "tsx tests/e2e-csp.mts",
+    "start": "node bin/archyne.mjs",
+    "prepublishOnly": "npm run build",
+    "desktop": "electron .",
+    "desktop:build": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@iconify-json/carbon": "^1.2.24",
+    "@iconify-json/devicon": "^1.2.62",
+    "@iconify-json/logos": "^1.2.11",
+    "@iconify-json/simple-icons": "^1.2.92",
+    "@iconify-json/tabler": "^1.2.38",
+    "@iconify/utils": "^3.1.4",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@xyflow/react": "^12.8.0",
+    "codemirror": "^6.0.2",
+    "codemirror-lang-mermaid": "^0.5.0",
+    "elkjs": "^0.12.0",
+    "html-to-image": "^1.11.13",
+    "mermaid": "^11.9.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tsx": "^4.23.1",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "axe-core": "^4.12.1",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.8.0",
+    "jsdom": "^30.0.1",
+    "playwright": "^1.62.1",
+    "prettier": "^3.9.6",
+    "typescript": "~5.8.0",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^6.3.0",
+    "vitest": "^4.1.10"
+  },
+  "main": "desktop/main.cjs",
+  "description": "A visual editor for Mermaid diagrams — draw, and get Mermaid code",
+  "author": {
+    "name": "dariodd",
+    "email": "57635667+dariodd@users.noreply.github.com",
+    "url": "https://github.com/dariodd"
+  }
+}

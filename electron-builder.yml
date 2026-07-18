@@ -1,0 +1,71 @@
+appId: dev.archyne.app
+productName: Archyne
+directories:
+  output: release
+files:
+  - dist/**
+  - desktop/**
+  - build/icon.png
+
+# Signing is deliberately absent from this file. Windows and macOS both need
+# a purchased certificate plus repository secrets, and electron-builder picks
+# those up from the environment (CSC_LINK / CSC_KEY_PASSWORD, and Apple's
+# APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID for notarisation).
+# Until they exist the builds are unsigned: SmartScreen warns, and Gatekeeper
+# refuses outright — which .github/release-preamble.md states on the release
+# page rather than leaving people to discover it.
+
+# Predictable, URL-friendly asset names. The default NSIS name is
+# "Archyne Setup 0.1.0.exe", and spaces in a download link are a nuisance for
+# everyone downstream — the release page, curl, and the globs in
+# .github/workflows/release.yml that attach these files.
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-Setup-${version}.${ext}
+  icon: build/icon.png
+  fileAssociations:
+    - ext: mmd
+      name: Mermaid diagram
+      role: Editor
+nsis:
+  oneClick: true
+  deleteAppDataOnUninstall: false
+
+mac:
+  # Both architectures, explicitly. The macOS runner is Apple Silicon, and
+  # left to itself electron-builder builds only for the host — which silently
+  # ships nothing for Intel Macs. Two separate images rather than a universal
+  # binary: half the download for whoever is not on the other architecture.
+  #
+  # No `zip` target: it exists to feed electron-updater, which is not wired
+  # up, and it would double the mac assets on every release for nothing.
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  icon: build/icon.png
+  category: public.app-category.developer-tools
+  # The renderer is a local static build with no native modules; hardened
+  # runtime is required for notarisation and costs nothing here.
+  hardenedRuntime: true
+  fileAssociations:
+    - ext: mmd
+      name: Mermaid diagram
+      role: Editor
+
+linux:
+  target:
+    - AppImage
+    - deb
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  icon: build/icon.png
+  # Debian packaging requires a maintainer with an address, and refuses to
+  # build without one — which is why `author` in package.json is an object
+  # with an `email` rather than a plain string.
+  maintainer: dariodd <57635667+dariodd@users.noreply.github.com>
+  category: Development
+  fileAssociations:
+    - ext: mmd
+      name: Mermaid diagram
+      mimeType: text/vnd.mermaid

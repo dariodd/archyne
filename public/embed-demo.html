@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Archyne embed demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        background: #eef0f4;
+      }
+      header {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 14px;
+        background: #fff;
+        border-bottom: 1px solid #d7dbe4;
+      }
+      header b {
+        margin-right: 8px;
+      }
+      button {
+        padding: 6px 14px;
+        border: 1px solid #c6ccd8;
+        border-radius: 6px;
+        background: #f7f8fa;
+        cursor: pointer;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 70vh;
+        border: 0;
+      }
+      #out {
+        margin: 10px 14px;
+        padding: 10px;
+        background: #fff;
+        border: 1px solid #d7dbe4;
+        border-radius: 8px;
+        font: 12px/1.5 monospace;
+        white-space: pre-wrap;
+        min-height: 40px;
+        max-height: 20vh;
+        overflow: auto;
+      }
+      #shot {
+        max-height: 160px;
+        margin: 0 14px 14px;
+        border: 1px solid #d7dbe4;
+        border-radius: 8px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <b>Host app</b>
+      <button id="load">Load diagram</button>
+      <button id="get">Get code</button>
+      <button id="png">Export PNG</button>
+      <span id="status" style="color: #888">waiting for editor…</span>
+    </header>
+    <iframe id="mf"></iframe>
+    <div id="out">host log…</div>
+    <img id="shot" alt="export" />
+    <script>
+      const frame = document.getElementById("mf");
+      const mf = frame.contentWindow;
+      const out = document.getElementById("out");
+      const log = (m) => (out.textContent = m);
+
+      // The bridge is default-deny, so the host has to name itself. This demo
+      // is served from the same origin as the editor; a real host would pass
+      // its own origin and point the iframe at wherever Archyne is deployed.
+      const EDITOR = location.origin;
+      frame.src = "/?embed=1&origin=" + encodeURIComponent(location.origin);
+
+      window.addEventListener("message", (e) => {
+        if (e.origin !== EDITOR) return;
+        const msg = e.data || {};
+        if (msg.type === "ready")
+          document.getElementById("status").textContent = "editor ready";
+        if (msg.type === "change") log("change:\n" + msg.code);
+        if (msg.type === "code") log("code:\n" + msg.code);
+        if (msg.type === "loaded") log("loaded ✓");
+        if (msg.type === "exported") {
+          const img = document.getElementById("shot");
+          img.src = msg.dataUrl;
+          img.style.display = "block";
+          log("exported " + msg.format + " (" + msg.dataUrl.length + " chars)");
+        }
+        if (msg.type === "error") log("error: " + msg.message);
+      });
+
+      document.getElementById("load").onclick = () =>
+        mf.postMessage(
+          {
+            type: "load",
+            code: "flowchart LR\n  host[Host app] --> mf[Archyne embed]\n  mf --> code[Mermaid out]\n",
+          },
+          EDITOR,
+        );
+      document.getElementById("get").onclick = () =>
+        mf.postMessage({ type: "getCode" }, EDITOR);
+      document.getElementById("png").onclick = () =>
+        mf.postMessage(
+          { type: "export", options: { format: "png", background: "light", source: "canvas" } },
+          EDITOR,
+        );
+    </script>
+  </body>
+</html>

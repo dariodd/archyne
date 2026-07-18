@@ -1,0 +1,82 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+    # Groups are matched in order, first match wins.
+    #
+    # The named groups below exist because some packages declare peer ranges
+    # on each other: bumping one half alone produces a PR that cannot install,
+    # let alone pass CI. That is not hypothetical — the first Dependabot run
+    # on this repository opened five such PRs, each red on `npm ci`:
+    # typescript 7 against typescript-eslint, vite 8 against
+    # @vitejs/plugin-react 4, plugin-react 6 against vite 6, and eslint 10
+    # against both @eslint/js 9 and eslint-plugin-jsx-a11y.
+    #
+    # So anything peer-coupled moves as a unit, majors included. The
+    # catch-all groups keep their minor/patch-only scope, which leaves
+    # unrelated majors arriving one at a time — the point of the original
+    # split, and still the right default for a package nothing else pins.
+    groups:
+      # typescript-eslint pins a supported TypeScript range and an eslint
+      # major, so the compiler and the whole lint stack move together.
+      lint-and-types:
+        patterns:
+          - eslint
+          - "@eslint/*"
+          - eslint-*
+          - typescript-eslint
+          - typescript
+        update-types: [major, minor, patch]
+
+      # @vitejs/plugin-react declares a peer range on vite, and vitest
+      # tracks vite's major.
+      vite:
+        patterns:
+          - vite
+          - vitest
+          - "@vitejs/*"
+          - "@vitest/*"
+        update-types: [major, minor, patch]
+
+      # react and react-dom must be the same version, and their type
+      # packages follow the major. Without this group the runtime/dev split
+      # below would put the types in a different PR from the library.
+      react:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+        update-types: [major, minor, patch]
+
+      # electron-builder tracks electron's major.
+      electron:
+        patterns:
+          - electron
+          - electron-builder
+        update-types: [major, minor, patch]
+
+      # Routine bumps land as one PR instead of a dozen.
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+      # Runtime minor/patch bumps too; majors still come through
+      # individually so they get a proper look.
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Action bumps are almost always mechanical; one PR is easier to read
+      # than five, and they all land in the same workflow files anyway.
+      actions:
+        patterns: ["*"]
+        update-types: [major, minor, patch]

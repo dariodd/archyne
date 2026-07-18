@@ -1,0 +1,209 @@
+name: Release
+
+# Publishing is driven by a tag, so what ships is always a commit that exists
+# in history rather than whatever happened to be on a maintainer's laptop.
+#
+# The npm publish uses **trusted publishing**: npm accepts it because of an
+# OIDC token minted for this exact workflow, not because of a secret stored
+# here. It also produces **provenance** — a signed, public attestation linking
+# the tarball to this workflow, this commit and this repository, recorded in a
+# transparency log. A consumer can then verify that the package on the
+# registry was built from the source they are reading, which is the specific
+# supply-chain question an enterprise reviewer asks about a small package.
+#
+# The trusted publisher is registered on npmjs.com against this filename. If
+# this file is ever renamed, the publish will start failing until the setting
+# there is updated to match.
+#
+# The desktop installers are attached to the GitHub Release itself, not left
+# as workflow artifacts. Artifacts expire, require a login to download, and
+# are not linked from the Releases page — which makes them useless as the
+# answer to "where do I get the app".
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build a release from (e.g. v0.2.0)
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  verify:
+    name: Re-run the full check suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run size
+      - run: npm run audit
+      - run: npm run notices:check
+      - run: npm run mcp:smoke
+
+  # Created as a draft so nobody can download a release whose installers are
+  # still building. The last job flips it live once every asset is attached.
+  draft:
+    name: Draft the release
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # release notes are generated from history
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A hyphen in a semver tag means a prerelease: v0.3.0-rc.1. GitHub
+          # will happily present one as the latest release unless told.
+          case "$TAG" in
+            *-*) prerelease=--prerelease ;;
+            *) prerelease= ;;
+          esac
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; reusing it."
+          else
+            gh release create "$TAG" --draft $prerelease \
+              --title "Archyne $TAG" --generate-notes
+          fi
+
+  desktop:
+    name: Desktop installers
+    needs: draft
+    strategy:
+      # One platform failing must not deny the others their installers; a
+      # partial release beats none, and the missing one is obvious.
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+          - os: macos-latest
+            target: --mac
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # NOTE: these builds are **unsigned**. Windows SmartScreen warns and
+      # macOS Gatekeeper refuses outright; .github/release-preamble.md tells
+      # users so on the release page itself. Signing needs a Windows
+      # certificate in CSC_LINK/CSC_KEY_PASSWORD and Apple notarisation
+      # credentials; once those secrets exist, this note goes away.
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+
+      # bash on every runner, so one glob list covers all three platforms:
+      # the patterns that do not apply simply match nothing.
+      - name: Attach the installers to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          files=(release/*.exe release/*.dmg release/*.zip release/*.AppImage release/*.deb)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::electron-builder produced no installer for ${{ matrix.os }}"
+            ls -la release/ || true
+            exit 1
+          fi
+          printf 'uploading %s\n' "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber
+
+  npm:
+    name: Publish to npm
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The whole mechanism: the job mints a short-lived OIDC token that npm
+      # verifies against the trusted publisher registered for this package.
+      # There is no long-lived credential in this repository to leak, and
+      # none to rotate when it expires.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          # npm's own guidance for release builds: a restored cache is not
+          # worth the chance of it influencing what gets published.
+          package-manager-cache: false
+
+      # Trusted publishing needs npm 11.5.1 or newer, and Node 22 ships
+      # npm 10. Without this step the publish fails on a version check.
+      - run: npm install -g npm@latest
+      - run: npm --version
+
+      - run: npm ci
+
+      # No --provenance: publishing this way generates the attestation
+      # automatically. No token either — that is the point.
+      # `prepublishOnly` builds dist/, which `files` ships.
+      #
+      # npm does not infer a dist-tag from the version: publishing
+      # 0.3.0-rc.1 without `--tag` would make it `latest`, so the next
+      # `npx archyne` would hand a stranger a release candidate.
+      - name: Publish
+        run: |
+          case "$TAG" in
+            *-*) npm publish --tag next ;;
+            *) npm publish ;;
+          esac
+
+  # Deliberately does not wait on the npm job: a registry problem should not
+  # withhold the desktop downloads. That job failing still turns the run red,
+  # which is the signal that npm needs attention.
+  publish:
+    name: Publish the release
+    needs: desktop
+    # `fail-fast: false` above is pointless if one platform failing still
+    # withholds the release, which is what a plain `needs:` does. Run anyway,
+    # then refuse only if *nothing* was attached.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Prepend the download notes and publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          count=$(gh release view "$TAG" --json assets -q '.assets | length')
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No installers were attached to $TAG; leaving it as a draft."
+            exit 1
+          fi
+          echo "$count asset(s) attached."
+          gh release view "$TAG" --json body -q .body > generated-notes.md
+          cat .github/release-preamble.md generated-notes.md > release-notes.md
+          gh release edit "$TAG" --notes-file release-notes.md --draft=false
+          echo "Published: $(gh release view "$TAG" --json url -q .url)"

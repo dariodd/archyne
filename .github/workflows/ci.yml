@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same branch/PR.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Bundle budget
+        run: npm run size
+
+      - name: MCP server smoke test
+        run: npm run mcp:smoke
+
+      - name: Third-party notices are up to date
+        run: npm run notices:check
+
+      # Production dependencies only, gated at high/critical, with written
+      # exceptions in audit-allow.json — see scripts/audit-gate.mjs.
+      - name: Dependency advisories
+        run: npm run audit
+
+  # The browser-driven suites. These were previously run by hand against a
+  # local dev server in Edge, so they only caught regressions when someone
+  # remembered to look; nothing here is covered by the jsdom unit tests —
+  # export rasterization, WCAG contrast and target size, RTL geometry, and
+  # the sanitizer/CSP checks all need real layout and a real browser.
+  e2e:
+    name: Browser end-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # tests/e2e-i18n-export.mts measures rendered ink for Japanese, Korean,
+      # Arabic and Cyrillic labels. Without these fonts the glyphs are missing
+      # on the runner rather than in the app, and the test would report a
+      # regression that does not exist.
+      - name: Install fonts for the non-Latin export check
+        run: sudo apt-get install -y --no-install-recommends fonts-noto-core fonts-noto-cjk
+
+      - name: Start dev server
+        run: |
+          nohup npm run dev -- --port 5173 --strictPort > dev-server.log 2>&1 &
+          timeout 90 bash -c 'until curl -sfo /dev/null http://localhost:5173; do sleep 1; done'
+
+      # The export suites drive `window.__graphTest`, which App.tsx exposes
+      # only under `import.meta.env.DEV` — deliberately, so the store and the
+      # export internals are not reachable from the shipped bundle. That is
+      # why these run against the dev server.
+      - name: Export pipeline
+        run: npm run test:e2e:export
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      - name: Non-Latin label export
+        run: npm run test:e2e:i18n
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      - name: Right-to-left chrome
+        run: npm run test:e2e:rtl
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      - name: Accessibility (WCAG 2.2 AA)
+        run: npm run test:e2e:a11y
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      # Run the security suite against the *built* app as well: it needs no
+      # dev-only hooks, so it can check that the artifact users actually get
+      # boots, renders, and enforces its own policy.
+      - name: Build and serve the production bundle
+        run: |
+          npm run build
+          nohup npm run preview -- --port 4173 --strictPort > preview-server.log 2>&1 &
+          timeout 90 bash -c 'until curl -sfo /dev/null http://localhost:4173; do sleep 1; done'
+
+      - name: Sanitizer and CSP
+        run: npm run test:e2e:csp
+        env:
+          ARCHYNE_URL: http://localhost:4173
+
+      # Exports are judged by pixels, so the images are the evidence.
+      - name: Upload rendered output
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-output
+          path: |
+            export-e2e.png
+            e2e-out/
+            dev-server.log
+            preview-server.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # The editor must also build and typecheck on the platform most desktop
+  # users are on; electron-builder is Windows-first today.
+  windows:
+    name: Build on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
