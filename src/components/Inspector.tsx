@@ -1,0 +1,725 @@
+import { useGraphStore } from "../store";
+import { useIconPrefs } from "../iconPrefs";
+import {
+  C4_SHAPES,
+  CLASS_MARKERS,
+  ER_CARDS,
+  ER_CARD_LABELS,
+  SEQ_OPS,
+  SEQ_OP_LABELS,
+  SHAPES,
+  SHAPE_LABELS,
+  type AnyNode,
+  type ArchDir,
+  type ArrowType,
+  type ClassMarker,
+  type EdgeStroke,
+  type EntityAttr,
+  type ErCard,
+  type FlowEdge,
+  type SeqOp,
+  type Shape,
+} from "../model/types";
+
+function parseAttrLine(line: string): EntityAttr | null {
+  const commentMatch = line.match(/"([^"]*)"\s*$/);
+  const comment = commentMatch?.[1] ?? "";
+  const rest = commentMatch ? line.slice(0, commentMatch.index) : line;
+  const tokens = rest.trim().split(/[\s,]+/).filter(Boolean);
+  if (tokens.length < 2) return null;
+  const [type, name, ...keys] = tokens;
+  return { type, name, keys: keys.map((k) => k.toUpperCase()), comment };
+}
+
+function attrToLine(a: EntityAttr): string {
+  return [a.type, a.name, ...a.keys, a.comment ? `"${a.comment}"` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Set or replace one `key:value` declaration in a style list. */
+function withStyle(styles: string[] | undefined, key: string, value: string): string[] {
+  const rest = (styles ?? []).filter((s) => !s.trim().startsWith(`${key}:`));
+  return [...rest, `${key}:${value}`];
+}
+
+function styleValue(styles: string[] | undefined, key: string, fallback: string): string {
+  const d = (styles ?? []).find((s) => s.trim().startsWith(`${key}:`));
+  const v = d?.slice(d.indexOf(":") + 1).trim();
+  return v && /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+}
+
+function NodeFields({ node }: { node: AnyNode }) {
+  const updateNodeData = useGraphStore((s) => s.updateNodeData);
+  switch (node.type) {
+    case "shape":
+      return (
+        <>
+          <label>
+            Label
+            <input
+              id="inspector-label"
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            Shape
+            <select
+              value={node.data.shape}
+              onChange={(e) => updateNodeData(node.id, { shape: e.target.value as Shape })}
+            >
+              {SHAPES.map((s) => (
+                <option key={s} value={s}>
+                  {SHAPE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="color-row">
+            <label>
+              Fill
+              <input
+                type="color"
+                value={styleValue(node.data.styles, "fill", "#232a3a")}
+                onChange={(e) =>
+                  updateNodeData(node.id, {
+                    styles: withStyle(node.data.styles, "fill", e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Border
+              <input
+                type="color"
+                value={styleValue(node.data.styles, "stroke", "#5b8def")}
+                onChange={(e) =>
+                  updateNodeData(node.id, {
+                    styles: withStyle(node.data.styles, "stroke", e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label>
+              Text
+              <input
+                type="color"
+                value={styleValue(node.data.styles, "color", "#e6e9f0")}
+                onChange={(e) =>
+                  updateNodeData(node.id, {
+                    styles: withStyle(node.data.styles, "color", e.target.value),
+                  })
+                }
+              />
+            </label>
+            {(node.data.styles?.length ?? 0) > 0 && (
+              <button
+                className="mini"
+                onClick={() => updateNodeData(node.id, { styles: [] })}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          <label>
+            CSS classes (classDef names, space-separated)
+            <input
+              defaultValue={(node.data.classes ?? []).join(" ")}
+              onBlur={(e) =>
+                updateNodeData(node.id, {
+                  classes: e.target.value.split(/\s+/).filter(Boolean),
+                })
+              }
+            />
+          </label>
+        </>
+      );
+    case "state":
+      return node.data.stateType === "normal" ? (
+        <label>
+          Label
+          <input
+            value={node.data.label}
+            onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+          />
+        </label>
+      ) : (
+        <div className="inspector-empty">{node.data.stateType} pseudo-state</div>
+      );
+    case "entity":
+      return (
+        <>
+          <label>
+            Name
+            <input
+              id="inspector-label"
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            Attributes — one per line: <code>type name PK "comment"</code>
+            <textarea
+              rows={Math.max(3, node.data.attributes.length + 1)}
+              defaultValue={node.data.attributes.map(attrToLine).join("\n")}
+              onBlur={(e) =>
+                updateNodeData(node.id, {
+                  attributes: e.target.value
+                    .split("\n")
+                    .map(parseAttrLine)
+                    .filter((a): a is EntityAttr => a !== null),
+                })
+              }
+            />
+          </label>
+        </>
+      );
+    case "service":
+      return (
+        <>
+          <label>
+            Label
+            <input
+              id="inspector-label"
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            Icon — built-in (server, database, cloud…), "logos:aws-s3", or empty
+            <input
+              defaultValue={node.data.icon}
+              onBlur={(e) => {
+                const icon = e.target.value.trim();
+                if (icon) useIconPrefs.getState().recordRecent(icon);
+                updateNodeData(node.id, { icon });
+              }}
+            />
+          </label>
+        </>
+      );
+    case "junction":
+      return <div className="inspector-empty">Junction — a connector waypoint.</div>;
+    case "note":
+      return (
+        <>
+          <label>
+            Text
+            <textarea
+              id="inspector-label"
+              key={node.id}
+              rows={3}
+              defaultValue={node.data.text}
+              onBlur={(e) => updateNodeData(node.id, { text: e.target.value })}
+            />
+          </label>
+          <label>
+            Attached to (class name, optional)
+            <input
+              key={`t-${node.id}`}
+              defaultValue={node.data.target ?? ""}
+              onBlur={(e) =>
+                updateNodeData(node.id, { target: e.target.value.trim() || undefined })
+              }
+            />
+          </label>
+        </>
+      );
+    case "c4":
+      return (
+        <>
+          <label>
+            Label
+            <input
+              id="inspector-label"
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            Element type
+            <select
+              value={node.data.c4Shape}
+              onChange={(e) => updateNodeData(node.id, { c4Shape: e.target.value })}
+            >
+              {C4_SHAPES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Description
+            <textarea
+              rows={2}
+              defaultValue={node.data.descr}
+              onBlur={(e) => updateNodeData(node.id, { descr: e.target.value.trim() })}
+            />
+          </label>
+        </>
+      );
+    case "participant":
+      return (
+        <>
+          <label>
+            Name
+            <input
+              id="inspector-label"
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            Kind
+            <select
+              value={node.data.ptype}
+              onChange={(e) => updateNodeData(node.id, { ptype: e.target.value })}
+            >
+              <option value="participant">Participant (box)</option>
+              <option value="actor">Actor (person)</option>
+            </select>
+          </label>
+        </>
+      );
+    case "class":
+      return (
+        <>
+          <label>
+            Name
+            <input
+              id="inspector-label"
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <label>
+            Fields — one per line: <code>+int age</code>
+            <textarea
+              rows={Math.max(2, node.data.members.length + 1)}
+              defaultValue={node.data.members.join("\n")}
+              onBlur={(e) =>
+                updateNodeData(node.id, {
+                  members: e.target.value.split("\n").map((l) => l.trim()).filter(Boolean),
+                })
+              }
+            />
+          </label>
+          <label>
+            Annotations — e.g. <code>interface</code> (space-separated)
+            <input
+              defaultValue={(node.data.annotations ?? []).join(" ")}
+              onBlur={(e) =>
+                updateNodeData(node.id, {
+                  annotations: e.target.value.split(/s+/).filter(Boolean),
+                })
+              }
+            />
+          </label>
+          <label>
+            Generic parameter — e.g. <code>T</code>
+            <input
+              defaultValue={node.data.generic ?? ""}
+              onBlur={(e) =>
+                updateNodeData(node.id, { generic: e.target.value.trim() || undefined })
+              }
+            />
+          </label>
+          <label>
+            Methods — one per line: <code>+run() void</code>
+            <textarea
+              rows={Math.max(2, node.data.methods.length + 1)}
+              defaultValue={node.data.methods.join("\n")}
+              onBlur={(e) =>
+                updateNodeData(node.id, {
+                  methods: e.target.value.split("\n").map((l) => l.trim()).filter(Boolean),
+                })
+              }
+            />
+          </label>
+        </>
+      );
+    default:
+      return (
+        <label>
+          Label
+          <input
+            id="inspector-label"
+            value={String(node.data.label)}
+            onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+          />
+        </label>
+      );
+  }
+}
+
+function EdgeFields({ edge }: { edge: FlowEdge }) {
+  const updateEdgeData = useGraphStore((s) => s.updateEdgeData);
+  const moveMessage = useGraphStore((s) => s.moveMessage);
+  const d = edge.data;
+  if (!d) return null;
+
+  return (
+    <>
+      <label>
+        Label
+        <input
+          id="inspector-label"
+          value={d.label}
+          onChange={(e) => updateEdgeData(edge.id, { label: e.target.value })}
+        />
+      </label>
+      {d.seq && (
+        <>
+          <label>
+            Arrow
+            <select
+              value={d.seq.op}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { seq: { op: e.target.value as SeqOp } })
+              }
+            >
+              {SEQ_OPS.map((op) => (
+                <option key={op} value={op}>
+                  {op} — {SEQ_OP_LABELS[op]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="color-row">
+            <button className="mini" onClick={() => moveMessage(edge.id, -1)}>
+              ↑ Move up
+            </button>
+            <button className="mini" onClick={() => moveMessage(edge.id, 1)}>
+              ↓ Move down
+            </button>
+          </div>
+        </>
+      )}
+      {d.stroke !== undefined && (
+        <>
+          <label>
+            Line
+            <select
+              value={d.stroke}
+              onChange={(e) => updateEdgeData(edge.id, { stroke: e.target.value as EdgeStroke })}
+            >
+              <option value="normal">Solid</option>
+              <option value="dotted">Dotted</option>
+              <option value="thick">Thick</option>
+            </select>
+          </label>
+          <label>
+            Arrow
+            <select
+              value={d.arrow}
+              onChange={(e) => updateEdgeData(edge.id, { arrow: e.target.value as ArrowType })}
+            >
+              <option value="arrow_point">Arrow</option>
+              <option value="arrow_open">None</option>
+              <option value="arrow_circle">Circle</option>
+              <option value="arrow_cross">Cross</option>
+            </select>
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={Boolean(d.both)}
+              onChange={(e) => updateEdgeData(edge.id, { both: e.target.checked })}
+            />
+            Arrowheads at both ends
+          </label>
+        </>
+      )}
+      {d.er && (
+        <>
+          <label>
+            {edge.source} side
+            <select
+              value={d.er.cardB}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { er: { ...d.er!, cardB: e.target.value as ErCard } })
+              }
+            >
+              {ER_CARDS.map((c) => (
+                <option key={c} value={c}>
+                  {ER_CARD_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            {edge.target} side
+            <select
+              value={d.er.cardA}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { er: { ...d.er!, cardA: e.target.value as ErCard } })
+              }
+            >
+              {ER_CARDS.map((c) => (
+                <option key={c} value={c}>
+                  {ER_CARD_LABELS[c]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.er.identifying}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { er: { ...d.er!, identifying: e.target.checked } })
+              }
+            />
+            Identifying (solid line)
+          </label>
+        </>
+      )}
+      {d.c4 && (
+        <>
+          <label>
+            Technology
+            <input
+              value={d.c4.techn}
+              placeholder="e.g. HTTPS/JSON"
+              onChange={(e) =>
+                updateEdgeData(edge.id, { c4: { ...d.c4!, techn: e.target.value } })
+              }
+            />
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.c4.relType === "birel"}
+              onChange={(e) =>
+                updateEdgeData(edge.id, {
+                  c4: { ...d.c4!, relType: e.target.checked ? "birel" : "rel" },
+                })
+              }
+            />
+            Bidirectional
+          </label>
+        </>
+      )}
+      {d.arch && (
+        <>
+          <label>
+            Side at {edge.source}
+            <select
+              value={d.arch.lhsDir}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { arch: { ...d.arch!, lhsDir: e.target.value as ArchDir } })
+              }
+            >
+              {(["L", "R", "T", "B"] as const).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Side at {edge.target}
+            <select
+              value={d.arch.rhsDir}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { arch: { ...d.arch!, rhsDir: e.target.value as ArchDir } })
+              }
+            >
+              {(["L", "R", "T", "B"] as const).map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.arch.rhsInto}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { arch: { ...d.arch!, rhsInto: e.target.checked } })
+              }
+            />
+            Arrow into {edge.target}
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.arch.lhsInto}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { arch: { ...d.arch!, lhsInto: e.target.checked } })
+              }
+            />
+            Arrow into {edge.source}
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.arch.lhsGroup}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { arch: { ...d.arch!, lhsGroup: e.target.checked } })
+              }
+            />
+            Attach at {edge.source}'s group border
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.arch.rhsGroup}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { arch: { ...d.arch!, rhsGroup: e.target.checked } })
+              }
+            />
+            Attach at {edge.target}'s group border
+          </label>
+        </>
+      )}
+      {d.cls && (
+        <>
+          <label>
+            Marker at {edge.source}
+            <select
+              value={d.cls.left}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { cls: { ...d.cls!, left: e.target.value as ClassMarker } })
+              }
+            >
+              {CLASS_MARKERS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Marker at {edge.target}
+            <select
+              value={d.cls.right}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { cls: { ...d.cls!, right: e.target.value as ClassMarker } })
+              }
+            >
+              {CLASS_MARKERS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={d.cls.dotted}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { cls: { ...d.cls!, dotted: e.target.checked } })
+              }
+            />
+            Dotted line
+          </label>
+          <label>
+            Cardinality at {edge.source}
+            <input
+              value={d.cls.card1 ?? ""}
+              placeholder="e.g. 1"
+              onChange={(e) =>
+                updateEdgeData(edge.id, {
+                  cls: { ...d.cls!, card1: e.target.value || undefined },
+                })
+              }
+            />
+          </label>
+          <label>
+            Cardinality at {edge.target}
+            <input
+              value={d.cls.card2 ?? ""}
+              placeholder="e.g. many"
+              onChange={(e) =>
+                updateEdgeData(edge.id, {
+                  cls: { ...d.cls!, card2: e.target.value || undefined },
+                })
+              }
+            />
+          </label>
+        </>
+      )}
+    </>
+  );
+}
+
+export function Inspector() {
+  const nodes = useGraphStore((s) => s.nodes);
+  const edges = useGraphStore((s) => s.edges);
+
+  const node = nodes.find((n) => n.selected);
+  const edge = edges.find((e) => e.selected);
+
+  if (node) {
+    return (
+      <section className="inspector">
+        <div className="panel-title">
+          {node.type === "group" ? "Group" : "Node"} {node.id}
+        </div>
+        <NodeFields node={node} />
+      </section>
+    );
+  }
+  if (edge) {
+    return (
+      <section className="inspector">
+        <div className="panel-title">
+          Edge {edge.source} → {edge.target}
+        </div>
+        <EdgeFields edge={edge} />
+      </section>
+    );
+  }
+  return <DiagramMeta />;
+}
+
+/** Diagram-level properties, shown when nothing is selected. */
+function DiagramMeta() {
+  const kind = useGraphStore((s) => s.kind);
+  const title = useGraphStore((s) => s.title);
+  const accTitle = useGraphStore((s) => s.accTitle);
+  const accDescr = useGraphStore((s) => s.accDescr);
+  const setDiagramMeta = useGraphStore((s) => s.setDiagramMeta);
+
+  return (
+    <section className="inspector">
+      <div className="panel-title">Diagram</div>
+      {kind === "c4" && (
+        <label>
+          Title
+          <input
+            defaultValue={title}
+            key={`t-${title}`}
+            onBlur={(e) => setDiagramMeta({ title: e.target.value.trim() })}
+          />
+        </label>
+      )}
+      <label>
+        Accessible title (accTitle)
+        <input
+          defaultValue={accTitle}
+          key={`at-${accTitle}`}
+          onBlur={(e) => setDiagramMeta({ accTitle: e.target.value.trim() })}
+        />
+      </label>
+      <label>
+        Accessible description (accDescr)
+        <textarea
+          rows={2}
+          defaultValue={accDescr}
+          key={`ad-${accDescr}`}
+          onBlur={(e) => setDiagramMeta({ accDescr: e.target.value.trim() })}
+        />
+      </label>
+      <div className="inspector-empty">
+        Select a node or edge to edit it. Double-click empty canvas to add a node, drag
+        between handles to connect.
+      </div>
+    </section>
+  );
+}

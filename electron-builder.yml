@@ -1,0 +1,19 @@
+appId: dev.merflow.app
+productName: Merflow
+directories:
+  output: release
+files:
+  - dist/**
+  - desktop/**
+  - build/icon.png
+win:
+  target:
+    - nsis
+  icon: build/icon.png
+  fileAssociations:
+    - ext: mmd
+      name: Mermaid diagram
+      role: Editor
+nsis:
+  oneClick: true
+  deleteAppDataOnUninstall: false

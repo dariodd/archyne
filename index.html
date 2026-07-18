@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="./logo.png" />
+    <title>Merflow — visual Mermaid editor</title>
+    <style>
+      /* static splash, shown until React mounts (styles inline on purpose) */
+      #root:empty::after {
+        content: "";
+      }
+      .splash {
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #12141a;
+        color: #e6e9f0;
+        font-family: "Segoe UI", system-ui, sans-serif;
+      }
+      .splash img {
+        width: 300px;
+        height: auto;
+        animation: splash-bob 1.6s ease-in-out infinite;
+      }
+      .splash-name {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+      }
+      .splash-sub {
+        font-size: 12px;
+        color: #8b91a3;
+      }
+      @keyframes splash-bob {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="splash">
+        <img class="splash-wordmark" src="./wordmark-dark.png" alt="Merflow" />
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
