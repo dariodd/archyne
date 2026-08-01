@@ -841,8 +841,13 @@ body,
   border-bottom-color: var(--accent);
 }
 
-/* The code tab is wrapped in a real tabpanel; it has to pass the panel's
-   height through to the editor rather than becoming a fixed-height box. */
+/* All three tabpanels pass the panel's height through to their content
+   rather than becoming a fixed-height box, or growing to fit it.
+
+   The preview was missing this class, so it was a plain block that grew to
+   whatever the rendered SVG needed — spilling out of the panel and over the
+   inspector below, then snapping back on the way to another tab. That is
+   what the resizing flicker was. */
 .code-panel .tabpanel {
   flex: 1;
   display: flex;

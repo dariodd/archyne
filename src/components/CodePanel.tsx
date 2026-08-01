@@ -67,7 +67,12 @@ export function CodePanel() {
           <GraphOutline />
         </div>
       ) : (
-        <div id="panel-preview" role="tabpanel" aria-labelledby="tab-preview">
+        <div
+          id="panel-preview"
+          role="tabpanel"
+          aria-labelledby="tab-preview"
+          className="tabpanel"
+        >
           <MermaidPreview code={code} className="preview" />
         </div>
       )}
