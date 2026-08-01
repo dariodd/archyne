@@ -1,4 +1,4 @@
-import { useToasts } from "../toast";
+import { pauseToasts, resumeToasts, useToasts } from "../toast";
 import { useT } from "../i18n";
 
 /**
@@ -17,7 +17,17 @@ export function Toasts() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toasts" aria-live="polite">
+    // Pointer and focus both hold the timers (WCAG 2.2.2). React's onFocus
+    // and onBlur bubble from the dismiss buttons, so tabbing into the stack
+    // is enough — a keyboard user does not have to reach the toast first.
+    <div
+      className="toasts"
+      aria-live="polite"
+      onMouseEnter={pauseToasts}
+      onMouseLeave={resumeToasts}
+      onFocus={pauseToasts}
+      onBlur={resumeToasts}
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}

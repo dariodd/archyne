@@ -23,6 +23,7 @@ import { Toasts } from "./components/Toasts";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { useT } from "./i18n";
+import { singleKeyShortcutsEnabled } from "./prefs";
 
 export default function App() {
   const applyCode = useGraphStore((s) => s.applyCode);
@@ -105,7 +106,7 @@ export default function App() {
 
       // Unmodified keys first: the shortcut sheet, and nudging the selection.
       if (!e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (e.key === "?") {
+        if (e.key === "?" && singleKeyShortcutsEnabled()) {
           e.preventDefault();
           setShowShortcuts(true);
           return;

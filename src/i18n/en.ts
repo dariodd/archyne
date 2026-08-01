@@ -40,6 +40,7 @@ export const en = {
   "toolbar.export": "Export…",
   "toolbar.copyCode": "Copy code",
   "toolbar.copied": "Copied!",
+  "prefs.singleKeys": "Single-key shortcuts",
   "toolbar.theme": "Theme",
   "toolbar.themeDark": "Dark",
   "toolbar.themeLight": "Light",
@@ -102,6 +103,8 @@ export const en = {
   "item.subgraph": "Subgraph",
 
   "canvas.label": "Diagram canvas",
+  "canvas.summary":
+    "{kind}. Nodes: {nodes}. Groups: {groups}. Connections: {edges}. This canvas is visual; the Outline tab lists every node and its connections as text.",
   "canvas.keyboardHelp":
     "Press Tab to move between nodes. Press C on a node to start a connection, then Enter on another node to complete it, or Escape to cancel. Press Delete to remove the selected node.",
   "canvas.connectStart": "Connecting from {name}. Move to another node and press Enter.",
@@ -169,6 +172,8 @@ export const en = {
   "item.junction": "junction",
 
   "insp.label": "Label",
+  "insp.width": "Width",
+  "insp.height": "Height",
   "insp.shape": "Shape",
   "insp.fill": "Fill",
   "insp.border": "Border",

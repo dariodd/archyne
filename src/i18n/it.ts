@@ -35,6 +35,7 @@ export const messages: Messages = {
   "toolbar.export": "Esporta…",
   "toolbar.copyCode": "Copia il codice",
   "toolbar.copied": "Copiato",
+  "prefs.singleKeys": "Scorciatoie a tasto singolo",
   "toolbar.theme": "Tema",
   "toolbar.themeDark": "Scuro",
   "toolbar.themeLight": "Chiaro",
@@ -97,6 +98,8 @@ export const messages: Messages = {
   "item.subgraph": "Sottografo",
 
   "canvas.label": "Area di disegno",
+  "canvas.summary":
+    "{kind}. Nodi: {nodes}. Gruppi: {groups}. Collegamenti: {edges}. Questa tela è visiva; la scheda Struttura elenca ogni nodo e i suoi collegamenti in forma testuale.",
   "canvas.keyboardHelp":
     "Premi Tab per spostarti fra i nodi. Premi C su un nodo per iniziare un collegamento, poi Invio su un altro nodo per completarlo, oppure Esc per annullare. Premi Canc per eliminare il nodo selezionato.",
   "canvas.connectStart": "Collegamento da {name}. Spostati su un altro nodo e premi Invio.",
@@ -164,6 +167,8 @@ export const messages: Messages = {
   "item.junction": "snodo",
 
   "insp.label": "Etichetta",
+  "insp.width": "Larghezza",
+  "insp.height": "Altezza",
   "insp.shape": "Forma",
   "insp.fill": "Riempimento",
   "insp.border": "Bordo",

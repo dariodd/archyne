@@ -24,6 +24,7 @@ import { useKeyboardConnect } from "./useKeyboardConnect";
 import { MermaidPreview } from "./MermaidPreview";
 import { useT } from "../i18n";
 import type { EdgeTypes } from "@xyflow/react";
+import { isGroup } from "../model/types";
 
 const nodeTypes: NodeTypes = {
   shape: ShapeNodeView,
@@ -57,6 +58,8 @@ export function CanvasView() {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
   const kind = useGraphStore((s) => s.kind);
+  const accTitle = useGraphStore((s) => s.accTitle);
+  const accDescr = useGraphStore((s) => s.accDescr);
   const onNodesChange = useGraphStore((s) => s.onNodesChange);
   const onEdgesChange = useGraphStore((s) => s.onEdgesChange);
   const onConnect = useGraphStore((s) => s.onConnect);
@@ -116,7 +119,11 @@ export function CanvasView() {
   return (
     <main
       className="canvas-wrap"
-      aria-label={t("canvas.label")}
+      /* A diagram's own accessible title names the region when the author
+         gave one — "Payment flow — diagram canvas" rather than the same
+         generic label on every diagram. */
+      aria-label={accTitle ? `${accTitle} — ${t("canvas.label")}` : t("canvas.label")}
+      aria-describedby="canvas-summary"
       onMouseDownCapture={() => (panMovedRef.current = false)}
     >
       <MarkerDefs />
@@ -197,6 +204,21 @@ export function CanvasView() {
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
       {/* How to drive the canvas without a pointer. Visible to screen
           readers only; sighted users have the palette and drag handles. */}
+      {/* What is on the canvas, before how to drive it. A screen reader
+          lands here with no way to perceive the shape of the diagram, so it
+          is stated: the family, how much of it there is, the author's own
+          description when there is one, and where the readable version is.
+          The Outline tab is that version; this points at it rather than
+          pretending the canvas is self-describing. */}
+      <p className="visually-hidden" id="canvas-summary">
+        {t("canvas.summary", {
+          kind: t(`kind.${kind}`),
+          nodes: String(nodes.filter((n) => !isGroup(n)).length),
+          groups: String(nodes.filter(isGroup).length),
+          edges: String(edges.length),
+        })}
+        {accDescr ? ` ${accDescr}` : ""}
+      </p>
       <p className="visually-hidden">{t("canvas.keyboardHelp")}</p>
       <p className="visually-hidden" role="status" aria-atomic="true">
         {connect.message}

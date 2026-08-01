@@ -38,6 +38,7 @@ export const messages: Messages = {
   "toolbar.export": "تصدير…",
   "toolbar.copyCode": "نسخ الشيفرة",
   "toolbar.copied": "تم النسخ!",
+  "prefs.singleKeys": "اختصارات بمفتاح واحد",
   "toolbar.theme": "المظهر",
   "toolbar.themeDark": "داكن",
   "toolbar.themeLight": "فاتح",
@@ -100,6 +101,8 @@ export const messages: Messages = {
   "item.subgraph": "مخطط فرعي",
 
   "canvas.label": "لوحة المخطط",
+  "canvas.summary":
+    "{kind}. العقد: {nodes}. المجموعات: {groups}. الاتصالات: {edges}. هذه اللوحة بصرية؛ تسرد علامة التبويب المخطط كل عقدة واتصالاتها كنص.",
   "canvas.keyboardHelp":
     "اضغط Tab للتنقل بين العقد. اضغط C على عقدة لبدء اتصال، ثم Enter على عقدة أخرى لإتمامه، أو Escape للإلغاء. اضغط Delete لحذف العقدة المحددة.",
   "canvas.connectStart": "جارٍ الاتصال من {name}. انتقل إلى عقدة أخرى واضغط Enter.",
@@ -167,6 +170,8 @@ export const messages: Messages = {
   "item.junction": "وصلة",
 
   "insp.label": "التسمية",
+  "insp.width": "العرض",
+  "insp.height": "الارتفاع",
   "insp.shape": "الشكل",
   "insp.fill": "التعبئة",
   "insp.border": "الحدود",

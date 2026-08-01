@@ -35,6 +35,7 @@ export const messages: Messages = {
   "toolbar.export": "导出…",
   "toolbar.copyCode": "复制代码",
   "toolbar.copied": "已复制！",
+  "prefs.singleKeys": "单键快捷键",
   "toolbar.theme": "主题",
   "toolbar.themeDark": "深色",
   "toolbar.themeLight": "浅色",
@@ -97,6 +98,8 @@ export const messages: Messages = {
   "item.subgraph": "子图",
 
   "canvas.label": "图表画布",
+  "canvas.summary":
+    "{kind}。节点：{nodes}。分组：{groups}。连接：{edges}。此画布是视觉化的；大纲选项卡以文本方式列出每个节点及其连接。",
   "canvas.keyboardHelp":
     "按 Tab 在节点间移动。在节点上按 C 开始连接，然后在另一个节点上按 Enter 完成，或按 Escape 取消。按 Delete 删除选中的节点。",
   "canvas.connectStart": "正在从 {name} 连接。移动到另一个节点并按 Enter。",
@@ -164,6 +167,8 @@ export const messages: Messages = {
   "item.junction": "连接点",
 
   "insp.label": "标签",
+  "insp.width": "宽度",
+  "insp.height": "高度",
   "insp.shape": "形状",
   "insp.fill": "填充",
   "insp.border": "边框",

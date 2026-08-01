@@ -35,6 +35,7 @@ export const messages: Messages = {
   "toolbar.export": "エクスポート…",
   "toolbar.copyCode": "コードをコピー",
   "toolbar.copied": "コピーしました",
+  "prefs.singleKeys": "単一キーのショートカット",
   "toolbar.theme": "テーマ",
   "toolbar.themeDark": "ダーク",
   "toolbar.themeLight": "ライト",
@@ -97,6 +98,8 @@ export const messages: Messages = {
   "item.subgraph": "サブグラフ",
 
   "canvas.label": "図のキャンバス",
+  "canvas.summary":
+    "{kind}。ノード: {nodes}。グループ: {groups}。接続: {edges}。このキャンバスは視覚的です。アウトラインタブがすべてのノードと接続をテキストで一覧します。",
   "canvas.keyboardHelp":
     "Tab キーでノード間を移動します。ノード上で C を押すと接続を開始し、別のノードで Enter を押すと確定、Escape で取り消します。Delete で選択中のノードを削除します。",
   "canvas.connectStart": "{name} から接続中です。別のノードに移動して Enter を押してください。",
@@ -164,6 +167,8 @@ export const messages: Messages = {
   "item.junction": "ジャンクション",
 
   "insp.label": "ラベル",
+  "insp.width": "幅",
+  "insp.height": "高さ",
   "insp.shape": "図形",
   "insp.fill": "塗り",
   "insp.border": "枠線",

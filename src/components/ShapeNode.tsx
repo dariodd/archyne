@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import type { Direction, Shape, ShapeNode as ShapeNodeType } from "../model/types";
 import { defaultSize } from "../model/types";
-import { useGraphStore } from "../store";
+import { GROUP_MIN, useGraphStore } from "../store";
 
 function shapeSvg(shape: Shape, w: number, h: number) {
   const common = { className: "shape-fill", vectorEffect: "non-scaling-stroke" as const };
@@ -221,8 +221,8 @@ export function GroupNodeView({
     <div className={`group-node${selected ? " selected" : ""}`}>
       <NodeResizer
         isVisible={selected}
-        minWidth={140}
-        minHeight={100}
+        minWidth={GROUP_MIN.width}
+        minHeight={GROUP_MIN.height}
         onResize={(_, p) => setNodeSize(id, p.width, p.height, p.x, p.y)}
         onResizeEnd={() => resizeEnd()}
       />

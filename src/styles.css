@@ -2318,3 +2318,13 @@ body,
   letter-spacing: -0.01em;
   color: var(--text);
 }
+
+/* Two numeric fields side by side, for group width and height. */
+.size-row {
+  display: flex;
+  gap: 8px;
+}
+.size-row label {
+  flex: 1;
+  min-width: 0;
+}

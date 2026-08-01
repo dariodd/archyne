@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useGraphStore } from "../store";
 import { t } from "../i18n";
+import { singleKeyShortcutsEnabled } from "../prefs";
 
 /** Id of the React Flow node containing the focused element, if any. */
 function focusedNodeId(): string | undefined {
@@ -51,7 +52,14 @@ export function useKeyboardConnect() {
       const nodeId = focusedNodeId();
       if (!nodeId) return;
 
-      if (!source && e.key.toLowerCase() === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      if (
+        !source &&
+        e.key.toLowerCase() === "c" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        singleKeyShortcutsEnabled()
+      ) {
         e.preventDefault();
         setSource(nodeId);
         setMessage(t("canvas.connectStart", { name: labelOf(nodeId) }));

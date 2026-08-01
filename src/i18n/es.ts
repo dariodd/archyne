@@ -34,6 +34,7 @@ export const messages: Messages = {
   "toolbar.export": "Exportar…",
   "toolbar.copyCode": "Copiar código",
   "toolbar.copied": "¡Copiado!",
+  "prefs.singleKeys": "Atajos de una sola tecla",
   "toolbar.theme": "Tema",
   "toolbar.themeDark": "Oscuro",
   "toolbar.themeLight": "Claro",
@@ -96,6 +97,8 @@ export const messages: Messages = {
   "item.subgraph": "Subgrafo",
 
   "canvas.label": "Lienzo del diagrama",
+  "canvas.summary":
+    "{kind}. Nodos: {nodes}. Grupos: {groups}. Conexiones: {edges}. Este lienzo es visual; la pestaña Esquema enumera cada nodo y sus conexiones como texto.",
   "canvas.keyboardHelp":
     "Pulsa Tab para moverte entre nodos. Pulsa C sobre un nodo para iniciar una conexión, luego Intro sobre otro nodo para completarla, o Escape para cancelar. Pulsa Suprimir para eliminar el nodo seleccionado.",
   "canvas.connectStart": "Conectando desde {name}. Ve a otro nodo y pulsa Intro.",
@@ -163,6 +166,8 @@ export const messages: Messages = {
   "item.junction": "unión",
 
   "insp.label": "Etiqueta",
+  "insp.width": "Ancho",
+  "insp.height": "Alto",
   "insp.shape": "Forma",
   "insp.fill": "Relleno",
   "insp.border": "Borde",

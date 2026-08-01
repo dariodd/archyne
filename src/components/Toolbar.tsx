@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useGraphStore } from "../store";
 import { useThemeStore, type ThemeChoice } from "../theme";
+import { usePrefs } from "../prefs";
 import { useLayoutStore } from "../layoutStore";
 import { useFileStore } from "../files";
 import { createDoc, documentMenuActions } from "../documents";
@@ -47,6 +48,8 @@ export function Toolbar() {
   const saveFile = useFileStore((s) => s.save);
   const saveAsFile = useFileStore((s) => s.saveAs);
   const themeChoice = useThemeStore((s) => s.choice);
+  const singleKeys = usePrefs((s) => s.singleKeyShortcuts);
+  const setSingleKeys = usePrefs((s) => s.setSingleKeyShortcuts);
   const setTheme = useThemeStore((s) => s.setTheme);
   const t = useT();
   const docActions = documentMenuActions();
@@ -200,6 +203,14 @@ export function Toolbar() {
             {copied ? t("toolbar.copied") : t("toolbar.copyCode")}
           </MenuItem>
           <div className="menu-separator" />
+          <label className="menu-field">
+            {t("prefs.singleKeys")}
+            <input
+              type="checkbox"
+              checked={singleKeys}
+              onChange={(e) => setSingleKeys(e.target.checked)}
+            />
+          </label>
           <label className="menu-field">
             {t("toolbar.theme")}
             <select

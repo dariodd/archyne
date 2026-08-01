@@ -1,4 +1,4 @@
-import { useGraphStore } from "../store";
+import { GROUP_MIN, useGraphStore } from "../store";
 import { useT } from "../i18n";
 import { useIconPrefs } from "../iconPrefs";
 import {
@@ -350,18 +350,70 @@ function NodeFields({ node }: { node: AnyNode }) {
           </label>
         </>
       );
-    default:
+    case "group":
       return (
-        <label>
-          {t("insp.label")}
-          <input
-            id="inspector-label"
-            value={String(node.data.label)}
-            onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
-          />
-        </label>
+        <>
+          <label>
+            {t("insp.label")}
+            <input
+              id="inspector-label"
+              value={String(node.data.label)}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <GroupSize node={node} />
+        </>
       );
+    default:
+      // Every member of the union is handled above — TypeScript narrows
+      // `node` to `never` here — so this only guards a kind added later
+      // without a branch, and does it by showing nothing rather than by
+      // reading fields that may not exist.
+      return null;
   }
+}
+
+/**
+ * Width and height for a group, in numbers.
+ *
+ * The resize handles are a dragging gesture, and WCAG 2.5.7 asks for the
+ * same functionality without one. Typing a size is also the only way to make
+ * two groups exactly equal, which dragging never quite manages.
+ */
+function GroupSize({ node }: { node: AnyNode }) {
+  const t = useT();
+  const resizeNode = useGraphStore((s) => s.resizeNode);
+  const width = Math.round(
+    Number(node.style?.width ?? node.measured?.width ?? GROUP_MIN.width),
+  );
+  const height = Math.round(
+    Number(node.style?.height ?? node.measured?.height ?? GROUP_MIN.height),
+  );
+
+  return (
+    <div className="size-row">
+      <label>
+        {t("insp.width")}
+        <input
+          type="number"
+          min={GROUP_MIN.width}
+          step={10}
+          value={width}
+          onChange={(e) => resizeNode(node.id, Number(e.target.value), height)}
+        />
+      </label>
+      <label>
+        {t("insp.height")}
+        <input
+          type="number"
+          min={GROUP_MIN.height}
+          step={10}
+          value={height}
+          onChange={(e) => resizeNode(node.id, width, Number(e.target.value))}
+        />
+      </label>
+    </div>
+  );
 }
 
 function EdgeFields({ edge }: { edge: FlowEdge }) {

@@ -34,6 +34,7 @@ export const messages: Messages = {
   "toolbar.export": "Exportieren…",
   "toolbar.copyCode": "Code kopieren",
   "toolbar.copied": "Kopiert!",
+  "prefs.singleKeys": "Einzeltasten-Kürzel",
   "toolbar.theme": "Design",
   "toolbar.themeDark": "Dunkel",
   "toolbar.themeLight": "Hell",
@@ -96,6 +97,8 @@ export const messages: Messages = {
   "item.subgraph": "Teilgraph",
 
   "canvas.label": "Diagrammfläche",
+  "canvas.summary":
+    "{kind}. Knoten: {nodes}. Gruppen: {groups}. Verbindungen: {edges}. Diese Zeichenfläche ist visuell; die Registerkarte Gliederung listet jeden Knoten und seine Verbindungen als Text auf.",
   "canvas.keyboardHelp":
     "Mit Tab zwischen Knoten wechseln. Auf einem Knoten C drücken, um eine Verbindung zu beginnen, dann auf einem anderen Knoten Eingabe, um sie abzuschließen, oder Escape zum Abbrechen. Entf löscht den ausgewählten Knoten.",
   "canvas.connectStart":
@@ -164,6 +167,8 @@ export const messages: Messages = {
   "item.junction": "Knotenpunkt",
 
   "insp.label": "Beschriftung",
+  "insp.width": "Breite",
+  "insp.height": "Höhe",
   "insp.shape": "Form",
   "insp.fill": "Füllung",
   "insp.border": "Rahmen",

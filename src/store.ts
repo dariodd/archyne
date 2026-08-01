@@ -42,6 +42,9 @@ import { autoLayout } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
 import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
 
+/** Smallest a group may be, whether dragged or typed. */
+export const GROUP_MIN = { width: 140, height: 100 };
+
 export const SAMPLE = `flowchart TD
   start(["Start"])
   input[/"User request"/]
@@ -189,6 +192,14 @@ export interface GraphState {
   onConnect: (conn: Connection) => void;
   onNodeDragStop: (dragged?: AnyNode) => void;
   setNodeSize: (id: string, w: number, h: number, x: number, y: number) => void;
+  /**
+   * Resize a group to an exact size and persist it.
+   *
+   * `setNodeSize` is the live half of a drag; this is the whole gesture in
+   * one call, for the inspector's width and height fields — the way to
+   * resize a group without dragging a handle (WCAG 2.5.7).
+   */
+  resizeNode: (id: string, w: number, h: number) => void;
   addNode: (seed: NodeSeed, position: { x: number; y: number }) => void;
   updateNodeData: (id: string, patch: Record<string, unknown>) => void;
   updateEdgeData: (id: string, patch: Partial<FlowEdgeData>) => void;
@@ -588,6 +599,19 @@ export const useGraphStore = create<GraphState>((set, get) => {
             : n,
         ),
       });
+    },
+
+    resizeNode: (id, w, h) => {
+      const node = get().nodes.find((n) => n.id === id);
+      if (!node) return;
+      get().setNodeSize(
+        id,
+        Math.max(GROUP_MIN.width, Math.round(w)),
+        Math.max(GROUP_MIN.height, Math.round(h)),
+        node.position.x,
+        node.position.y,
+      );
+      repatchPositions();
     },
 
     addNode: (seed, position) => {
