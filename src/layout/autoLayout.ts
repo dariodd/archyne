@@ -4,12 +4,68 @@ import type { AnyNode, Direction, FlowEdge } from "../model/types";
 import { estimateSize, isGroup } from "../model/types";
 import type { PositionMap } from "../model/positions";
 
-// ELK's bundled engine is ~1.4 MB — load it only when a layout is requested.
-let elkPromise: Promise<InstanceType<typeof ELKType>> | null = null;
-function getElk() {
-  if (!elkPromise) {
-    elkPromise = import("elkjs/lib/elk.bundled.js").then((m) => new m.default());
+type Elk = InstanceType<typeof ELKType>;
+
+// ELK's engine is ~1.4 MB — load it only when a layout is requested.
+let elkPromise: Promise<Elk> | null = null;
+
+/** A one-node graph is instant; anything slower means the worker is not there. */
+const PROBE_TIMEOUT_MS = 5000;
+
+/**
+ * Layout in a worker, falling back to the main thread.
+ *
+ * ELK is a GWT-compiled solver: a big graph pins a core for a second or more,
+ * and on the main thread that is a frozen canvas — no repaint, no scroll, no
+ * cancel. In a worker the UI stays live.
+ *
+ * Why the fallback stays:
+ *
+ *   - jsdom, under Vitest, has no `Worker` at all;
+ *   - `worker-src` is a CSP directive, and index.html's policy is only the
+ *     floor — a self-hoster or reverse proxy can send a narrower header, and
+ *     the intersection wins. Auto-layout must not be what breaks.
+ *
+ * The Electron shell is *not* one of those cases, though it looks like it
+ * should be: it loads the build over `file://` (`desktop/main.cjs` uses
+ * `loadFile`), and Chromium blocks workers from file URLs in a browser — but
+ * Electron does not. This was measured, in the packaged build, both ways; the
+ * worker runs there. Don't "fix" that assumption in either direction without
+ * re-measuring.
+ *
+ * Both paths produce byte-identical positions, so the fallback is invisible
+ * beyond the pause it reintroduces.
+ */
+async function createElk(): Promise<Elk> {
+  if (typeof Worker !== "undefined") {
+    let elk: Elk | undefined;
+    try {
+      const [{ default: ELK }, { default: ElkWorker }] = await Promise.all([
+        import("elkjs/lib/elk-api"),
+        import("elkjs/lib/elk-worker.min.js?worker"),
+      ]);
+      elk = new ELK({ workerFactory: () => new ElkWorker() });
+      // Constructing a worker can succeed and still never answer — a blocked
+      // `file://` worker fails on its error event, not at `new Worker()`. So
+      // prove a round-trip, and bound it, rather than trusting the constructor.
+      await Promise.race([
+        elk.layout({ id: "probe", children: [{ id: "n", width: 1, height: 1 }] }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("ELK worker did not respond")), PROBE_TIMEOUT_MS),
+        ),
+      ]);
+      return elk;
+    } catch (err) {
+      elk?.terminateWorker();
+      console.warn("ELK worker unavailable; laying out on the main thread instead.", err);
+    }
   }
+  const { default: BundledELK } = await import("elkjs/lib/elk.bundled.js");
+  return new BundledELK();
+}
+
+function getElk() {
+  if (!elkPromise) elkPromise = createElk();
   return elkPromise;
 }
 
@@ -79,9 +135,7 @@ export async function autoLayout(
       positions[elkNode.id] = {
         x: elkNode.x ?? 0,
         y: elkNode.y ?? 0,
-        ...(elkNode.children?.length
-          ? { w: elkNode.width ?? 0, h: elkNode.height ?? 0 }
-          : {}),
+        ...(elkNode.children?.length ? { w: elkNode.width ?? 0, h: elkNode.height ?? 0 } : {}),
       };
     }
     for (const c of elkNode.children ?? []) collect(c, false);
