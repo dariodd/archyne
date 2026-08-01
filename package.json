@@ -110,7 +110,7 @@
     "typescript": "~5.8.0",
     "typescript-eslint": "^8.65.0",
     "vite": "^6.3.0",
-    "vitest": "^3.1.0"
+    "vitest": "^4.1.10"
   },
   "main": "desktop/main.cjs",
   "description": "A visual editor for Mermaid diagrams — draw, and get Mermaid code",
