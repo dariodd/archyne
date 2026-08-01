@@ -1869,79 +1869,95 @@ body,
   line-height: 0;
 }
 
-/* ---------- document switcher ---------- */
+/* ---------- document tabs ---------- */
 
-/* The trigger replaces what used to be a static label, so it has to read as
-   a control without growing the toolbar: no filled background until hover. */
-.doc-menu > button.doc-trigger {
+/* A slim strip under the toolbar. It is the one thing on screen that says
+   "there is more than one diagram here", which a menu on the name did not. */
+.doc-tabs {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  /* Both bounds matter. Without the lower one the toolbar's flex layout
-     squeezes this to "U…" once the bar is busy — the name is the one thing
-     the control exists to show. Above it, the ellipsis takes over. */
-  min-width: 9ch;
-  max-width: 260px;
-}
-.doc-menu {
-  min-width: 0;
-}
-.doc-menu > button.doc-trigger:hover,
-.doc-menu > button.doc-trigger[aria-expanded="true"] {
-  background: var(--surface-2);
-  border-color: var(--border);
-}
-.doc-caret {
-  font-size: 9px;
-  color: var(--text-dim);
-}
-
-/* Anchored to the leading edge, not the trailing one.
-   `.menu-popover` anchors to `inset-inline-end` because it was written for
-   the overflow menu at the far end of the toolbar. This menu sits at the
-   *start* of the bar, so that rule hung it off the left of the window —
-   measured at x = -87. The same mistake, mirrored, is what once made the
-   language choice irreversible in RTL.
-
-   Being placed properly also settles a target-size violation the audit
-   found: the panel now covers the shape palette beneath it outright, rather
-   than leaving a 15px slice of each button peeking out beside it. */
-.doc-menu .menu-popover {
-  inset-inline-start: 0;
-  inset-inline-end: auto;
-  min-width: 240px;
-}
-
-/* Long workspaces scroll rather than running off the bottom of the screen. */
-.doc-list {
-  display: flex;
-  flex-direction: column;
-  max-height: 40vh;
-  overflow-y: auto;
-}
-.doc-list button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  text-align: start;
-}
-.doc-check {
-  width: 1em;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 8px;
+  height: 30px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
   flex: 0 0 auto;
-  color: var(--accent);
 }
-.doc-name {
+
+.doc-tab {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: var(--r-sm) var(--r-sm) 0 0;
+}
+.doc-tab.active {
+  background: var(--bg);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.doc-tabs button {
+  background: transparent;
+  border: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 0 6px;
+  height: 100%;
+  border-radius: 0;
+}
+.doc-tab.active .doc-tab-name {
+  color: var(--text);
+}
+.doc-tabs button:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.doc-tab-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 190px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.menu-sep {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 4px 0;
+
+/* Kept at 24px square so it clears the WCAG 2.5.8 target-size floor even
+   though it is a small glyph. */
+.doc-tab-close,
+.doc-tab-add {
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.doc-tab-add {
+  flex: 0 0 auto;
+}
+
+/* Says what the strip is, once, for anyone who has only ever had one
+   diagram open and would otherwise read a lone tab as decoration. */
+.doc-tabs-hint {
+  display: flex;
+  align-items: center;
+  margin-inline-start: 10px;
+  font-size: 11px;
+  /* No `opacity` here. Dimming an already-dim colour took this to 2.86:1 on
+     the light theme, which the audit caught. `--text-dim` is the token that
+     is chosen to clear 4.5:1; anything quieter has to come from the token,
+     not from a filter over it. */
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+/* Once a second diagram exists the strip explains itself, so the hint goes.
+   `display: none` rather than a transparent element: an invisible label is
+   still read aloud, and a hint about something already obvious is noise. */
+.doc-tab:nth-of-type(2) ~ .doc-tabs-hint {
+  display: none;
 }
 
 /* ---------- toasts ---------- */

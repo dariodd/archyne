@@ -230,6 +230,8 @@ export const messages: Messages = {
   "file.confirmDiscard": "この図には未保存の変更があります。移動しますか？",
   "doc.menuLabel": "図: {name} — 切り替えまたは管理",
   "doc.openDocuments": "開いている図",
+  "doc.closeNamed": "{name} を閉じる",
+  "doc.tabsHint": "Archyne で開いている図",
   "doc.current": "（現在）",
   "doc.new": "新しい図",
   "doc.rename": "名前を変更…",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { Toolbar } from "./components/Toolbar";
+import { DocumentTabs } from "./components/DocumentTabs";
 import { Palette } from "./components/Palette";
 import { CanvasView } from "./components/CanvasView";
 import { CodePanel } from "./components/CodePanel";
@@ -187,6 +188,7 @@ export default function App() {
       )}
       <div className="app">
         <Toolbar />
+        <DocumentTabs />
         <div
           className={`main${paletteOpen ? " palette-open" : ""}${sideOpen ? " side-open" : ""}`}
         >

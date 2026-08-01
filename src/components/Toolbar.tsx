@@ -3,8 +3,7 @@ import { useGraphStore } from "../store";
 import { useThemeStore, type ThemeChoice } from "../theme";
 import { useLayoutStore } from "../layoutStore";
 import { useFileStore } from "../files";
-import { DocumentMenu } from "./DocumentMenu";
-import { createDoc } from "../documents";
+import { createDoc, documentMenuActions } from "../documents";
 import { toast, toastError } from "../toast";
 import { LOCALES, useI18n, useT, type Locale } from "../i18n";
 import { ExportDialog } from "./ExportDialog";
@@ -50,6 +49,7 @@ export function Toolbar() {
   const themeChoice = useThemeStore((s) => s.choice);
   const setTheme = useThemeStore((s) => s.setTheme);
   const t = useT();
+  const docActions = documentMenuActions();
   const locale = useI18n((s) => s.locale);
   const setLocale = useI18n((s) => s.setLocale);
 
@@ -95,7 +95,6 @@ export function Toolbar() {
           <img src="./logo.svg" alt="" className="brand-logo" />
           <span className="brand">{t("app.name")}</span>
         </button>
-        <DocumentMenu />
         <span className="kind-badge" role="status">
           {unsupported ? t("unsupported.badge", { type: unsupported }) : t(`kind.${kind}`)}
         </span>
@@ -197,6 +196,8 @@ export function Toolbar() {
       <MenuButton className="overflow-menu" label={t("toolbar.more")}>
         <>
           <MenuItem onSelect={runSave(saveAsFile)}>{t("toolbar.saveAs")}</MenuItem>
+          <MenuItem onSelect={docActions.rename}>{t("doc.rename")}</MenuItem>
+          <MenuItem onSelect={docActions.duplicate}>{t("doc.duplicate")}</MenuItem>
           <MenuItem onSelect={() => void copy()}>
             {copied ? t("toolbar.copied") : t("toolbar.copyCode")}
           </MenuItem>

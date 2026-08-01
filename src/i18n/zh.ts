@@ -229,6 +229,8 @@ export const messages: Messages = {
   "file.confirmDiscard": "此图表有未保存的更改。仍要离开吗？",
   "doc.menuLabel": "图表：{name} — 切换或管理",
   "doc.openDocuments": "已打开的图表",
+  "doc.closeNamed": "关闭 {name}",
+  "doc.tabsHint": "在 Archyne 中打开的图表",
   "doc.current": "（当前）",
   "doc.new": "新建图表",
   "doc.rename": "重命名…",

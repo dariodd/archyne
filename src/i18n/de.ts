@@ -230,6 +230,8 @@ export const messages: Messages = {
   "file.confirmDiscard": "Dieses Diagramm hat ungespeicherte Änderungen. Trotzdem verlassen?",
   "doc.menuLabel": "Diagramm: {name} — wechseln oder verwalten",
   "doc.openDocuments": "Geöffnete Diagramme",
+  "doc.closeNamed": "{name} schließen",
+  "doc.tabsHint": "In Archyne geöffnete Diagramme",
   "doc.current": "(aktuell)",
   "doc.new": "Neues Diagramm",
   "doc.rename": "Umbenennen…",

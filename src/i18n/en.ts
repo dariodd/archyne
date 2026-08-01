@@ -236,6 +236,8 @@ export const en = {
 
   "doc.menuLabel": "Diagram: {name} — switch or manage",
   "doc.openDocuments": "Open diagrams",
+  "doc.closeNamed": "Close {name}",
+  "doc.tabsHint": "Diagrams open in Archyne",
   "doc.current": "(current)",
   "doc.new": "New diagram",
   "doc.rename": "Rename…",

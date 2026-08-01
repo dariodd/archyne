@@ -234,6 +234,8 @@ export const messages: Messages = {
     "يحتوي هذا المخطط على تغييرات غير محفوظة. هل تريد المغادرة على أي حال؟",
   "doc.menuLabel": "الرسم: {name} — التبديل أو الإدارة",
   "doc.openDocuments": "الرسوم المفتوحة",
+  "doc.closeNamed": "إغلاق {name}",
+  "doc.tabsHint": "الرسوم المفتوحة في Archyne",
   "doc.current": "(الحالي)",
   "doc.new": "رسم جديد",
   "doc.rename": "إعادة تسمية…",

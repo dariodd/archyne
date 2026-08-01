@@ -81,9 +81,12 @@ const SURFACES: Array<{
   key?: string;
   /** A second button, for surfaces reached through a menu. */
   then?: string;
+  /** A CSS selector to click, for controls with no stable accessible name. */
+  click?: string;
   /** Must be visible before auditing, and gone again afterwards. */
   appears?: string;
 }> = [
+  // The document tab strip is always on screen, so it is covered here.
   { label: "editor" },
   { label: "outline", tab: "Outline", appears: "#panel-outline" },
   { label: "export dialog", open: "Export…", appears: ".modal" },
@@ -92,11 +95,10 @@ const SURFACES: Array<{
   { label: "overflow menu", open: "More", appears: ".menu-popover" },
   { label: "command palette", key: "Control+k", appears: ".modal.command-palette" },
   { label: "shortcuts sheet", key: "Shift+Slash", appears: ".modal" },
-  // The document switcher and the two dialogs behind it. Its trigger carries
-  // the document's name, so match on the stable part.
-  { label: "document menu", open: "Diagram:", appears: ".doc-list" },
-  { label: "rename dialog", open: "Diagram:", then: "Rename…", appears: ".modal" },
-  { label: "delete confirmation", open: "Diagram:", then: "Delete", appears: ".modal" },
+  // The two document dialogs: rename from the overflow menu, delete from a
+  // tab's close button.
+  { label: "rename dialog", open: "More", then: "Rename…", appears: ".modal" },
+  { label: "delete confirmation", click: ".doc-tab-close", appears: ".modal" },
 ];
 
 /** Long enough for the open/close transition, short enough to stay cheap. */
@@ -124,9 +126,10 @@ for (const theme of ["dark", "light"] as const) {
   await page.locator(".menu-popover").waitFor({ state: "hidden", timeout: 15000 });
   await page.waitForTimeout(TRANSITION_MS);
 
-  for (const { label, open, tab, key, then, appears } of SURFACES) {
+  for (const { label, open, tab, key, then, click, appears } of SURFACES) {
     if (tab) await page.getByRole("tab", { name: tab }).click();
     if (key) await page.keyboard.press(key);
+    if (click) await page.locator(click).first().click();
     if (open) await page.getByRole("button", { name: open }).click();
     if (then) {
       await page.locator(".menu-popover").waitFor({ state: "visible", timeout: 15000 });
@@ -160,7 +163,7 @@ for (const theme of ["dark", "light"] as const) {
       }
     }
 
-    if (open || key) {
+    if (open || key || click) {
       await page.keyboard.press("Escape");
       if (appears) {
         await page.locator(appears).first().waitFor({ state: "hidden", timeout: 15000 });

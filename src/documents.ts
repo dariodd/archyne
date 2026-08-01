@@ -1,3 +1,4 @@
+import { create } from "zustand";
 import { useGraphStore, SAMPLE, NEW_DIAGRAM } from "./store";
 import { useFileStore } from "./files";
 
@@ -179,4 +180,24 @@ export function shouldOpenInNewDoc(): boolean {
   const isScratch = !doc.path && !doc.handle && doc.savedCode === null;
   const code = useGraphStore.getState().code;
   return !(isScratch && (code === SAMPLE || code.trim() === ""));
+}
+
+/**
+ * Which document dialog is open, if any.
+ *
+ * Tabs own switching, closing and creating — the gestures you make on a tab
+ * itself. Renaming and duplicating are rarer and live in the toolbar's
+ * overflow menu, with the other occasional actions. The dialogs are rendered
+ * beside the tabs, so this is how the menu asks for one.
+ */
+export const useDocDialogs = create<{ renaming: string | null; deleting: string | null }>(
+  () => ({ renaming: null, deleting: null }),
+);
+
+/** The document entries for the toolbar's overflow panel. */
+export function documentMenuActions() {
+  return {
+    rename: () => useDocDialogs.setState({ renaming: useWorkspace.getState().activeId }),
+    duplicate: () => void duplicateDoc(useWorkspace.getState().activeId),
+  };
 }

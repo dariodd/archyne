@@ -229,6 +229,8 @@ export const messages: Messages = {
   "file.confirmDiscard": "Este diagrama tiene cambios sin guardar. ¿Salir de todos modos?",
   "doc.menuLabel": "Diagrama: {name} — cambiar o gestionar",
   "doc.openDocuments": "Diagramas abiertos",
+  "doc.closeNamed": "Cerrar {name}",
+  "doc.tabsHint": "Diagramas abiertos en Archyne",
   "doc.current": "(actual)",
   "doc.new": "Nuevo diagrama",
   "doc.rename": "Renombrar…",
