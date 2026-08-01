@@ -1788,6 +1788,13 @@ body,
 .preview {
   flex: 1;
   overflow: auto;
+  /* Reserve the scrollbar's width whether or not it is there.
+     The preview is the only tab whose content routinely overflows, so it is
+     the only one where a classic scrollbar — the Windows default, unlike the
+     overlay scrollbars a headless browser uses — appears partway through
+     rendering and takes ~15px from the content box, shifting the diagram
+     sideways as it lands. Reserving the gutter means nothing moves. */
+  scrollbar-gutter: stable;
   padding: 12px;
   background: #fff;
 }
