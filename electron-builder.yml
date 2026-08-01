@@ -1,11 +1,19 @@
-appId: dev.merflow.app
-productName: Merflow
+appId: dev.archyne.app
+productName: Archyne
 directories:
   output: release
 files:
   - dist/**
   - desktop/**
   - build/icon.png
+
+# Signing is deliberately absent from this file. Windows and macOS both need
+# a purchased certificate plus repository secrets, and electron-builder picks
+# those up from the environment (CSC_LINK / CSC_KEY_PASSWORD, and Apple's
+# APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID for notarisation).
+# Until they exist the builds are unsigned: SmartScreen warns, and Gatekeeper
+# refuses outright. docs/repo-setup.md tracks what is needed.
+
 win:
   target:
     - nsis
@@ -17,3 +25,28 @@ win:
 nsis:
   oneClick: true
   deleteAppDataOnUninstall: false
+
+mac:
+  target:
+    - dmg
+    - zip
+  icon: build/icon.png
+  category: public.app-category.developer-tools
+  # The renderer is a local static build with no native modules; hardened
+  # runtime is required for notarisation and costs nothing here.
+  hardenedRuntime: true
+  fileAssociations:
+    - ext: mmd
+      name: Mermaid diagram
+      role: Editor
+
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: build/icon.png
+  category: Development
+  fileAssociations:
+    - ext: mmd
+      name: Mermaid diagram
+      mimeType: text/vnd.mermaid

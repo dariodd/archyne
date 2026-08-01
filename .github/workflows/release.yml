@@ -1,0 +1,101 @@
+name: Release
+
+# Publishing is driven by a tag, so what ships is always a commit that exists
+# in history rather than whatever happened to be on a maintainer's laptop.
+#
+# The npm publish carries **provenance**: a signed, public attestation linking
+# the tarball to this workflow, this commit and this repository, recorded in a
+# transparency log. A consumer can then verify that the package on the
+# registry was built from the source they are reading, which is the specific
+# supply-chain question an enterprise reviewer asks about a small package.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Re-run the full check suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run size
+      - run: npm run audit
+      - run: npm run notices:check
+      - run: npm run mcp:smoke
+
+  npm:
+    name: Publish to npm with provenance
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for provenance: the job mints a short-lived OIDC token that
+      # npm verifies, so no long-lived signing key exists to leak.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      # `prepublishOnly` builds dist/, which `files` ships.
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  desktop:
+    name: Desktop installers
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+          - os: macos-latest
+            target: --mac
+          - os: ubuntu-latest
+            target: --linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      # NOTE: these builds are currently **unsigned**. Windows SmartScreen
+      # warns on an unsigned installer and macOS Gatekeeper refuses to open
+      # one at all, so these artifacts are for testing, not for the download
+      # link on the README. See docs/repo-setup.md for the certificates and
+      # secrets needed to sign, and remove this note once they are in place.
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+            release/*.AppImage
+            release/*.deb
+          if-no-files-found: warn
+          retention-days: 14

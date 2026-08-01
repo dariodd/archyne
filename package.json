@@ -1,9 +1,43 @@
 {
   "name": "archyne",
-  "private": true,
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "archyne": "bin/archyne.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "LICENSE",
+    "README.md",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/archyne.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OWNER/archyne/issues"
+  },
+  "homepage": "https://OWNER.github.io/archyne/",
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "diagram-editor",
+    "flowchart",
+    "uml",
+    "erd",
+    "c4-model",
+    "sequence-diagram",
+    "architecture-diagram",
+    "local-first",
+    "mcp",
+    "editor"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "npm run typecheck && vite build",
@@ -26,6 +60,8 @@
     "test:e2e:a11y": "tsx tests/e2e-a11y.mts",
     "test:e2e:rtl": "tsx tests/e2e-rtl.mts",
     "test:e2e:csp": "tsx tests/e2e-csp.mts",
+    "start": "node bin/archyne.mjs",
+    "prepublishOnly": "npm run build",
     "desktop": "electron .",
     "desktop:build": "npm run build && electron-builder --win"
   },

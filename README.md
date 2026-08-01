@@ -1,19 +1,54 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="public/wordmark-dark.png">
-    <img src="public/wordmark-light.png" alt="Merflow — Visual Mermaid Editor" width="420">
-  </picture>
+  <img src="public/logo.svg" alt="Archyne" width="120">
 </p>
 
-# Merflow — visual Mermaid editor
+# Archyne — a visual editor for Mermaid diagrams
 
 A draw.io-style diagram editor with **two-way sync to Mermaid code**. Edit visually
 (drag-and-drop, connect, rename) or edit the Mermaid text — each side updates the
-other. Because the document *is* standard Mermaid, LLMs can generate, read, and
+other. Because the document _is_ standard Mermaid, LLMs can generate, read, and
 modify your diagrams as plain text, and anything they produce opens on the canvas.
 
 Runs entirely in the browser — no server, no accounts, nothing leaves your machine.
 Self-host by serving the `dist/` folder from any static file server.
+
+<p align="center">
+  <a href="https://github.com/OWNER/archyne/actions/workflows/ci.yml"><img src="https://github.com/OWNER/archyne/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/archyne"><img src="https://img.shields.io/npm/v/archyne.svg" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
+</p>
+
+## Try it
+
+**[Open the live demo →](https://OWNER.github.io/archyne/)** — it is the same
+static build, running in your browser. Nothing is uploaded.
+
+Or run it locally, with no clone and no build:
+
+```sh
+npx archyne                 # opens http://localhost:4173
+npx archyne diagram.mmd     # …with a diagram already loaded
+```
+
+<p align="center">
+  <img src="docs/images/editor-flowchart-light.png" alt="Archyne editing a flowchart: shape palette on the left, canvas in the middle, Mermaid source on the right" width="100%">
+</p>
+
+<table>
+<tr>
+<td width="50%">
+<img src="docs/images/editor-architecture-dark.png" alt="An architecture diagram with vendor icons for Cloudflare, AWS, Node.js, Redis and Postgres, grouped inside a VPC" width="100%">
+<p align="center"><em>Architecture diagrams with 13 000+ searchable vendor icons</em></p>
+</td>
+<td width="50%">
+<img src="docs/images/editor-sequence-dark.png" alt="A sequence diagram with participants, activations, a note and numbered messages" width="100%">
+<p align="center"><em>Sequence diagrams — drag participants to reorder</em></p>
+</td>
+</tr>
+</table>
+
+The screenshots are generated from the real app by
+`node scripts/screenshots.mjs`, so they cannot quietly go stale.
 
 ## Run
 
@@ -21,6 +56,7 @@ Self-host by serving the `dist/` folder from any static file server.
 npm install
 npm run dev            # development, http://localhost:5173
 npm run build          # production build into dist/ (static, any web server)
+npm start              # serve the build locally (same as npx archyne)
 npm test               # round-trip parser/serializer tests
 npm run mcp            # MCP server (stdio) for LLM agents
 npm run mcp:smoke      # end-to-end MCP server test
@@ -31,32 +67,45 @@ npm run desktop:build  # Windows installer (NSIS) into release/
 There is no backend: the web build is static files, the desktop app is the
 same build in an Electron window, and diagrams live in your files. Opening a
 `.mmd` file with the desktop app loads it directly (the installer registers
-the file association).
+the file association), and **Save writes back to that same file** — as it does
+in the browser too, on engines with the File System Access API. Elsewhere,
+Save falls back to a download.
+
+Diagram families Archyne has no visual editor for — `gantt`, `pie`, `mindmap`
+and friends — still open, rendered read-only, with the Mermaid code fully
+editable and the file untouched on save.
 
 > Windows note: if `desktop:build` fails with `EPERM … rename win-unpacked`,
 > your project sits in a Defender-protected folder (e.g. Documents). Build
 > with the output elsewhere:
-> `npx electron-builder --win -c.directories.output=%LOCALAPPDATA%\merflow-release`
+> `npx electron-builder --win -c.directories.output=%LOCALAPPDATA%\archyne-release`
 
-## Embedding Merflow in another app
+## Embedding Archyne in another app
 
 Load the app with `?embed=1` inside an iframe and talk to it over
-`postMessage` (add `&origin=https://your.app` to lock messaging to your
-origin; in embed mode Merflow never touches localStorage — the host owns
-the data):
+`postMessage`. In embed mode Archyne never touches localStorage — the host
+owns the data.
+
+The bridge is **default-deny**: you must name your origin with
+`&origin=https://your.app`, and diagram content is only ever posted back to an
+origin on that list. Comma-separate several if you need to. `origin=*` accepts
+any parent frame and is for local development only.
 
 ```html
-<iframe id="mf" src="https://merflow.your.host/?embed=1"></iframe>
+<iframe id="mf" src="https://archyne.your.host/?embed=1&origin=https://your.app"></iframe>
 <script>
+  const MF = "https://archyne.your.host";
   const mf = document.getElementById("mf").contentWindow;
   window.addEventListener("message", (e) => {
-    if (e.data.type === "ready")  mf.postMessage({ type: "load", code: "flowchart TD\n a-->b" }, "*");
-    if (e.data.type === "change") save(e.data.code);          // live edits, debounced
-    if (e.data.type === "exported") show(e.data.dataUrl);     // png/svg data URL
+    if (e.origin !== MF) return; // verify the sender, too
+    if (e.data.type === "ready")
+      mf.postMessage({ type: "load", code: "flowchart TD\n a-->b" }, MF);
+    if (e.data.type === "change") save(e.data.code); // live edits, debounced
+    if (e.data.type === "exported") show(e.data.dataUrl); // png/svg data URL
   });
   // on demand:
-  mf.postMessage({ type: "getCode" }, "*");                   // → { type:"code", code }
-  mf.postMessage({ type: "export", options: { format: "png", background: "light" } }, "*");
+  mf.postMessage({ type: "getCode" }, MF); // → { type:"code", code }
+  mf.postMessage({ type: "export", options: { format: "png", background: "light" } }, MF);
 </script>
 ```
 
@@ -71,15 +120,15 @@ client) can work with them directly. The included `.mcp.json` registers it
 automatically when you open this project in Claude Code; elsewhere:
 
 ```sh
-claude mcp add merflow -- npx tsx mcp/server.ts
+claude mcp add archyne -- npx tsx mcp/server.ts
 ```
 
-| Tool | What it does |
-| --- | --- |
-| `list_diagrams` | Find all `.mmd` files under `GRAPH_DIR` (default: cwd) |
-| `read_diagram` | Raw mermaid source + parsed structure (nodes/edges/groups) |
-| `validate_mermaid` | Parse-check code without writing |
-| `write_diagram` | Validated write; rejects broken mermaid outright |
+| Tool               | What it does                                               |
+| ------------------ | ---------------------------------------------------------- |
+| `list_diagrams`    | Find all `.mmd` files under `GRAPH_DIR` (default: cwd)     |
+| `read_diagram`     | Raw mermaid source + parsed structure (nodes/edges/groups) |
+| `validate_mermaid` | Parse-check code without writing                           |
+| `write_diagram`    | Validated write; rejects broken mermaid outright           |
 
 Writes are safe by construction: invalid code never touches disk, paths can't
 escape the root, and if an agent rewrites a diagram without the
@@ -153,10 +202,42 @@ autosave, live Mermaid preview tab.
   agent ↔ human co-editing)
 - Alignment guides; edge waypoints; resize for non-group nodes
 
+## For reviewers and buyers
+
+Archyne is local-first by construction — no backend, no accounts, no
+telemetry — which answers most of a security review before it starts. The
+documents that answer the rest:
+
+| Document                                                                     | What it covers                                                                                                                            |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [Security architecture](docs/security-whitepaper.md)                         | Data flows, threat model, the sanitizer and CSP layers and how they are verified, supply-chain posture, and a plainly-stated list of gaps |
+| [Security policy](SECURITY.md)                                               | How to report a vulnerability, and what is in scope                                                                                       |
+| [Accessibility Conformance Report](docs/accessibility-conformance-report.md) | WCAG 2.2 A/AA, criterion by criterion, with the evidence for each — and an explicit account of what has **not** been tested               |
+| [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)                             | Dependency licences; `npm run sbom` emits a CycloneDX SBOM                                                                                |
+| [Roadmap](docs/PLAN.md)                                                      | What is done, what is not, and why                                                                                                        |
+
+Two things stated up front rather than discovered later: the desktop
+installers are **not yet code-signed**, and the accessibility report is a
+self-assessment, **not a signed VPAT**.
+
 ## License
 
 [MIT](LICENSE). Third-party dependency licenses are listed in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) — all are compatible with
 MIT distribution (elkjs is EPL-2.0, consumed unmodified as a library; icon
 collections are CC0, with depicted logos remaining their owners' trademarks).
-The full breakdown is also available in-app: click the Merflow logo.
+The full breakdown is also available in-app: click the Archyne logo.
+
+## Trademarks
+
+Archyne is an independent project. It is **not affiliated with, endorsed by,
+or sponsored by** Mermaid or Mermaid Chart.
+
+"Mermaid" is a trademark of its respective owner. It appears here and in the
+interface only to describe the file format Archyne reads and writes — the
+kind of use that identifies compatibility, not origin. The Mermaid library
+itself is used under its [MIT licence](https://github.com/mermaid-js/mermaid),
+which grants rights over the code and none over the name.
+
+Vendor logos in the bundled icon collections likewise remain trademarks of
+their respective owners.
