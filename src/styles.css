@@ -1880,7 +1880,14 @@ body,
   padding: 4px 8px;
   background: transparent;
   border: 1px solid transparent;
+  /* Both bounds matter. Without the lower one the toolbar's flex layout
+     squeezes this to "U…" once the bar is busy — the name is the one thing
+     the control exists to show. Above it, the ellipsis takes over. */
+  min-width: 9ch;
   max-width: 260px;
+}
+.doc-menu {
+  min-width: 0;
 }
 .doc-menu > button.doc-trigger:hover,
 .doc-menu > button.doc-trigger[aria-expanded="true"] {
