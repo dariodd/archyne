@@ -40,17 +40,7 @@ import { removeSeqItemAt } from "./model/kinds/sequence";
 import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
 import { autoLayout } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
-
-const STORAGE_KEY = "graph:code";
-
-/** In embed mode the host owns the data — never touch localStorage. */
-const EMBEDDED = (() => {
-  try {
-    return new URLSearchParams(location.search).has("embed");
-  } catch {
-    return false;
-  }
-})();
+import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
 
 export const SAMPLE = `flowchart TD
   start(["Start"])
@@ -206,6 +196,11 @@ export interface GraphState {
   setDiagramMeta: (patch: { title?: string; accTitle?: string; accDescr?: string }) => void;
   runAutoLayout: () => Promise<void>;
   newDiagram: (kind: DiagramKind) => void;
+  /**
+   * Stash the current undo history under `outgoingId` and adopt the one
+   * belonging to `incomingId`. Called when the workspace switches documents.
+   */
+  swapHistory: (outgoingId: string, incomingId: string) => void;
   groupSelection: () => void;
   ungroupSelection: () => void;
   moveMessage: (id: string, delta: number) => void;
@@ -225,29 +220,34 @@ export interface GraphState {
 
 let parseTimer: ReturnType<typeof setTimeout> | undefined;
 
+/** Write the active document's source, and note that it changed. */
 function persist(code: string) {
   if (EMBEDDED) return;
-  try {
-    localStorage.setItem(STORAGE_KEY, code);
-  } catch {
-    // storage unavailable — persistence is best-effort
-  }
+  const { activeId } = useWorkspace.getState();
+  if (!activeId) return;
+  writeDocCode(activeId, code);
+  touchActive();
 }
 
 export function loadInitialCode(): string {
+  let fromUrl: string | null = null;
   try {
     // ?code=<urlencoded mermaid> loads a diagram from the URL (shareable links).
-    const fromUrl = new URLSearchParams(location.search).get("code");
-    if (fromUrl) return fromUrl;
+    fromUrl = new URLSearchParams(location.search).get("code");
   } catch {
     // no URL access (tests)
   }
-  if (EMBEDDED) return SAMPLE;
-  try {
-    return localStorage.getItem(STORAGE_KEY) ?? SAMPLE;
-  } catch {
-    return SAMPLE;
+
+  // The workspace is built either way, so that a shared link opens into a
+  // real document the user can then keep, rename or save.
+  const { state, code } = loadWorkspace(SAMPLE);
+  useWorkspace.setState(state);
+
+  if (fromUrl) {
+    persist(fromUrl);
+    return fromUrl;
   }
+  return code;
 }
 
 export const useGraphStore = create<GraphState>((set, get) => {
@@ -255,10 +255,21 @@ export const useGraphStore = create<GraphState>((set, get) => {
    * Undo/redo: because the mermaid code is the single source of truth, the
    * history is just a stack of code snapshots replayed through applyCode.
    */
-  const past: string[] = [];
-  const future: string[] = [];
+  let past: string[] = [];
+  let future: string[] = [];
   let lastEditorEdit = 0;
   const syncHistoryFlags = () => set({ canUndo: past.length > 0, canRedo: future.length > 0 });
+
+  /**
+   * One history per document, kept in memory only.
+   *
+   * With a single shared stack, undoing after switching documents would
+   * replay a snapshot belonging to a different diagram over the one on
+   * screen — silent, and destructive. Histories are deliberately not
+   * persisted: a stack of full-document snapshots is large, and nobody
+   * expects undo to reach across a reload.
+   */
+  const histories = new Map<string, { past: string[]; future: string[] }>();
 
   const record = (oldCode: string) => {
     if (!oldCode || past[past.length - 1] === oldCode) return;
@@ -814,6 +825,14 @@ export const useGraphStore = create<GraphState>((set, get) => {
         }),
       });
       repatchPositions();
+    },
+
+    swapHistory: (outgoingId, incomingId) => {
+      if (outgoingId) histories.set(outgoingId, { past, future });
+      const next = histories.get(incomingId) ?? { past: [], future: [] };
+      past = next.past;
+      future = next.future;
+      syncHistoryFlags();
     },
 
     newDiagram: (kind) => {

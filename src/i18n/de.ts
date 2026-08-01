@@ -228,6 +228,25 @@ export const messages: Messages = {
   "file.unsaved": "ungespeicherte Änderungen",
   "file.untitled": "Unbenanntes Diagramm",
   "file.confirmDiscard": "Dieses Diagramm hat ungespeicherte Änderungen. Trotzdem verlassen?",
+  "doc.menuLabel": "Diagramm: {name} — wechseln oder verwalten",
+  "doc.openDocuments": "Geöffnete Diagramme",
+  "doc.current": "(aktuell)",
+  "doc.new": "Neues Diagramm",
+  "doc.rename": "Umbenennen…",
+  "doc.duplicate": "Duplizieren",
+  "doc.delete": "Löschen",
+  "doc.renameTitle": "Diagramm umbenennen",
+  "doc.nameLabel": "Name",
+  "doc.renameConfirm": "Umbenennen",
+  "doc.renameHint":
+    "Das ist eine Bezeichnung in Archyne. Die Datei auf der Festplatte wird nicht umbenannt.",
+  "doc.deleteTitle": "„{name}“ löschen?",
+  "doc.deleteBody":
+    "Damit wird das Diagramm aus Archyne entfernt. Eine Datei, in die Sie es gespeichert haben, bleibt unberührt.",
+  "doc.deleteUnsaved":
+    "Dieses Diagramm hat Änderungen, die nicht in eine Datei gespeichert sind. Beim Löschen gehen sie verloren. Eine zuvor gespeicherte Datei bleibt unberührt.",
+  "doc.switchTo": "Zu {name} wechseln",
+  "common.cancel": "Abbrechen",
 
   "toast.dismiss": "Schließen",
   "toast.saved": "Gespeichert",
@@ -261,6 +280,7 @@ export const messages: Messages = {
   "palette.commandEmpty": "Keine Treffer",
   "palette.groupCommands": "Befehle",
   "palette.groupNodes": "Zu Knoten springen",
+  "palette.groupDocuments": "Diagramm wechseln",
   "palette.groupNew": "Neues Diagramm",
   "cmd.run": "Ausführen",
 

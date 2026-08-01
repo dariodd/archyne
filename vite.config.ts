@@ -8,5 +8,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    // Installs a complete localStorage and empties it between tests; see the
+    // file for why jsdom's own is not enough here.
+    setupFiles: ["./src/test-setup.ts"],
   },
 });

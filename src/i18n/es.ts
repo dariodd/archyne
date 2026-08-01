@@ -227,6 +227,24 @@ export const messages: Messages = {
   "file.unsaved": "cambios sin guardar",
   "file.untitled": "Diagrama sin título",
   "file.confirmDiscard": "Este diagrama tiene cambios sin guardar. ¿Salir de todos modos?",
+  "doc.menuLabel": "Diagrama: {name} — cambiar o gestionar",
+  "doc.openDocuments": "Diagramas abiertos",
+  "doc.current": "(actual)",
+  "doc.new": "Nuevo diagrama",
+  "doc.rename": "Renombrar…",
+  "doc.duplicate": "Duplicar",
+  "doc.delete": "Eliminar",
+  "doc.renameTitle": "Renombrar diagrama",
+  "doc.nameLabel": "Nombre",
+  "doc.renameConfirm": "Renombrar",
+  "doc.renameHint": "Es una etiqueta dentro de Archyne. El archivo en disco no se renombra.",
+  "doc.deleteTitle": "¿Eliminar “{name}”?",
+  "doc.deleteBody":
+    "Esto quita el diagrama de Archyne. El archivo donde lo guardaste no se toca.",
+  "doc.deleteUnsaved":
+    "Este diagrama tiene cambios sin guardar en un archivo. Al eliminarlo se pierden. El archivo que guardaste antes no se toca.",
+  "doc.switchTo": "Cambiar a {name}",
+  "common.cancel": "Cancelar",
 
   "toast.dismiss": "Descartar",
   "toast.saved": "Guardado",
@@ -260,6 +278,7 @@ export const messages: Messages = {
   "palette.commandEmpty": "Sin coincidencias",
   "palette.groupCommands": "Comandos",
   "palette.groupNodes": "Ir al nodo",
+  "palette.groupDocuments": "Cambiar de diagrama",
   "palette.groupNew": "Nuevo diagrama",
   "cmd.run": "Ejecutar",
 

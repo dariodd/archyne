@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGraphStore } from "../store";
 import { useFileStore } from "../files";
+import { createDoc, documentList, switchTo } from "../documents";
 import { useThemeStore } from "../theme";
 import { toast, toastError } from "../toast";
 import { useI18n, useT, type MessageKey, type Translate } from "../i18n";
@@ -131,7 +132,19 @@ function buildCommands(t: Translate, nodes: AnyNode[], close: () => void): Comma
       id: `new-${kind}`,
       group: "palette.groupNew",
       label: t(`kind.${kind}`),
-      run: wrap(() => graph().newDiagram(kind)),
+      run: wrap(() => void createDoc(kind)),
+    });
+  }
+
+  // Documents before nodes: with several open, "which diagram" is the
+  // question you ask first, and the toolbar menu is the slow way to answer it.
+  for (const doc of documentList()) {
+    if (doc.active) continue;
+    commands.push({
+      id: `doc-${doc.id}`,
+      group: "palette.groupDocuments",
+      label: doc.name,
+      run: wrap(() => void switchTo(doc.id)),
     });
   }
 

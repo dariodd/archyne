@@ -232,6 +232,23 @@ export const messages: Messages = {
   "file.untitled": "مخطط بلا عنوان",
   "file.confirmDiscard":
     "يحتوي هذا المخطط على تغييرات غير محفوظة. هل تريد المغادرة على أي حال؟",
+  "doc.menuLabel": "الرسم: {name} — التبديل أو الإدارة",
+  "doc.openDocuments": "الرسوم المفتوحة",
+  "doc.current": "(الحالي)",
+  "doc.new": "رسم جديد",
+  "doc.rename": "إعادة تسمية…",
+  "doc.duplicate": "تكرار",
+  "doc.delete": "حذف",
+  "doc.renameTitle": "إعادة تسمية الرسم",
+  "doc.nameLabel": "الاسم",
+  "doc.renameConfirm": "إعادة تسمية",
+  "doc.renameHint": "هذه تسمية داخل Archyne. لا تتم إعادة تسمية الملف على القرص.",
+  "doc.deleteTitle": "حذف “{name}”؟",
+  "doc.deleteBody": "يزيل هذا الرسم من Archyne. أي ملف حفظته فيه يبقى دون تغيير.",
+  "doc.deleteUnsaved":
+    "يحتوي هذا الرسم على تغييرات غير محفوظة في ملف. حذفه يفقدها. أي ملف حفظته سابقًا يبقى دون تغيير.",
+  "doc.switchTo": "التبديل إلى {name}",
+  "common.cancel": "إلغاء",
 
   "toast.dismiss": "إغلاق",
   "toast.saved": "تم الحفظ",
@@ -265,6 +282,7 @@ export const messages: Messages = {
   "palette.commandEmpty": "لا توجد نتائج",
   "palette.groupCommands": "الأوامر",
   "palette.groupNodes": "الانتقال إلى عقدة",
+  "palette.groupDocuments": "تبديل الرسم",
   "palette.groupNew": "مخطط جديد",
   "cmd.run": "تشغيل",
 

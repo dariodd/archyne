@@ -62,11 +62,20 @@ export function MenuButton({
   label,
   children,
   className = "",
+  trigger,
+  triggerClassName = "",
 }: {
   label: string;
   /** Use `MenuItem` for actions; plain controls leave the panel open. */
   children: ReactNode;
   className?: string;
+  /**
+   * What the trigger shows. Defaults to the overflow ellipsis; the document
+   * switcher passes its document's name instead, so the toolbar keeps one
+   * control where it used to have a label.
+   */
+  trigger?: ReactNode;
+  triggerClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -116,13 +125,14 @@ export function MenuButton({
       <button
         ref={triggerRef}
         type="button"
+        className={triggerClassName || undefined}
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         aria-label={label}
         title={label}
         onClick={() => setOpen((v) => !v)}
       >
-        <span aria-hidden="true">⋯</span>
+        {trigger ?? <span aria-hidden="true">⋯</span>}
       </button>
       {open && (
         <div className="menu-popover" id={menuId} role="group" aria-label={label} ref={menuRef}>

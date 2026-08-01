@@ -79,6 +79,8 @@ const SURFACES: Array<{
   tab?: string;
   /** Keyboard shortcut that opens the surface. */
   key?: string;
+  /** A second button, for surfaces reached through a menu. */
+  then?: string;
   /** Must be visible before auditing, and gone again afterwards. */
   appears?: string;
 }> = [
@@ -90,6 +92,11 @@ const SURFACES: Array<{
   { label: "overflow menu", open: "More", appears: ".menu-popover" },
   { label: "command palette", key: "Control+k", appears: ".modal.command-palette" },
   { label: "shortcuts sheet", key: "Shift+Slash", appears: ".modal" },
+  // The document switcher and the two dialogs behind it. Its trigger carries
+  // the document's name, so match on the stable part.
+  { label: "document menu", open: "Diagram:", appears: ".doc-list" },
+  { label: "rename dialog", open: "Diagram:", then: "Rename…", appears: ".modal" },
+  { label: "delete confirmation", open: "Diagram:", then: "Delete", appears: ".modal" },
 ];
 
 /** Long enough for the open/close transition, short enough to stay cheap. */
@@ -107,7 +114,7 @@ for (const theme of ["dark", "light"] as const) {
   );
 
   // Theme now lives in the overflow panel, so it has to be opened first.
-  await page.locator(".menu-button > button").click();
+  await page.locator(".overflow-menu > button").click();
   await page.locator(".menu-popover").waitFor({ state: "visible", timeout: 15000 });
   await page.locator(".menu-popover select").first().selectOption(theme);
   await page.waitForFunction((t) => document.documentElement.dataset.theme === t, theme, {
@@ -117,10 +124,17 @@ for (const theme of ["dark", "light"] as const) {
   await page.locator(".menu-popover").waitFor({ state: "hidden", timeout: 15000 });
   await page.waitForTimeout(TRANSITION_MS);
 
-  for (const { label, open, tab, key, appears } of SURFACES) {
+  for (const { label, open, tab, key, then, appears } of SURFACES) {
     if (tab) await page.getByRole("tab", { name: tab }).click();
     if (key) await page.keyboard.press(key);
     if (open) await page.getByRole("button", { name: open }).click();
+    if (then) {
+      await page.locator(".menu-popover").waitFor({ state: "visible", timeout: 15000 });
+      await page
+        .locator(".menu-popover")
+        .getByRole("button", { name: then, exact: true })
+        .click();
+    }
     if (appears) {
       await page.locator(appears).first().waitFor({ state: "visible", timeout: 15000 });
       await page.waitForTimeout(TRANSITION_MS);

@@ -1869,6 +1869,74 @@ body,
   line-height: 0;
 }
 
+/* ---------- document switcher ---------- */
+
+/* The trigger replaces what used to be a static label, so it has to read as
+   a control without growing the toolbar: no filled background until hover. */
+.doc-menu > button.doc-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  max-width: 260px;
+}
+.doc-menu > button.doc-trigger:hover,
+.doc-menu > button.doc-trigger[aria-expanded="true"] {
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.doc-caret {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+/* Anchored to the leading edge, not the trailing one.
+   `.menu-popover` anchors to `inset-inline-end` because it was written for
+   the overflow menu at the far end of the toolbar. This menu sits at the
+   *start* of the bar, so that rule hung it off the left of the window —
+   measured at x = -87. The same mistake, mirrored, is what once made the
+   language choice irreversible in RTL.
+
+   Being placed properly also settles a target-size violation the audit
+   found: the panel now covers the shape palette beneath it outright, rather
+   than leaving a 15px slice of each button peeking out beside it. */
+.doc-menu .menu-popover {
+  inset-inline-start: 0;
+  inset-inline-end: auto;
+  min-width: 240px;
+}
+
+/* Long workspaces scroll rather than running off the bottom of the screen. */
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.doc-list button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: start;
+}
+.doc-check {
+  width: 1em;
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+.doc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-sep {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
 /* ---------- toasts ---------- */
 .toasts {
   position: fixed;

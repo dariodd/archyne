@@ -111,7 +111,7 @@ for (const shot of SHOTS) {
   await page.goto(`${BASE}/?code=${encodeURIComponent(shot.code)}`);
   await page.waitForSelector(".react-flow__node", { timeout: 30000 });
 
-  await page.locator(".menu-button > button").click();
+  await page.locator(".overflow-menu > button").click();
   await page.locator(".menu-popover").waitFor({ state: "visible", timeout: 15000 });
   await page.locator(".menu-popover select").first().selectOption(shot.theme);
   await page.waitForFunction((t) => document.documentElement.dataset.theme === t, shot.theme, {

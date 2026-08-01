@@ -16,7 +16,7 @@ const browser = await chromium.launch({ channel: CHANNEL, headless: true });
 const page = await browser.newPage({ viewport: { width: 1500, height: 900 } });
 await page.goto(`${BASE}/`);
 // The toolbar is the last chrome to settle; wait for it rather than guessing.
-await page.locator(".menu-button > button").waitFor({ state: "visible", timeout: 30000 });
+await page.locator(".overflow-menu > button").waitFor({ state: "visible", timeout: 30000 });
 await page.waitForTimeout(600);
 
 /** Geometry of every floating piece of chrome, relative to the viewport. */
@@ -50,7 +50,7 @@ const fail = (message: string) => {
 async function openPanel() {
   const isOpen = await page.evaluate(`!!document.querySelector(".menu-popover")`);
   if (!isOpen) {
-    await page.locator(".menu-button > button").click();
+    await page.locator(".overflow-menu > button").click();
     await page.waitForTimeout(500);
   }
 }

@@ -3,6 +3,8 @@ import { useGraphStore } from "../store";
 import { useThemeStore, type ThemeChoice } from "../theme";
 import { useLayoutStore } from "../layoutStore";
 import { useFileStore } from "../files";
+import { DocumentMenu } from "./DocumentMenu";
+import { createDoc } from "../documents";
 import { toast, toastError } from "../toast";
 import { LOCALES, useI18n, useT, type Locale } from "../i18n";
 import { ExportDialog } from "./ExportDialog";
@@ -28,7 +30,6 @@ export function Toolbar() {
   const unsupported = useGraphStore((s) => s.unsupported);
   const setDirection = useGraphStore((s) => s.setDirection);
   const runAutoLayout = useGraphStore((s) => s.runAutoLayout);
-  const newDiagram = useGraphStore((s) => s.newDiagram);
   const applyCode = useGraphStore((s) => s.applyCode);
   const undo = useGraphStore((s) => s.undo);
   const redo = useGraphStore((s) => s.redo);
@@ -46,9 +47,6 @@ export function Toolbar() {
   const openFile = useFileStore((s) => s.open);
   const saveFile = useFileStore((s) => s.save);
   const saveAsFile = useFileStore((s) => s.saveAs);
-  const fileName = useFileStore((s) => s.name);
-  const savedCode = useFileStore((s) => s.savedCode);
-  const code = useGraphStore((s) => s.code);
   const themeChoice = useThemeStore((s) => s.choice);
   const setTheme = useThemeStore((s) => s.setTheme);
   const t = useT();
@@ -97,14 +95,7 @@ export function Toolbar() {
           <img src="./logo.svg" alt="" className="brand-logo" />
           <span className="brand">{t("app.name")}</span>
         </button>
-        <span className="file-name" title={fileName ?? undefined}>
-          {fileName ?? t("file.untitled")}
-          {savedCode !== null && savedCode !== code && (
-            <em className="file-dirty" title={t("file.unsaved")} aria-label={t("file.unsaved")}>
-              •
-            </em>
-          )}
-        </span>
+        <DocumentMenu />
         <span className="kind-badge" role="status">
           {unsupported ? t("unsupported.badge", { type: unsupported }) : t(`kind.${kind}`)}
         </span>
@@ -180,7 +171,7 @@ export function Toolbar() {
           value=""
           aria-label={t("toolbar.newDiagram")}
           onChange={(e) => {
-            if (e.target.value) newDiagram(e.target.value as DiagramKind);
+            if (e.target.value) void createDoc(e.target.value as DiagramKind);
             e.target.value = "";
           }}
         >
@@ -203,7 +194,7 @@ export function Toolbar() {
 
       {/* Everything else. Keeping theme, language and Save as… out here is
           what lets the bar stay one row instead of wrapping to three. */}
-      <MenuButton label={t("toolbar.more")}>
+      <MenuButton className="overflow-menu" label={t("toolbar.more")}>
         <>
           <MenuItem onSelect={runSave(saveAsFile)}>{t("toolbar.saveAs")}</MenuItem>
           <MenuItem onSelect={() => void copy()}>

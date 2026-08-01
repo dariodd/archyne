@@ -234,6 +234,25 @@ export const en = {
   "file.untitled": "Untitled diagram",
   "file.confirmDiscard": "This diagram has unsaved changes. Leave anyway?",
 
+  "doc.menuLabel": "Diagram: {name} — switch or manage",
+  "doc.openDocuments": "Open diagrams",
+  "doc.current": "(current)",
+  "doc.new": "New diagram",
+  "doc.rename": "Rename…",
+  "doc.duplicate": "Duplicate",
+  "doc.delete": "Delete",
+  "doc.renameTitle": "Rename diagram",
+  "doc.nameLabel": "Name",
+  "doc.renameConfirm": "Rename",
+  "doc.renameHint": "This is a label in Archyne. The file on disk is not renamed.",
+  "doc.deleteTitle": "Delete “{name}”?",
+  "doc.deleteBody":
+    "This removes the diagram from Archyne. Any file you saved it to is untouched.",
+  "doc.deleteUnsaved":
+    "This diagram has changes that are not saved to a file. Deleting it loses them. Any file you saved it to earlier is untouched.",
+  "doc.switchTo": "Switch to {name}",
+  "common.cancel": "Cancel",
+
   "toast.dismiss": "Dismiss",
   "toast.saved": "Saved",
   "toast.copied": "Mermaid code copied",
@@ -266,6 +285,7 @@ export const en = {
   "palette.commandEmpty": "Nothing matches",
   "palette.groupCommands": "Commands",
   "palette.groupNodes": "Go to node",
+  "palette.groupDocuments": "Switch diagram",
   "palette.groupNew": "New diagram",
   "cmd.run": "Run",
 

@@ -228,6 +228,24 @@ export const messages: Messages = {
   "file.unsaved": "modifiche non salvate",
   "file.untitled": "Diagramma senza titolo",
   "file.confirmDiscard": "Questo diagramma ha modifiche non salvate. Uscire comunque?",
+  "doc.menuLabel": "Diagramma: {name} — cambia o gestisci",
+  "doc.openDocuments": "Diagrammi aperti",
+  "doc.current": "(corrente)",
+  "doc.new": "Nuovo diagramma",
+  "doc.rename": "Rinomina…",
+  "doc.duplicate": "Duplica",
+  "doc.delete": "Elimina",
+  "doc.renameTitle": "Rinomina diagramma",
+  "doc.nameLabel": "Nome",
+  "doc.renameConfirm": "Rinomina",
+  "doc.renameHint": "È un'etichetta interna ad Archyne. Il file su disco non viene rinominato.",
+  "doc.deleteTitle": "Eliminare “{name}”?",
+  "doc.deleteBody":
+    "Rimuove il diagramma da Archyne. Il file su cui l'hai salvato resta intatto.",
+  "doc.deleteUnsaved":
+    "Questo diagramma ha modifiche non salvate su file. Eliminandolo vanno perse. Il file salvato in precedenza resta intatto.",
+  "doc.switchTo": "Passa a {name}",
+  "common.cancel": "Annulla",
 
   "toast.dismiss": "Chiudi",
   "toast.saved": "Salvato",
@@ -262,6 +280,7 @@ export const messages: Messages = {
   "palette.commandEmpty": "Nessun risultato",
   "palette.groupCommands": "Comandi",
   "palette.groupNodes": "Vai al nodo",
+  "palette.groupDocuments": "Cambia diagramma",
   "palette.groupNew": "Nuovo diagramma",
   "cmd.run": "Esegui",
 
