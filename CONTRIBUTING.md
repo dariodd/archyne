@@ -172,10 +172,12 @@ is handled.
 
 ## Accessibility
 
-Accessibility is tracked as a first-class workstream in
-[`docs/PLAN.md`](docs/PLAN.md), not as polish. `eslint-plugin-jsx-a11y` runs
-in CI **as errors**, and `src/components/a11y.test.tsx` runs `axe` over the
-dialog primitives.
+Accessibility is a first-class workstream, not polish.
+`eslint-plugin-jsx-a11y` runs in CI **as errors**,
+`src/components/a11y.test.tsx` runs `axe` over the dialog primitives, and
+`npm run test:e2e:a11y` audits ten interface surfaces in both themes against
+WCAG 2.2 AA in a real browser. A criterion-by-criterion conformance report is
+maintained outside the repository.
 
 Ground rules for new UI:
 

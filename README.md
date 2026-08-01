@@ -210,21 +210,28 @@ autosave, live Mermaid preview tab.
 
 ## For reviewers and buyers
 
-Archyne is local-first by construction — no backend, no accounts, no
-telemetry — which answers most of a security review before it starts. The
-documents that answer the rest:
+Archyne is local-first by construction: no backend, no accounts, no
+telemetry, and no network request of its own. `connect-src 'self'` in the
+Content Security Policy states that as an invariant rather than a promise —
+everything the editor needs, including Mermaid's renderers and the icon
+collections, ships in the build.
 
-| Document                                                                     | What it covers                                                                                                                            |
-| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [Security architecture](docs/security-whitepaper.md)                         | Data flows, threat model, the sanitizer and CSP layers and how they are verified, supply-chain posture, and a plainly-stated list of gaps |
-| [Security policy](SECURITY.md)                                               | How to report a vulnerability, and what is in scope                                                                                       |
-| [Accessibility Conformance Report](docs/accessibility-conformance-report.md) | WCAG 2.2 A/AA, criterion by criterion, with the evidence for each — and an explicit account of what has **not** been tested               |
-| [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)                             | Dependency licences; `npm run sbom` emits a CycloneDX SBOM                                                                                |
-| [Roadmap](docs/PLAN.md)                                                      | What is done, what is not, and why                                                                                                        |
+| Document                                         | What it covers                                                               |
+| ------------------------------------------------ | ---------------------------------------------------------------------------- |
+| [Security policy](SECURITY.md)                   | The threat model, what is in scope for a report, and how to report privately |
+| [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) | Dependency licences; `npm run sbom` emits a CycloneDX SBOM                   |
+| [CHANGELOG.md](CHANGELOG.md)                     | What shipped, and what is deliberately unfinished                            |
+
+Untrusted diagram text is held by two independent layers — Mermaid's
+sanitizer and the CSP — each verified separately in a real browser on every
+pull request. Accessibility is checked the same way: `axe` reports no WCAG
+2.2 AA violations across ten interface surfaces in both themes.
 
 Two things stated up front rather than discovered later: the desktop
-installers are **not yet code-signed**, and the accessibility report is a
-self-assessment, **not a signed VPAT**.
+installers are **not yet code-signed**, and the accessibility work is a
+self-assessment rather than a signed VPAT. A fuller security architecture
+note and a criterion-by-criterion conformance report exist and can be shared
+on request.
 
 ## License
 

@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please check [docs/PLAN.md](../blob/main/docs/PLAN.md) first — a lot of
+        Please check the open issues and the changelog first — a lot of
         the obvious gaps are already planned, and it may be more useful to
         comment on the existing item.
 

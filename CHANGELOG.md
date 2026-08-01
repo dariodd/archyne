@@ -21,6 +21,39 @@ CSS class names and internal store shape are _not_ public API.
 
 ## [Unreleased]
 
+### Added
+
+- **A multi-diagram workspace.** There was one `graph:code` key in
+  localStorage, so opening a second diagram replaced the first and working on
+  five meant five browser tabs. Documents now live in their own keys with a
+  small index, shown as tabs under the canvas, and an existing single-document
+  diagram is migrated on first load. Three things move with the document
+  rather than the window: its file binding, its undo history, and the meaning
+  of "New diagram" — which used to overwrite what was open.
+- Group width and height can be typed in the inspector, so resizing no longer
+  requires dragging a handle (WCAG 2.5.7).
+- The single-key shortcuts `C` and `?` can be switched off from the overflow
+  menu, remembered across sessions (WCAG 2.1.4).
+
+### Changed
+
+- Toasts pause while the pointer is over them or focus is inside, and resume
+  with the time each had left rather than restarting (WCAG 2.2.2).
+- The canvas region announces the diagram's `accTitle`, its shape in numbers,
+  the author's `accDescr`, and where the readable Outline is.
+
+### Fixed
+
+- **Exported diagrams had solid black boxes.** `html-to-image` inlines
+  computed styles for HTML elements only and copies no stylesheets, so the
+  rule painting node shapes was absent from the capture and every shape fell
+  back to the SVG default fill. The export now carries those rules with it,
+  read from the live stylesheet so they cannot drift.
+- The preview tab grew past the panel that contains it, overlapping the
+  inspector and snapping back on the way to another tab.
+- The preview reserves its scrollbar's width, so the diagram no longer shifts
+  sideways as the scrollbar appears.
+
 ## [0.1.0-alpha.1] — 2026-08-01
 
 First public release, deliberately labelled alpha: the editor is complete
@@ -63,11 +96,10 @@ focus. An Outline tab lists every node and its connections, because a canvas
 conveys structure spatially and that is precisely what a screen reader cannot
 recover. Parse errors announce through a live region wherever focus is.
 
-`axe` reports no WCAG 2.2 AA violations across eight surfaces in both themes,
-audited in a real browser. That evidence, and the four defects it does **not**
-cover, are set out in
-[`docs/accessibility-conformance-report.md`](docs/accessibility-conformance-report.md).
-The report is unsigned, and says why.
+`axe` reports no WCAG 2.2 AA violations across ten surfaces in both themes,
+audited in a real browser. A criterion-by-criterion conformance report is
+maintained privately and can be shared on request; it is a self-assessment
+rather than a signed VPAT, and says why.
 
 ### Internationalisation
 
@@ -84,9 +116,9 @@ No backend, no accounts, no telemetry, and no network request of Archyne's
 own — `connect-src 'self'` in the Content Security Policy states a real
 invariant rather than a hope. Untrusted diagram text is held by two
 independent layers, mermaid's sanitizer and the CSP, each verified separately
-in a browser on every pull request. The reasoning, the threat model and a
-plainly stated list of gaps are in
-[`docs/security-whitepaper.md`](docs/security-whitepaper.md).
+in a browser on every pull request. The threat model and what is in scope for
+a report are in [`SECURITY.md`](SECURITY.md); a fuller architecture note is
+maintained privately and can be shared on request.
 
 Supply chain: a CycloneDX SBOM, an advisory gate on production dependencies
 that requires written and expiring exceptions, a drift check on the

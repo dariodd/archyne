@@ -31,6 +31,6 @@ archyne`, or accepting the warnings above.
 
 Everything runs locally either way — no server, no accounts, and no network
 requests of Archyne's own. See the
-[security architecture](../blob/main/docs/security-whitepaper.md).
+[security policy](../blob/main/SECURITY.md) for the threat model.
 
 ---

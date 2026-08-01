@@ -36,7 +36,7 @@ export default tseslint.config(
     rules: {
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       // Errors, not warnings: the debt these flagged has been paid down
-      // (Phase 2.1 in docs/PLAN.md) and the two remaining `autoFocus` uses
+      // (tracked in the accessibility work) and the two remaining `autoFocus` uses
       // are user-initiated inline editors with an explicit, justified
       // disable comment. New violations should fail the build.
       "jsx-a11y/no-static-element-interactions": "error",

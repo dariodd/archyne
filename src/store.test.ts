@@ -239,7 +239,7 @@ describe("grouping", () => {
     // Deliberate: `onNodesChange` re-parents orphans instead of cascading the
     // delete, so removing a container never silently takes content with it.
     // It does mean "Delete group" and "Ungroup" land in the same place —
-    // tracked as a UX question in docs/PLAN.md, not changed here.
+    // tracked as an open UX question, not changed here.
     await load(FLOWCHART);
     useGraphStore.getState().selectAll();
     useGraphStore.getState().groupSelection();
