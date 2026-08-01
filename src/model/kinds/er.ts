@@ -34,14 +34,14 @@ export function parseEr(db: Record<string, (...a: unknown[]) => unknown>): {
   const nameByInternalId = new Map<string, string>();
   const nodes: AnyNode[] = entities.map(([name, v]) => {
     nameByInternalId.set(String(v.id ?? name), name);
-    const attributes: EntityAttr[] = ((v.attributes ?? []) as Array<Record<string, unknown>>).map(
-      (a) => ({
-        type: String(a.type ?? ""),
-        name: String(a.name ?? ""),
-        keys: ((a.keys ?? []) as unknown[]).map(String),
-        comment: String(a.comment ?? ""),
-      }),
-    );
+    const attributes: EntityAttr[] = (
+      (v.attributes ?? []) as Array<Record<string, unknown>>
+    ).map((a) => ({
+      type: String(a.type ?? ""),
+      name: String(a.name ?? ""),
+      keys: ((a.keys ?? []) as unknown[]).map(String),
+      comment: String(a.comment ?? ""),
+    }));
     const alias = String(v.alias ?? "");
     const node: EntityNode = {
       id: name,

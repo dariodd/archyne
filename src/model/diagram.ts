@@ -18,6 +18,24 @@ import { parseSequence, serializeSequence } from "./kinds/sequence";
 import { parseArchitecture, serializeArchitecture } from "./kinds/architecture";
 import { parseC4, serializeC4 } from "./kinds/c4";
 import { positionsLine, type PositionMap } from "./positions";
+
+/**
+ * The code is valid Mermaid, but of a family Archyne has no visual editor
+ * for (gantt, pie, mindmap, …).
+ *
+ * Thrown as its own type rather than a plain `Error` so callers can tell
+ * "we can't edit this" apart from "this doesn't parse" without matching on
+ * message text. The app renders these read-only instead of refusing to open
+ * them — Mermaid is already bundled and can draw them.
+ */
+export class UnsupportedDiagramError extends Error {
+  constructor(readonly diagramType: string) {
+    super(
+      `Unsupported diagram type "${diagramType}". Visual editing supports: flowchart, stateDiagram-v2, erDiagram, classDiagram, sequenceDiagram, architecture-beta, C4.`,
+    );
+    this.name = "UnsupportedDiagramError";
+  }
+}
 import { edgeColors } from "../theme";
 
 export interface ParsedDiagram {
@@ -88,9 +106,7 @@ async function parseDiagramLocked(
     kind = "c4";
     parsed = parseC4(db);
   } else {
-    throw new Error(
-      `Unsupported diagram type "${type}". Supported: flowchart, stateDiagram-v2, erDiagram, classDiagram, sequenceDiagram, architecture-beta, C4.`,
-    );
+    throw new UnsupportedDiagramError(type);
   }
 
   const nodes = parsed.nodes.map((n) =>
@@ -235,19 +251,33 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
       style: { stroke: pal.stroke, strokeWidth: 1.5, strokeDasharray: "6 4" },
       markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: pal.stroke },
       ...(d.c4.relType === "birel"
-        ? { markerStart: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: pal.stroke } }
+        ? {
+            markerStart: {
+              type: MarkerType.ArrowClosed,
+              width: 18,
+              height: 18,
+              color: pal.stroke,
+            },
+          }
         : {}),
     };
   }
   if (kind === "sequence" && d.seq) {
     const op = d.seq.op;
-    const head = op.endsWith(">>") ? ">>" : op.endsWith(")") ? ")" : op.endsWith("x") ? "x" : ">";
+    const head = op.endsWith(">>")
+      ? ">>"
+      : op.endsWith(")")
+        ? ")"
+        : op.endsWith("x")
+          ? "x"
+          : ">";
     return {
       ...base,
       type: "message",
       label: undefined, // the message edge draws its own label
       style: {
-        stroke: pal.stroke, strokeWidth: 1.5,
+        stroke: pal.stroke,
+        strokeWidth: 1.5,
         ...(op.startsWith("--") ? { strokeDasharray: "6 4" } : {}),
       },
       markerEnd: SEQ_MARKER[head],
@@ -258,7 +288,8 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
     return {
       ...base,
       style: {
-        stroke: pal.stroke, strokeWidth: 1.5,
+        stroke: pal.stroke,
+        strokeWidth: 1.5,
         ...(d.er.identifying ? {} : { strokeDasharray: "6 4" }),
       },
       // In `A |x--y| B` syntax the marker next to A is cardB, next to B is cardA.
@@ -270,7 +301,8 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
     return {
       ...base,
       style: {
-        stroke: pal.stroke, strokeWidth: 1.5,
+        stroke: pal.stroke,
+        strokeWidth: 1.5,
         ...(d.cls.dotted ? { strokeDasharray: "6 4" } : {}),
       },
       markerStart: CLS_MARKER[d.cls.left],
@@ -292,7 +324,8 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
   return {
     ...base,
     style: {
-      stroke: pal.stroke, strokeWidth: d.stroke === "thick" ? 3 : 1.5,
+      stroke: pal.stroke,
+      strokeWidth: d.stroke === "thick" ? 3 : 1.5,
       ...(d.stroke === "dotted" ? { strokeDasharray: "6 4" } : {}),
     },
     markerEnd: flowMarker,

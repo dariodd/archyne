@@ -3,8 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" type="image/png" href="./logo.png" />
-    <title>Merflow — visual Mermaid editor</title>
+    <!--
+      Archyne makes no network requests of its own: everything, including the
+      icon packs and mermaid's renderers, is bundled. `connect-src 'self'`
+      therefore states a real invariant rather than a hope, and a violation
+      means something went wrong.
+
+      Notes on the loosenings:
+        style-src 'unsafe-inline'  mermaid injects a <style> per render, and
+                                   the splash below is inline on purpose
+        img-src data: blob:        exports are produced as data URLs, and the
+                                   preview rasterizes SVG through blobs
+        font-src data:             html-to-image inlines fonts as data URLs
+
+      `frame-ancestors` is deliberately absent: it is ignored in a meta tag,
+      and Archyne supports being embedded. Operators who want to restrict who
+      may frame their deployment should send it as an HTTP header — see the
+      self-hosting notes in CONTRIBUTING.md.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: blob:;
+        font-src 'self' data:;
+        connect-src 'self';
+        worker-src 'self' blob:;
+        object-src 'none';
+        base-uri 'none';
+        form-action 'none'
+      "
+    />
+    <!-- SVG where supported; the raster stays for engines that ignore it. -->
+    <link rel="icon" type="image/svg+xml" href="./logo.svg" />
+    <link rel="alternate icon" type="image/png" href="./logo.png" />
+    <title>Archyne — a visual editor for Mermaid diagrams</title>
     <style>
       /* static splash, shown until React mounts (styles inline on purpose) */
       #root:empty::after {
@@ -18,35 +53,47 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 18px;
-        background: #12141a;
-        color: #e6e9f0;
+        gap: 14px;
+        background: #0f1014;
+        color: #ebebf0;
         font-family: "Segoe UI", system-ui, sans-serif;
       }
-      .splash img {
-        width: 300px;
-        height: auto;
+      .splash-mark {
+        width: 92px;
+        height: 92px;
         animation: splash-bob 1.6s ease-in-out infinite;
       }
       .splash-name {
-        font-size: 22px;
-        font-weight: 700;
-        letter-spacing: 0.5px;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
       }
       .splash-sub {
         font-size: 12px;
-        color: #8b91a3;
+        color: #999ba8;
+      }
+      /* The bob is decoration; respect the OS setting. */
+      @media (prefers-reduced-motion: reduce) {
+        .splash-mark {
+          animation: none;
+        }
       }
       @keyframes splash-bob {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-8px); }
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
       }
     </style>
   </head>
   <body>
     <div id="root">
       <div class="splash">
-        <img class="splash-wordmark" src="./wordmark-dark.png" alt="Merflow" />
+        <img class="splash-mark" src="./logo.svg" alt="" />
+        <div class="splash-name">Archyne</div>
       </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>

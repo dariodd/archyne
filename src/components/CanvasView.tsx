@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ContextMenu, type MenuState } from "./ContextMenu";
 import {
   Background,
@@ -20,6 +20,9 @@ import { C4NodeView, JunctionNodeView, ServiceNodeView } from "./ArchView";
 import { ParallelEdge } from "./ParallelEdge";
 import { NoteNodeView } from "./NoteNode";
 import { SequenceOverlay } from "./SequenceOverlay";
+import { useKeyboardConnect } from "./useKeyboardConnect";
+import { MermaidPreview } from "./MermaidPreview";
+import { useT } from "../i18n";
 import type { EdgeTypes } from "@xyflow/react";
 
 const nodeTypes: NodeTypes = {
@@ -62,6 +65,10 @@ export function CanvasView() {
   const selectOnly = useGraphStore((s) => s.selectOnly);
   const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const connect = useKeyboardConnect();
+  const unsupported = useGraphStore((s) => s.unsupported);
+  const code = useGraphStore((s) => s.code);
+  const t = useT();
   /** True when the pointer moved the viewport since the last mousedown —
    * used to not open the context menu after a right-button pan. */
   const panMovedRef = useRef(false);
@@ -71,16 +78,50 @@ export function CanvasView() {
       const raw = e.dataTransfer.getData("application/x-graph-node");
       if (!raw) return;
       e.preventDefault();
-      addNode(JSON.parse(raw) as NodeSeed, screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+      addNode(
+        JSON.parse(raw) as NodeSeed,
+        screenToFlowPosition({ x: e.clientX, y: e.clientY }),
+      );
     },
     [addNode, screenToFlowPosition],
   );
 
+  // Mark the pending connection source so it is visible, not just announced.
+  const flowNodes = useMemo(
+    () =>
+      connect.source
+        ? nodes.map((n) =>
+            n.id === connect.source
+              ? { ...n, className: `${n.className ?? ""} connect-source`.trim() }
+              : n,
+          )
+        : nodes,
+    [nodes, connect.source],
+  );
+
+  if (unsupported) {
+    // Valid Mermaid we cannot edit visually. Render it rather than refusing
+    // the file; the code panel stays fully editable.
+    return (
+      <main className="canvas-wrap read-only" aria-label={t("canvas.label")}>
+        <div className="read-only-banner" role="status">
+          <strong>{t("unsupported.title", { type: unsupported })}</strong>
+          <span>{t("unsupported.body")}</span>
+        </div>
+        <MermaidPreview code={code} className="read-only-preview" />
+      </main>
+    );
+  }
+
   return (
-    <div className="canvas-wrap" onMouseDownCapture={() => (panMovedRef.current = false)}>
+    <main
+      className="canvas-wrap"
+      aria-label={t("canvas.label")}
+      onMouseDownCapture={() => (panMovedRef.current = false)}
+    >
       <MarkerDefs />
       <ReactFlow<AnyNode, FlowEdge>
-        nodes={nodes}
+        nodes={flowNodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -100,15 +141,11 @@ export function CanvasView() {
         }}
         onEdgeDoubleClick={(_, edge) => {
           void edge;
-          requestAnimationFrame(() =>
-            document.getElementById("inspector-label")?.focus(),
-          );
+          requestAnimationFrame(() => document.getElementById("inspector-label")?.focus());
         }}
         onNodeDoubleClick={(_, node) => {
           if (node.type === "shape") return; // shape nodes edit inline
-          requestAnimationFrame(() =>
-            document.getElementById("inspector-label")?.focus(),
-          );
+          requestAnimationFrame(() => document.getElementById("inspector-label")?.focus());
         }}
         onNodeContextMenu={(e, node) => {
           e.preventDefault();
@@ -158,6 +195,12 @@ export function CanvasView() {
         <MiniMap pannable zoomable />
       </ReactFlow>
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
-    </div>
+      {/* How to drive the canvas without a pointer. Visible to screen
+          readers only; sighted users have the palette and drag handles. */}
+      <p className="visually-hidden">{t("canvas.keyboardHelp")}</p>
+      <p className="visually-hidden" role="status" aria-atomic="true">
+        {connect.message}
+      </p>
+    </main>
   );
 }

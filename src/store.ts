@@ -33,6 +33,7 @@ import {
   parseDiagram,
   presentEdge,
   serializeDiagram,
+  UnsupportedDiagramError,
 } from "./model/diagram";
 import { patchPositions, readPositions, type PositionMap } from "./model/positions";
 import { removeSeqItemAt } from "./model/kinds/sequence";
@@ -163,6 +164,11 @@ export interface GraphState {
   classDefs: ClassDefs;
   parseError: string | null;
   warning: string | null;
+  /**
+   * Set when the code is valid Mermaid of a family we cannot edit visually.
+   * The canvas swaps to a read-only render rather than refusing the file.
+   */
+  unsupported: string | null;
   canUndo: boolean;
   canRedo: boolean;
   /** False until the first diagram has been parsed and laid out. */
@@ -179,8 +185,13 @@ export interface GraphState {
     code: string,
     opts?: { forceLayout?: boolean; record?: boolean },
   ) => Promise<void>;
-  undo: () => void;
-  redo: () => void;
+  /**
+   * Resolves once the restored code has been re-parsed. The UI ignores the
+   * promise, but anything sequencing edits (tests, the embed bridge) needs a
+   * way to wait rather than guess.
+   */
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
   copySelection: () => void;
   pasteClipboard: () => void;
   onNodesChange: (changes: NodeChange<AnyNode>[]) => void;
@@ -192,11 +203,7 @@ export interface GraphState {
   updateNodeData: (id: string, patch: Record<string, unknown>) => void;
   updateEdgeData: (id: string, patch: Partial<FlowEdgeData>) => void;
   setDirection: (d: Direction) => void;
-  setDiagramMeta: (patch: {
-    title?: string;
-    accTitle?: string;
-    accDescr?: string;
-  }) => void;
+  setDiagramMeta: (patch: { title?: string; accTitle?: string; accDescr?: string }) => void;
   runAutoLayout: () => Promise<void>;
   newDiagram: (kind: DiagramKind) => void;
   groupSelection: () => void;
@@ -206,6 +213,8 @@ export interface GraphState {
   removeSeqItem: (index: number) => void;
   selectOnly: (id: string, target: "node" | "edge") => void;
   selectAll: () => void;
+  /** Move every selected node by a pixel delta (keyboard nudging). */
+  nudgeSelection: (dx: number, dy: number) => void;
   deleteSelection: () => void;
   /** Re-derive edge presentation (colors) — used on theme change. */
   refreshEdges: () => void;
@@ -249,8 +258,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
   const past: string[] = [];
   const future: string[] = [];
   let lastEditorEdit = 0;
-  const syncHistoryFlags = () =>
-    set({ canUndo: past.length > 0, canRedo: future.length > 0 });
+  const syncHistoryFlags = () => set({ canUndo: past.length > 0, canRedo: future.length > 0 });
 
   const record = (oldCode: string) => {
     if (!oldCode || past[past.length - 1] === oldCode) return;
@@ -282,9 +290,24 @@ export const useGraphStore = create<GraphState>((set, get) => {
 
   /** Rebuild the mermaid text from the canvas (structural change). */
   const regenerate = () => {
+    // A read-only diagram has no parsed graph behind it. Serializing from the
+    // empty node list would silently replace the user's gantt (or pie, or
+    // mindmap) with a blank diagram of whatever kind was loaded before it.
+    // Guarding here covers every edit path at once.
+    if (get().unsupported) return;
     record(get().code);
-    const { kind, nodes, edges, direction, classDefs, c4Flavor, title, accTitle, accDescr, seqItems } =
-      get();
+    const {
+      kind,
+      nodes,
+      edges,
+      direction,
+      classDefs,
+      c4Flavor,
+      title,
+      accTitle,
+      accDescr,
+      seqItems,
+    } = get();
     const code = serializeDiagram({
       kind,
       direction,
@@ -329,6 +352,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
     classDefs: {},
     parseError: null,
     warning: null,
+    unsupported: null,
     canUndo: false,
     canRedo: false,
     booted: false,
@@ -372,11 +396,29 @@ export const useGraphStore = create<GraphState>((set, get) => {
           accDescr: parsed.accDescr ?? "",
           seqItems: parsed.items ?? [],
           parseError: null,
+          unsupported: null,
           code,
         });
         persist(code);
       } catch (err) {
-        set({ parseError: err instanceof Error ? err.message : String(err), code });
+        if (err instanceof UnsupportedDiagramError) {
+          // Not an error from the user's point of view: the file is fine, we
+          // just can't offer visual editing for it. Drop the stale graph so
+          // the canvas can't be edited into the wrong diagram, and keep the
+          // code so it still renders, saves and round-trips untouched.
+          set({
+            unsupported: err.diagramType,
+            nodes: [],
+            edges: [],
+            seqItems: [],
+            parseError: null,
+            warning: null,
+            code,
+          });
+          persist(code);
+        } else {
+          set({ parseError: err instanceof Error ? err.message : String(err), code });
+        }
       } finally {
         if (!get().booted) set({ booted: true });
       }
@@ -389,9 +431,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
           if (c.type === "position" && c.position) c.position.y = 0;
         }
       }
-      const removed = new Set(
-        changes.filter((c) => c.type === "remove").map((c) => c.id),
-      );
+      const removed = new Set(changes.filter((c) => c.type === "remove").map((c) => c.id));
       let nodes = applyNodeChanges(changes, get().nodes);
       if (removed.size > 0) {
         nodes = nodes.map((n) =>
@@ -591,8 +631,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
           } satisfies ShapeNode;
           break;
         case "state": {
-          const prefix =
-            seed.stateType === "normal" ? "s" : seed.stateType;
+          const prefix = seed.stateType === "normal" ? "s" : seed.stateType;
           node = {
             id: freshId(prefix),
             type: "state",
@@ -781,20 +820,20 @@ export const useGraphStore = create<GraphState>((set, get) => {
       void get().applyCode(NEW_DIAGRAM[kind], { forceLayout: true, record: true });
     },
 
-    undo: () => {
+    undo: async () => {
       if (past.length === 0) return;
       future.push(get().code);
       const prev = past.pop()!;
       syncHistoryFlags();
-      void get().applyCode(prev);
+      await get().applyCode(prev);
     },
 
-    redo: () => {
+    redo: async () => {
       if (future.length === 0) return;
       past.push(get().code);
       const next = future.pop()!;
       syncHistoryFlags();
-      void get().applyCode(next);
+      await get().applyCode(next);
     },
 
     copySelection: () => {
@@ -938,6 +977,19 @@ export const useGraphStore = create<GraphState>((set, get) => {
         nodes: get().nodes.map((n) => ({ ...n, selected: true })),
         edges: get().edges.map((e) => ({ ...e, selected: true })),
       });
+    },
+
+    nudgeSelection: (dx, dy) => {
+      const nodes = get().nodes;
+      if (!nodes.some((n) => n.selected)) return;
+      set({
+        nodes: nodes.map((n) =>
+          n.selected ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n,
+        ),
+      });
+      // Position-only change: rewrite the positions comment and leave the
+      // rest of the user's mermaid text alone, exactly as a drag does.
+      repatchPositions();
     },
 
     refreshEdges: () => {

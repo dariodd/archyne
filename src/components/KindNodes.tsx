@@ -104,47 +104,151 @@ export function ClassNodeView({ data, selected }: NodeProps<ClassNode>) {
  */
 export function MarkerDefs() {
   const resolved = useThemeStore((s) => s.resolved);
-  const { stroke, hollowFill } = resolved === "light"
-    ? { stroke: "#5f6673", hollowFill: "#ffffff" }
-    : { stroke: "#8b91a3", hollowFill: "#12141a" };
+  const { stroke, hollowFill } =
+    resolved === "light"
+      ? { stroke: "#5f6673", hollowFill: "#ffffff" }
+      : { stroke: "#8b91a3", hollowFill: "#12141a" };
   return (
     <svg style={{ position: "absolute", width: 0, height: 0 }}>
       <defs>
-        <marker id="cls-extension" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+        <marker
+          id="cls-extension"
+          viewBox="0 0 14 14"
+          refX="12"
+          refY="7"
+          markerWidth="14"
+          markerHeight="14"
+          orient="auto-start-reverse"
+        >
           <path d="M1,1 L12,7 L1,13 Z" fill={hollowFill} stroke={stroke} strokeWidth="1.2" />
         </marker>
-        <marker id="cls-composition" viewBox="0 0 16 12" refX="14" refY="6" markerWidth="16" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="cls-composition"
+          viewBox="0 0 16 12"
+          refX="14"
+          refY="6"
+          markerWidth="16"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M1,6 L8,1 L15,6 L8,11 Z" fill={stroke} stroke={stroke} strokeWidth="1" />
         </marker>
-        <marker id="cls-aggregation" viewBox="0 0 16 12" refX="14" refY="6" markerWidth="16" markerHeight="12" orient="auto-start-reverse">
-          <path d="M1,6 L8,1 L15,6 L8,11 Z" fill={hollowFill} stroke={stroke} strokeWidth="1.2" />
+        <marker
+          id="cls-aggregation"
+          viewBox="0 0 16 12"
+          refX="14"
+          refY="6"
+          markerWidth="16"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
+          <path
+            d="M1,6 L8,1 L15,6 L8,11 Z"
+            fill={hollowFill}
+            stroke={stroke}
+            strokeWidth="1.2"
+          />
         </marker>
-        <marker id="cls-dependency" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="cls-dependency"
+          viewBox="0 0 12 12"
+          refX="10"
+          refY="6"
+          markerWidth="12"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M2,1 L10,6 L2,11" fill="none" stroke={stroke} strokeWidth="1.4" />
         </marker>
-        <marker id="seq-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="seq-arrow"
+          viewBox="0 0 12 12"
+          refX="10"
+          refY="6"
+          markerWidth="12"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M1,1 L11,6 L1,11 Z" fill={stroke} />
         </marker>
-        <marker id="seq-open" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="seq-open"
+          viewBox="0 0 12 12"
+          refX="10"
+          refY="6"
+          markerWidth="12"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M2,1 L10,6 L2,11" fill="none" stroke={stroke} strokeWidth="1.4" />
         </marker>
-        <marker id="seq-cross" viewBox="0 0 12 12" refX="9" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="seq-cross"
+          viewBox="0 0 12 12"
+          refX="9"
+          refY="6"
+          markerWidth="12"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M3,2 L11,10 M11,2 L3,10" fill="none" stroke={stroke} strokeWidth="1.5" />
         </marker>
-        <marker id="er-one" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="er-one"
+          viewBox="0 0 12 12"
+          refX="10"
+          refY="6"
+          markerWidth="12"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M5,1 L5,11" fill="none" stroke={stroke} strokeWidth="1.5" />
         </marker>
-        <marker id="er-zero-one" viewBox="0 0 16 12" refX="14" refY="6" markerWidth="16" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="er-zero-one"
+          viewBox="0 0 16 12"
+          refX="14"
+          refY="6"
+          markerWidth="16"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <circle cx="4" cy="6" r="3" fill="none" stroke={stroke} strokeWidth="1.2" />
           <path d="M10,1 L10,11" fill="none" stroke={stroke} strokeWidth="1.5" />
         </marker>
-        <marker id="er-zero-more" viewBox="0 0 18 12" refX="16" refY="6" markerWidth="18" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="er-zero-more"
+          viewBox="0 0 18 12"
+          refX="16"
+          refY="6"
+          markerWidth="18"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <circle cx="4" cy="6" r="3" fill="none" stroke={stroke} strokeWidth="1.2" />
-          <path d="M9,6 L17,1 M9,6 L17,6 M9,6 L17,11" fill="none" stroke={stroke} strokeWidth="1.2" />
+          <path
+            d="M9,6 L17,1 M9,6 L17,6 M9,6 L17,11"
+            fill="none"
+            stroke={stroke}
+            strokeWidth="1.2"
+          />
         </marker>
-        <marker id="er-one-more" viewBox="0 0 18 12" refX="16" refY="6" markerWidth="18" markerHeight="12" orient="auto-start-reverse">
+        <marker
+          id="er-one-more"
+          viewBox="0 0 18 12"
+          refX="16"
+          refY="6"
+          markerWidth="18"
+          markerHeight="12"
+          orient="auto-start-reverse"
+        >
           <path d="M4,1 L4,11" fill="none" stroke={stroke} strokeWidth="1.5" />
-          <path d="M8,6 L17,1 M8,6 L17,6 M8,6 L17,11" fill="none" stroke={stroke} strokeWidth="1.2" />
+          <path
+            d="M8,6 L17,1 M8,6 L17,6 M8,6 L17,11"
+            fill="none"
+            stroke={stroke}
+            strokeWidth="1.2"
+          />
         </marker>
       </defs>
     </svg>

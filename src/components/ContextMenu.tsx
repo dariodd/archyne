@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useGraphStore } from "../store";
 import { isGroup, type DiagramKind, type NodeSeed } from "../model/types";
+import { useT } from "../i18n";
 
 export interface MenuState {
   x: number;
@@ -27,6 +28,16 @@ function focusInspectorLabel() {
 export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () => void }) {
   const { screenToFlowPosition } = useReactFlow();
   const ref = useRef<HTMLDivElement>(null);
+  const firstItemRef = useRef<HTMLButtonElement>(null);
+  const t = useT();
+
+  useEffect(() => {
+    // Focus into the menu on open, and hand focus back to whatever had it
+    // when the menu closes — otherwise keyboard users are stranded.
+    const restoreTo = document.activeElement as HTMLElement | null;
+    firstItemRef.current?.focus();
+    return () => restoreTo?.focus?.();
+  }, []);
 
   useEffect(() => {
     // Capture phase: React Flow stops propagation of canvas mousedowns, so
@@ -61,31 +72,31 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
   if (menu.target === "node" && node) {
     if (isGroup(node)) {
       items.push(
-        { label: "Rename", action: run(() => focusInspectorLabel()) },
-        { label: "Ungroup", action: run(() => s.ungroupSelection()) },
+        { label: t("menu.rename"), action: run(() => focusInspectorLabel()) },
+        { label: t("menu.ungroup"), action: run(() => s.ungroupSelection()) },
         {
-          label: "Delete group",
+          label: t("menu.deleteGroup"),
           danger: true,
           action: run(() => s.deleteElement(node.id, "node")),
         },
       );
     } else {
       items.push(
-        { label: "Rename", action: run(() => focusInspectorLabel()) },
-        { label: "Duplicate", action: run(() => s.duplicateNode(node.id)) },
+        { label: t("menu.rename"), action: run(() => focusInspectorLabel()) },
+        { label: t("menu.duplicate"), action: run(() => s.duplicateNode(node.id)) },
         {
-          label: "Copy",
+          label: t("menu.copy"),
           action: run(() => s.copySelection()),
         },
       );
       if (node.parentId) {
         items.push({
-          label: "Remove from group",
+          label: t("menu.removeFromGroup"),
           action: run(() => s.removeFromGroup(node.id)),
         });
       }
       items.push({
-        label: "Delete",
+        label: t("menu.delete"),
         danger: true,
         action: run(() => s.deleteElement(node.id, "node")),
       });
@@ -93,46 +104,87 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
   } else if (menu.target === "selection") {
     const count = s.nodes.filter((n) => n.selected).length;
     const groupable =
-      s.kind === "flowchart" || s.kind === "state" || s.kind === "architecture" || s.kind === "c4";
+      s.kind === "flowchart" ||
+      s.kind === "state" ||
+      s.kind === "architecture" ||
+      s.kind === "c4";
     if (groupable) {
-      items.push({ label: `Group ${count} nodes`, action: run(() => s.groupSelection()) });
+      items.push({
+        label: t("menu.groupNodes", { count }),
+        action: run(() => s.groupSelection()),
+      });
     }
     items.push(
-      { label: "Copy", action: run(() => s.copySelection()) },
+      { label: t("menu.copy"), action: run(() => s.copySelection()) },
       {
-        label: "Duplicate",
+        label: t("menu.duplicate"),
         action: run(() => {
           s.copySelection();
           s.pasteClipboard();
         }),
       },
-      { label: "Delete selection", danger: true, action: run(() => s.deleteSelection()) },
+      {
+        label: t("menu.deleteSelection"),
+        danger: true,
+        action: run(() => s.deleteSelection()),
+      },
     );
   } else if (menu.target === "edge" && menu.id) {
     const id = menu.id;
     items.push(
-      { label: "Edit label", action: run(() => focusInspectorLabel()) },
-      { label: "Delete", danger: true, action: run(() => s.deleteElement(id, "edge")) },
+      { label: t("menu.editLabel"), action: run(() => focusInspectorLabel()) },
+      { label: t("menu.delete"), danger: true, action: run(() => s.deleteElement(id, "edge")) },
     );
   } else {
     items.push(
       {
-        label: "Add node here",
+        label: t("menu.addNodeHere"),
         action: run(() =>
           s.addNode(DEFAULT_SEED[s.kind], screenToFlowPosition({ x: menu.x, y: menu.y })),
         ),
       },
-      { label: "Paste", action: run(() => s.pasteClipboard()) },
-      { label: "Auto-layout", action: run(() => void s.runAutoLayout()) },
+      { label: t("menu.paste"), action: run(() => s.pasteClipboard()) },
+      { label: t("menu.autoLayout"), action: run(() => void s.runAutoLayout()) },
     );
   }
 
+  /** Arrow / Home / End move focus between items, as a menu should. */
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    const buttons = [...(ref.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
+    if (buttons.length === 0) return;
+    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const next =
+      e.key === "Home"
+        ? 0
+        : e.key === "End"
+          ? buttons.length - 1
+          : e.key === "ArrowDown"
+            ? (at + 1) % buttons.length
+            : (at - 1 + buttons.length) % buttons.length;
+    buttons[next].focus();
+  };
+
   return (
-    <div ref={ref} className="context-menu" style={{ left: menu.x, top: menu.y }}>
-      {items.map((item) => (
+    <div
+      ref={ref}
+      className="context-menu"
+      style={{ left: menu.x, top: menu.y }}
+      role="menu"
+      aria-label={t("menu.actions")}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+    >
+      {items.map((item, i) => (
         <button
           key={item.label}
           className={`context-item${item.danger ? " danger" : ""}`}
+          role="menuitem"
+          // Focus the first item on open so the menu is usable from the
+          // keyboard and Escape has somewhere sensible to return from.
+          ref={i === 0 ? firstItemRef : undefined}
           onClick={item.action}
         >
           {item.label}

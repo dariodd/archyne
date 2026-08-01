@@ -11,9 +11,7 @@ export function normalizeDirection(dir: unknown): Direction {
     : "TB";
 }
 
-export function entriesOf(
-  collection: unknown,
-): Array<[string, Record<string, unknown>]> {
+export function entriesOf(collection: unknown): Array<[string, Record<string, unknown>]> {
   if (collection instanceof Map) {
     return [...collection.entries()] as Array<[string, Record<string, unknown>]>;
   }

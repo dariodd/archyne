@@ -13,14 +13,14 @@ Runs entirely in the browser — no server, no accounts, nothing leaves your mac
 Self-host by serving the `dist/` folder from any static file server.
 
 <p align="center">
-  <a href="https://github.com/OWNER/archyne/actions/workflows/ci.yml"><img src="https://github.com/OWNER/archyne/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/dariodd/archyne/actions/workflows/ci.yml"><img src="https://github.com/dariodd/archyne/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/archyne"><img src="https://img.shields.io/npm/v/archyne.svg" alt="npm"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
 </p>
 
 ## Try it
 
-**[Open the live demo →](https://OWNER.github.io/archyne/)** — it is the same
+**[Open the live demo →](https://dariodd.github.io/archyne/)** — it is the same
 static build, running in your browser. Nothing is uploaded.
 
 Or run it locally, with no clone and no build:

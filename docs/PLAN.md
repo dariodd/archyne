@@ -111,7 +111,7 @@ of it changes how trustworthy the project looks and how safely it can evolve.
 
   _Blocked on the maintainer, not on code:_ every item above needs the
   repository to exist publicly. `docs/repo-setup.md` lists the settings to
-  flip, including replacing the `OWNER` placeholder in the URLs.
+  flip, including replacing the `dariodd` placeholder in the URLs.
 
 ---
 

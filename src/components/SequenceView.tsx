@@ -9,6 +9,7 @@ import {
 } from "@xyflow/react";
 import type { FlowEdge, ParticipantNode } from "../model/types";
 import { useGraphStore } from "../store";
+import { t } from "../i18n";
 
 export { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "../seqLayout";
 import { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "../seqLayout";
@@ -77,7 +78,7 @@ export function MessageEdge({
         <div
           className={`message-label draggable${selected ? " selected" : ""}${dragDy !== null ? " dragging" : ""}`}
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)` }}
-          title="Drag vertically to reorder"
+          title={t("seq.dragReorder")}
           onPointerDown={(e) => {
             e.stopPropagation();
             e.preventDefault();

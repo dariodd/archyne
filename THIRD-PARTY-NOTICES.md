@@ -1,6 +1,12 @@
 # Third-party notices
 
-Merflow is MIT-licensed. It bundles or depends on the following packages
+> **Trademarks.** Archyne is an independent project, not affiliated with,
+> endorsed by, or sponsored by any project listed here. Product and library
+> names — including "Mermaid" — are trademarks of their respective owners and
+> are used only to identify the software concerned. The licences below grant
+> rights over code, not over names.
+
+Archyne is MIT-licensed. It bundles or depends on the following packages
 (production dependency tree, generated with license-checker):
 
 | Package | License | Repository |

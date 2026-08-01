@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in the editor, parser, export, embed API or MCP server is wrong
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security vulnerabilities here — see
+        [SECURITY.md](../blob/main/SECURITY.md) for private disclosure.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagram
+    attributes:
+      label: Diagram source
+      description: >
+        The Mermaid code that reproduces it, including the
+        `%% graph:positions` line if there is one. This is usually enough to
+        reproduce a parser or serializer bug on its own.
+      render: text
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the diagram above
+        2. Drag node X onto group Y
+        3. Undo
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - Web (npm run dev / self-hosted)
+        - Desktop app (Electron)
+        - Embedded in another app (?embed=1)
+        - MCP server
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Diagram kind
+      options:
+        - Flowchart
+        - State
+        - ER
+        - Class
+        - Sequence
+        - Architecture
+        - C4
+        - Not specific to one kind
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Archyne version or commit
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Browser / OS
+      placeholder: Chrome 141 on Windows 11

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ViewportPortal } from "@xyflow/react";
 import { useGraphStore } from "../store";
+import { t } from "../i18n";
 import { estimateSize } from "../model/types";
 import { SEQ_TOP, SEQ_SPACING } from "../seqLayout";
 
@@ -42,8 +43,7 @@ function SeqItemEditor({
   }, [onClose]);
 
   if (!item) return null;
-  const canEditText =
-    item.kind === "note" || item.kind === "block" || item.kind === "divider";
+  const canEditText = item.kind === "note" || item.kind === "block" || item.kind === "divider";
 
   return (
     <div
@@ -53,10 +53,14 @@ function SeqItemEditor({
     >
       {canEditText && (
         <input
+          // Legitimate autofocus: this editor only exists because the user
+          // just activated an item to rename it, so focus belongs here. The
+          // rule targets autofocus on page load, which this is not.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           key={editing.index}
           defaultValue={item.kind === "note" ? item.text : item.label}
-          placeholder={item.kind === "note" ? "Note text" : "Label"}
+          placeholder={item.kind === "note" ? t("seq.notePlaceholder") : t("insp.label")}
           onBlur={(e) => {
             const v = e.target.value;
             updateSeqItem(
@@ -80,9 +84,9 @@ function SeqItemEditor({
               })
             }
           >
-            <option value="over">over</option>
-            <option value="left">left of</option>
-            <option value="right">right of</option>
+            <option value="over">{t("seq.over")}</option>
+            <option value="left">{t("seq.leftOf")}</option>
+            <option value="right">{t("seq.rightOf")}</option>
           </select>
           <select
             value={item.a}
@@ -104,9 +108,9 @@ function SeqItemEditor({
             removeSeqItem(editing.index);
           }}
         >
-          Delete
+          {t("seq.delete")}
         </button>
-        <button onClick={onClose}>Done</button>
+        <button onClick={onClose}>{t("seq.done")}</button>
       </div>
     </div>
   );
@@ -151,8 +155,7 @@ export function SequenceOverlay() {
       const ax = centers.get(item.a) ?? minX;
       const bx = item.b ? (centers.get(item.b) ?? ax) : ax;
       // "over" spans the actors but never collapses below a readable width.
-      const width =
-        item.placement === "over" ? Math.max(150, Math.abs(bx - ax) + 20) : 170;
+      const width = item.placement === "over" ? Math.max(150, Math.abs(bx - ax) + 20) : 170;
       const left =
         item.placement === "left"
           ? ax - width - 20
@@ -160,14 +163,16 @@ export function SequenceOverlay() {
             ? ax + 20
             : (ax + bx) / 2 - width / 2;
       overlays.push(
-        <div
+        <button
+          type="button"
           key={`note-${i}`}
           className="seq-note clickable"
           style={{ left, top: rowY(i) - 14, width }}
+          title={t("menu.editLabel")}
           onClick={open(i)}
         >
           {item.text}
-        </div>,
+        </button>,
       );
     } else if (item.kind === "block") {
       stack.push({ start: i, op: item.op, label: item.label });
@@ -178,9 +183,14 @@ export function SequenceOverlay() {
           className="seq-divider"
           style={{ left: minX - 50, top: rowY(i), width: maxX - minX + 100 }}
         >
-          <span className="clickable" onClick={open(i)}>
+          <button
+            type="button"
+            className="clickable"
+            title={t("menu.editLabel")}
+            onClick={open(i)}
+          >
             {item.op} {item.label}
-          </span>
+          </button>
         </div>,
       );
     } else if (item.kind === "end") {
@@ -197,10 +207,15 @@ export function SequenceOverlay() {
               height: rowY(i) - rowY(o.start) + 12,
             }}
           >
-            <span className="seq-block-tag clickable" onClick={open(o.start)}>
+            <button
+              type="button"
+              className="seq-block-tag clickable"
+              title={t("menu.editLabel")}
+              onClick={open(o.start)}
+            >
               {o.op}
               {o.label ? ` [${o.label}]` : ""}
-            </span>
+            </button>
           </div>,
         );
       }

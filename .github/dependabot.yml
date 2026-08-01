@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      # Routine dev-tooling bumps land as one PR instead of a dozen.
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+      # Runtime minor/patch bumps too; majors still come through individually
+      # so they get a proper look.
+      runtime:
+        dependency-type: production
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

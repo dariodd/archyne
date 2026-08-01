@@ -30,7 +30,12 @@ try {
 
   const tools = await client.listTools();
   const names = tools.tools.map((t) => t.name).sort();
-  assert.deepEqual(names, ["list_diagrams", "read_diagram", "validate_mermaid", "write_diagram"]);
+  assert.deepEqual(names, [
+    "list_diagrams",
+    "read_diagram",
+    "validate_mermaid",
+    "write_diagram",
+  ]);
   console.log("✓ tools listed:", names.join(", "));
 
   // invalid code is rejected
@@ -48,7 +53,12 @@ try {
 %% graph:positions {"a":{"x":100,"y":50},"b":{"x":100,"y":200}}
 `;
   const w1 = JSON.parse(
-    firstText(await client.callTool({ name: "write_diagram", arguments: { path: "demo/flow.mmd", code: v1 } })),
+    firstText(
+      await client.callTool({
+        name: "write_diagram",
+        arguments: { path: "demo/flow.mmd", code: v1 },
+      }),
+    ),
   );
   assert.equal(w1.written, true);
   assert.equal(w1.structure.hasManualLayout, true);
@@ -60,7 +70,12 @@ try {
   b -->|"yes"| c["Gamma"]
 `;
   const w2 = JSON.parse(
-    firstText(await client.callTool({ name: "write_diagram", arguments: { path: "demo/flow.mmd", code: v2 } })),
+    firstText(
+      await client.callTool({
+        name: "write_diagram",
+        arguments: { path: "demo/flow.mmd", code: v2 },
+      }),
+    ),
   );
   assert.equal(w2.layoutCarriedOver, true);
   const onDisk = await readFile(join(root, "demo", "flow.mmd"), "utf8");
@@ -71,14 +86,18 @@ try {
 
   // read it back with structure
   const r = JSON.parse(
-    firstText(await client.callTool({ name: "read_diagram", arguments: { path: "demo/flow.mmd" } })),
+    firstText(
+      await client.callTool({ name: "read_diagram", arguments: { path: "demo/flow.mmd" } }),
+    ),
   );
   assert.equal(r.structure.nodes.length, 3);
   assert.equal(r.structure.edges.length, 2);
   console.log("✓ read_diagram returns code + structure");
 
   // listing
-  const l = JSON.parse(firstText(await client.callTool({ name: "list_diagrams", arguments: {} })));
+  const l = JSON.parse(
+    firstText(await client.callTool({ name: "list_diagrams", arguments: {} })),
+  );
   assert.deepEqual(l.diagrams, [join("demo", "flow.mmd")]);
   console.log("✓ list_diagrams finds the file");
 

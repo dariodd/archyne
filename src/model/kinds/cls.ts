@@ -138,9 +138,7 @@ export function serializeClass(
   const emitClass = (n: ClassNode, indent: string) => {
     const gen = n.data.generic ? `~${n.data.generic}~` : "";
     const head =
-      n.data.label !== n.id
-        ? `class ${n.id}${gen}["${n.data.label}"]`
-        : `class ${n.id}${gen}`;
+      n.data.label !== n.id ? `class ${n.id}${gen}["${n.data.label}"]` : `class ${n.id}${gen}`;
     const ann = n.data.annotations ?? [];
     if (ann.length === 0 && n.data.members.length === 0 && n.data.methods.length === 0) {
       lines.push(`${indent}${head}`);
@@ -168,9 +166,7 @@ export function serializeClass(
   for (const n of nodes) {
     if (n.type !== "note") continue;
     const text = n.data.text.replace(/"/g, "'").replace(/\n/g, " ");
-    lines.push(
-      n.data.target ? `  note for ${n.data.target} "${text}"` : `  note "${text}"`,
-    );
+    lines.push(n.data.target ? `  note for ${n.data.target} "${text}"` : `  note "${text}"`);
   }
 
   if (edges.length > 0) lines.push("");

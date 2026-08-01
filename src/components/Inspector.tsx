@@ -1,4 +1,5 @@
 import { useGraphStore } from "../store";
+import { useT } from "../i18n";
 import { useIconPrefs } from "../iconPrefs";
 import {
   C4_SHAPES,
@@ -25,7 +26,10 @@ function parseAttrLine(line: string): EntityAttr | null {
   const commentMatch = line.match(/"([^"]*)"\s*$/);
   const comment = commentMatch?.[1] ?? "";
   const rest = commentMatch ? line.slice(0, commentMatch.index) : line;
-  const tokens = rest.trim().split(/[\s,]+/).filter(Boolean);
+  const tokens = rest
+    .trim()
+    .split(/[\s,]+/)
+    .filter(Boolean);
   if (tokens.length < 2) return null;
   const [type, name, ...keys] = tokens;
   return { type, name, keys: keys.map((k) => k.toUpperCase()), comment };
@@ -50,13 +54,14 @@ function styleValue(styles: string[] | undefined, key: string, fallback: string)
 }
 
 function NodeFields({ node }: { node: AnyNode }) {
+  const t = useT();
   const updateNodeData = useGraphStore((s) => s.updateNodeData);
   switch (node.type) {
     case "shape":
       return (
         <>
           <label>
-            Label
+            {t("insp.label")}
             <input
               id="inspector-label"
               value={node.data.label}
@@ -64,7 +69,7 @@ function NodeFields({ node }: { node: AnyNode }) {
             />
           </label>
           <label>
-            Shape
+            {t("insp.shape")}
             <select
               value={node.data.shape}
               onChange={(e) => updateNodeData(node.id, { shape: e.target.value as Shape })}
@@ -78,7 +83,7 @@ function NodeFields({ node }: { node: AnyNode }) {
           </label>
           <div className="color-row">
             <label>
-              Fill
+              {t("insp.fill")}
               <input
                 type="color"
                 value={styleValue(node.data.styles, "fill", "#232a3a")}
@@ -90,7 +95,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               />
             </label>
             <label>
-              Border
+              {t("insp.border")}
               <input
                 type="color"
                 value={styleValue(node.data.styles, "stroke", "#5b8def")}
@@ -102,7 +107,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               />
             </label>
             <label>
-              Text
+              {t("insp.text")}
               <input
                 type="color"
                 value={styleValue(node.data.styles, "color", "#e6e9f0")}
@@ -114,11 +119,8 @@ function NodeFields({ node }: { node: AnyNode }) {
               />
             </label>
             {(node.data.styles?.length ?? 0) > 0 && (
-              <button
-                className="mini"
-                onClick={() => updateNodeData(node.id, { styles: [] })}
-              >
-                Reset
+              <button className="mini" onClick={() => updateNodeData(node.id, { styles: [] })}>
+                {t("insp.reset")}
               </button>
             )}
           </div>
@@ -138,20 +140,22 @@ function NodeFields({ node }: { node: AnyNode }) {
     case "state":
       return node.data.stateType === "normal" ? (
         <label>
-          Label
+          {t("insp.label")}
           <input
             value={node.data.label}
             onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
           />
         </label>
       ) : (
-        <div className="inspector-empty">{node.data.stateType} pseudo-state</div>
+        <div className="inspector-empty">
+          {t("insp.pseudoState", { type: node.data.stateType })}
+        </div>
       );
     case "entity":
       return (
         <>
           <label>
-            Name
+            {t("insp.name")}
             <input
               id="inspector-label"
               value={node.data.label}
@@ -159,7 +163,7 @@ function NodeFields({ node }: { node: AnyNode }) {
             />
           </label>
           <label>
-            Attributes — one per line: <code>type name PK "comment"</code>
+            {t("insp.attributes")} <code>type name PK &quot;comment&quot;</code>
             <textarea
               rows={Math.max(3, node.data.attributes.length + 1)}
               defaultValue={node.data.attributes.map(attrToLine).join("\n")}
@@ -179,7 +183,7 @@ function NodeFields({ node }: { node: AnyNode }) {
       return (
         <>
           <label>
-            Label
+            {t("insp.label")}
             <input
               id="inspector-label"
               value={node.data.label}
@@ -200,12 +204,12 @@ function NodeFields({ node }: { node: AnyNode }) {
         </>
       );
     case "junction":
-      return <div className="inspector-empty">Junction — a connector waypoint.</div>;
+      return <div className="inspector-empty">{t("insp.junction")}</div>;
     case "note":
       return (
         <>
           <label>
-            Text
+            {t("insp.text")}
             <textarea
               id="inspector-label"
               key={node.id}
@@ -230,7 +234,7 @@ function NodeFields({ node }: { node: AnyNode }) {
       return (
         <>
           <label>
-            Label
+            {t("insp.label")}
             <input
               id="inspector-label"
               value={node.data.label}
@@ -238,7 +242,7 @@ function NodeFields({ node }: { node: AnyNode }) {
             />
           </label>
           <label>
-            Element type
+            {t("insp.elementType")}
             <select
               value={node.data.c4Shape}
               onChange={(e) => updateNodeData(node.id, { c4Shape: e.target.value })}
@@ -251,7 +255,7 @@ function NodeFields({ node }: { node: AnyNode }) {
             </select>
           </label>
           <label>
-            Description
+            {t("insp.description")}
             <textarea
               rows={2}
               defaultValue={node.data.descr}
@@ -264,7 +268,7 @@ function NodeFields({ node }: { node: AnyNode }) {
       return (
         <>
           <label>
-            Name
+            {t("insp.name")}
             <input
               id="inspector-label"
               value={node.data.label}
@@ -272,13 +276,13 @@ function NodeFields({ node }: { node: AnyNode }) {
             />
           </label>
           <label>
-            Kind
+            {t("insp.kind")}
             <select
               value={node.data.ptype}
               onChange={(e) => updateNodeData(node.id, { ptype: e.target.value })}
             >
-              <option value="participant">Participant (box)</option>
-              <option value="actor">Actor (person)</option>
+              <option value="participant">{t("insp.participantBox")}</option>
+              <option value="actor">{t("insp.actorPerson")}</option>
             </select>
           </label>
         </>
@@ -287,7 +291,7 @@ function NodeFields({ node }: { node: AnyNode }) {
       return (
         <>
           <label>
-            Name
+            {t("insp.name")}
             <input
               id="inspector-label"
               value={node.data.label}
@@ -301,13 +305,16 @@ function NodeFields({ node }: { node: AnyNode }) {
               defaultValue={node.data.members.join("\n")}
               onBlur={(e) =>
                 updateNodeData(node.id, {
-                  members: e.target.value.split("\n").map((l) => l.trim()).filter(Boolean),
+                  members: e.target.value
+                    .split("\n")
+                    .map((l) => l.trim())
+                    .filter(Boolean),
                 })
               }
             />
           </label>
           <label>
-            Annotations — e.g. <code>interface</code> (space-separated)
+            {t("insp.annotations")} <code>interface</code> {t("insp.annotationsHint")}
             <input
               defaultValue={(node.data.annotations ?? []).join(" ")}
               onBlur={(e) =>
@@ -333,7 +340,10 @@ function NodeFields({ node }: { node: AnyNode }) {
               defaultValue={node.data.methods.join("\n")}
               onBlur={(e) =>
                 updateNodeData(node.id, {
-                  methods: e.target.value.split("\n").map((l) => l.trim()).filter(Boolean),
+                  methods: e.target.value
+                    .split("\n")
+                    .map((l) => l.trim())
+                    .filter(Boolean),
                 })
               }
             />
@@ -343,7 +353,7 @@ function NodeFields({ node }: { node: AnyNode }) {
     default:
       return (
         <label>
-          Label
+          {t("insp.label")}
           <input
             id="inspector-label"
             value={String(node.data.label)}
@@ -355,6 +365,7 @@ function NodeFields({ node }: { node: AnyNode }) {
 }
 
 function EdgeFields({ edge }: { edge: FlowEdge }) {
+  const t = useT();
   const updateEdgeData = useGraphStore((s) => s.updateEdgeData);
   const moveMessage = useGraphStore((s) => s.moveMessage);
   const d = edge.data;
@@ -363,7 +374,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
   return (
     <>
       <label>
-        Label
+        {t("insp.label")}
         <input
           id="inspector-label"
           value={d.label}
@@ -373,7 +384,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
       {d.seq && (
         <>
           <label>
-            Arrow
+            {t("insp.arrow")}
             <select
               value={d.seq.op}
               onChange={(e) =>
@@ -400,26 +411,28 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
       {d.stroke !== undefined && (
         <>
           <label>
-            Line
+            {t("insp.line")}
             <select
               value={d.stroke}
-              onChange={(e) => updateEdgeData(edge.id, { stroke: e.target.value as EdgeStroke })}
+              onChange={(e) =>
+                updateEdgeData(edge.id, { stroke: e.target.value as EdgeStroke })
+              }
             >
-              <option value="normal">Solid</option>
-              <option value="dotted">Dotted</option>
-              <option value="thick">Thick</option>
+              <option value="normal">{t("insp.lineSolid")}</option>
+              <option value="dotted">{t("insp.lineDotted")}</option>
+              <option value="thick">{t("insp.lineThick")}</option>
             </select>
           </label>
           <label>
-            Arrow
+            {t("insp.arrow")}
             <select
               value={d.arrow}
               onChange={(e) => updateEdgeData(edge.id, { arrow: e.target.value as ArrowType })}
             >
-              <option value="arrow_point">Arrow</option>
-              <option value="arrow_open">None</option>
-              <option value="arrow_circle">Circle</option>
-              <option value="arrow_cross">Cross</option>
+              <option value="arrow_point">{t("insp.arrowPoint")}</option>
+              <option value="arrow_open">{t("insp.arrowNone")}</option>
+              <option value="arrow_circle">{t("insp.arrowCircle")}</option>
+              <option value="arrow_cross">{t("insp.arrowCross")}</option>
             </select>
           </label>
           <label className="check">
@@ -428,7 +441,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
               checked={Boolean(d.both)}
               onChange={(e) => updateEdgeData(edge.id, { both: e.target.checked })}
             />
-            Arrowheads at both ends
+            {t("insp.bothEnds")}
           </label>
         </>
       )}
@@ -472,17 +485,17 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
                 updateEdgeData(edge.id, { er: { ...d.er!, identifying: e.target.checked } })
               }
             />
-            Identifying (solid line)
+            {t("insp.identifying")}
           </label>
         </>
       )}
       {d.c4 && (
         <>
           <label>
-            Technology
+            {t("insp.technology")}
             <input
               value={d.c4.techn}
-              placeholder="e.g. HTTPS/JSON"
+              placeholder={t("insp.techPlaceholder")}
               onChange={(e) =>
                 updateEdgeData(edge.id, { c4: { ...d.c4!, techn: e.target.value } })
               }
@@ -498,7 +511,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
                 })
               }
             />
-            Bidirectional
+            {t("insp.bidirectional")}
           </label>
         </>
       )}
@@ -509,7 +522,9 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
             <select
               value={d.arch.lhsDir}
               onChange={(e) =>
-                updateEdgeData(edge.id, { arch: { ...d.arch!, lhsDir: e.target.value as ArchDir } })
+                updateEdgeData(edge.id, {
+                  arch: { ...d.arch!, lhsDir: e.target.value as ArchDir },
+                })
               }
             >
               {(["L", "R", "T", "B"] as const).map((s) => (
@@ -524,7 +539,9 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
             <select
               value={d.arch.rhsDir}
               onChange={(e) =>
-                updateEdgeData(edge.id, { arch: { ...d.arch!, rhsDir: e.target.value as ArchDir } })
+                updateEdgeData(edge.id, {
+                  arch: { ...d.arch!, rhsDir: e.target.value as ArchDir },
+                })
               }
             >
               {(["L", "R", "T", "B"] as const).map((s) => (
@@ -583,7 +600,9 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
             <select
               value={d.cls.left}
               onChange={(e) =>
-                updateEdgeData(edge.id, { cls: { ...d.cls!, left: e.target.value as ClassMarker } })
+                updateEdgeData(edge.id, {
+                  cls: { ...d.cls!, left: e.target.value as ClassMarker },
+                })
               }
             >
               {CLASS_MARKERS.map((m) => (
@@ -598,7 +617,9 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
             <select
               value={d.cls.right}
               onChange={(e) =>
-                updateEdgeData(edge.id, { cls: { ...d.cls!, right: e.target.value as ClassMarker } })
+                updateEdgeData(edge.id, {
+                  cls: { ...d.cls!, right: e.target.value as ClassMarker },
+                })
               }
             >
               {CLASS_MARKERS.map((m) => (
@@ -616,13 +637,13 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
                 updateEdgeData(edge.id, { cls: { ...d.cls!, dotted: e.target.checked } })
               }
             />
-            Dotted line
+            {t("insp.dottedLine")}
           </label>
           <label>
             Cardinality at {edge.source}
             <input
               value={d.cls.card1 ?? ""}
-              placeholder="e.g. 1"
+              placeholder={t("insp.cardOnePlaceholder")}
               onChange={(e) =>
                 updateEdgeData(edge.id, {
                   cls: { ...d.cls!, card1: e.target.value || undefined },
@@ -634,7 +655,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
             Cardinality at {edge.target}
             <input
               value={d.cls.card2 ?? ""}
-              placeholder="e.g. many"
+              placeholder={t("insp.cardManyPlaceholder")}
               onChange={(e) =>
                 updateEdgeData(edge.id, {
                   cls: { ...d.cls!, card2: e.target.value || undefined },
@@ -649,6 +670,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
 }
 
 export function Inspector() {
+  const t = useT();
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
 
@@ -659,7 +681,9 @@ export function Inspector() {
     return (
       <section className="inspector">
         <div className="panel-title">
-          {node.type === "group" ? "Group" : "Node"} {node.id}
+          {node.type === "group"
+            ? t("insp.groupTitle", { id: node.id })
+            : t("insp.nodeTitle", { id: node.id })}
         </div>
         <NodeFields node={node} />
       </section>
@@ -669,7 +693,7 @@ export function Inspector() {
     return (
       <section className="inspector">
         <div className="panel-title">
-          Edge {edge.source} → {edge.target}
+          {t("insp.edgeTitle", { source: edge.source, target: edge.target })}
         </div>
         <EdgeFields edge={edge} />
       </section>
@@ -680,6 +704,7 @@ export function Inspector() {
 
 /** Diagram-level properties, shown when nothing is selected. */
 function DiagramMeta() {
+  const t = useT();
   const kind = useGraphStore((s) => s.kind);
   const title = useGraphStore((s) => s.title);
   const accTitle = useGraphStore((s) => s.accTitle);
@@ -688,10 +713,10 @@ function DiagramMeta() {
 
   return (
     <section className="inspector">
-      <div className="panel-title">Diagram</div>
+      <div className="panel-title">{t("insp.diagramTitle")}</div>
       {kind === "c4" && (
         <label>
-          Title
+          {t("insp.title")}
           <input
             defaultValue={title}
             key={`t-${title}`}
@@ -700,7 +725,7 @@ function DiagramMeta() {
         </label>
       )}
       <label>
-        Accessible title (accTitle)
+        {t("inspector.accTitle")}
         <input
           defaultValue={accTitle}
           key={`at-${accTitle}`}
@@ -708,7 +733,7 @@ function DiagramMeta() {
         />
       </label>
       <label>
-        Accessible description (accDescr)
+        {t("inspector.accDescr")}
         <textarea
           rows={2}
           defaultValue={accDescr}
@@ -716,10 +741,7 @@ function DiagramMeta() {
           onBlur={(e) => setDiagramMeta({ accDescr: e.target.value.trim() })}
         />
       </label>
-      <div className="inspector-empty">
-        Select a node or edge to edit it. Double-click empty canvas to add a node, drag
-        between handles to connect.
-      </div>
+      <div className="inspector-empty">{t("inspector.empty")}</div>
     </section>
   );
 }

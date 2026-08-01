@@ -1,5 +1,5 @@
 /**
- * MCP server exposing Merflow's mermaid diagrams to LLM agents.
+ * MCP server exposing Archyne's mermaid diagrams to LLM agents.
  *
  * Diagrams are plain .mmd files under GRAPH_DIR (default: cwd). Agents can
  * list, read, validate and write them; writes are parser-validated, and a
@@ -94,7 +94,7 @@ function errorText(err: unknown) {
   };
 }
 
-const server = new McpServer({ name: "merflow", version: "0.1.0" });
+const server = new McpServer({ name: "archyne", version: "0.1.0" });
 
 server.registerTool(
   "list_diagrams",
@@ -182,4 +182,4 @@ server.registerTool(
 );
 
 await server.connect(new StdioServerTransport());
-console.error(`merflow MCP server ready — diagram root: ${ROOT}`);
+console.error(`archyne MCP server ready — diagram root: ${ROOT}`);

@@ -2,13 +2,7 @@ import type { Node, Edge } from "@xyflow/react";
 
 /** Diagram families the editor supports on the shared canvas. */
 export type DiagramKind =
-  | "flowchart"
-  | "state"
-  | "er"
-  | "class"
-  | "sequence"
-  | "architecture"
-  | "c4";
+  "flowchart" | "state" | "er" | "class" | "sequence" | "architecture" | "c4";
 
 /** Mermaid direction. */
 export type Direction = "TD" | "TB" | "LR" | "RL" | "BT";

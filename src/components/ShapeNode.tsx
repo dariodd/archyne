@@ -76,19 +76,31 @@ function shapeSvg(shape: Shape, w: number, h: number) {
       );
     case "trapezoid":
       return (
-        <polygon points={`${w * 0.18},1 ${w * 0.82},1 ${w - 1},${h - 1} 1,${h - 1}`} {...common} />
+        <polygon
+          points={`${w * 0.18},1 ${w * 0.82},1 ${w - 1},${h - 1} 1,${h - 1}`}
+          {...common}
+        />
       );
     case "inv_trapezoid":
       return (
-        <polygon points={`1,1 ${w - 1},1 ${w * 0.82},${h - 1} ${w * 0.18},${h - 1}`} {...common} />
+        <polygon
+          points={`1,1 ${w - 1},1 ${w * 0.82},${h - 1} ${w * 0.18},${h - 1}`}
+          {...common}
+        />
       );
     case "lean_right":
       return (
-        <polygon points={`${w * 0.15},1 ${w - 1},1 ${w * 0.85},${h - 1} 1,${h - 1}`} {...common} />
+        <polygon
+          points={`${w * 0.15},1 ${w - 1},1 ${w * 0.85},${h - 1} 1,${h - 1}`}
+          {...common}
+        />
       );
     case "lean_left":
       return (
-        <polygon points={`1,1 ${w * 0.85},1 ${w - 1},${h - 1} ${w * 0.15},${h - 1}`} {...common} />
+        <polygon
+          points={`1,1 ${w * 0.85},1 ${w - 1},${h - 1} ${w * 0.15},${h - 1}`}
+          {...common}
+        />
       );
     case "square":
       return <rect x={1} y={1} width={w - 2} height={h - 2} {...common} />;
@@ -176,6 +188,9 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
         <input
           className="shape-label-input nodrag"
           value={draft}
+          // Legitimate autofocus: the inline editor is only rendered after
+          // the user double-clicks to rename, so focus belongs here.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
@@ -195,7 +210,11 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
   );
 }
 
-export function GroupNodeView({ id, data, selected }: NodeProps<import("../model/types").GroupNode>) {
+export function GroupNodeView({
+  id,
+  data,
+  selected,
+}: NodeProps<import("../model/types").GroupNode>) {
   const resizeEnd = useGraphStore((s) => s.onNodeDragStop);
   const setNodeSize = useGraphStore((s) => s.setNodeSize);
   return (

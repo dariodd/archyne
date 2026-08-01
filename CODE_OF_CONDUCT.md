@@ -57,7 +57,7 @@ an individual is officially representing the community in public spaces.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the maintainers privately, through GitHub's **Report a
 vulnerability** form on this repository's
-[_Security_ tab](https://github.com/OWNER/archyne/security/advisories/new).
+[_Security_ tab](https://github.com/dariodd/archyne/security/advisories/new).
 
 That form is labelled for security, and using it for conduct is deliberate: it
 is the only private, tracked channel GitHub gives a repository, and a conduct

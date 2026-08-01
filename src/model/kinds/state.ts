@@ -49,8 +49,7 @@ export function parseState(db: Record<string, (...a: unknown[]) => unknown>): {
           type: "group",
           position: { x: 0, y: 0 },
           data: {
-            label:
-              existing.data.label !== s.id ? existing.data.label : s.description || s.id,
+            label: existing.data.label !== s.id ? existing.data.label : s.description || s.id,
             subgraphId: s.id,
           },
           style: { width: 320, height: 220 },

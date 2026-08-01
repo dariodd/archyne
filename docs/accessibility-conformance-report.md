@@ -17,7 +17,7 @@
 | **Product description** | A local-first, browser-based diagram editor with two-way sync between a canvas and Mermaid source. Also distributed as an Electron desktop application and as an embeddable iframe.                                                                                                                  |
 | **Evaluation methods**  | Automated testing with axe-core 4.12.1 in a real browser across 8 interface surfaces × 2 themes; automated testing under jsdom for dialog primitives; static analysis with `eslint-plugin-jsx-a11y` (as errors); manual responsive testing at four viewport widths. No assistive-technology testing. |
 | **Standards**           | WCAG 2.2 Level A and Level AA                                                                                                                                                                                                                                                                        |
-| **Contact**             | Via [private report](https://github.com/OWNER/archyne/security/advisories/new) or the issue tracker                                                                                                                                                                                                  |
+| **Contact**             | Via [private report](https://github.com/dariodd/archyne/security/advisories/new) or the issue tracker                                                                                                                                                                                                |
 
 ---
 

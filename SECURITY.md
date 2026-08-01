@@ -5,7 +5,7 @@
 **Please do not open a public issue for security problems.**
 
 Report privately through GitHub's **Report a vulnerability** button, under this
-repository's [_Security_ tab](https://github.com/OWNER/archyne/security/advisories/new).
+repository's [_Security_ tab](https://github.com/dariodd/archyne/security/advisories/new).
 That opens a private advisory visible only to you and the maintainers: it is
 the only channel we ask you to use, so that a report never sits in a public
 issue while a fix is being written.

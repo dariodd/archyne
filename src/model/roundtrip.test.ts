@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { parseDiagram, serializeDiagram } from "./diagram";
+import { parseDiagram, serializeDiagram, UnsupportedDiagramError } from "./diagram";
 import type { DiagramKind } from "./types";
-import {
-  carryOverPositions,
-  patchPositions,
-  readPositions,
-  stripPositions,
-} from "./positions";
+import { carryOverPositions, patchPositions, readPositions, stripPositions } from "./positions";
 
 const FLOW = `flowchart TD
   start(["Start"])
@@ -229,7 +224,11 @@ describe("positions sidecar", () => {
   });
 
   it("keeps the text valid for mermaid, for every kind", async () => {
-    for (const code of [FLOW, "stateDiagram-v2\n  a --> b\n", "erDiagram\n  A ||--|| B : \"x\"\n"]) {
+    for (const code of [
+      FLOW,
+      "stateDiagram-v2\n  a --> b\n",
+      'erDiagram\n  A ||--|| B : "x"\n',
+    ]) {
       const withPos = patchPositions(code, { a: { x: 1, y: 2 } });
       await expect(parseDiagram(withPos)).resolves.toBeTruthy();
     }
@@ -288,9 +287,7 @@ describe("sequence diagram", () => {
   });
 
   it("notes are parsed into the item stream (no warning)", async () => {
-    const g = await parseDiagram(
-      "sequenceDiagram\n  A->>B: hi\n  Note over A,B: careful\n",
-    );
+    const g = await parseDiagram("sequenceDiagram\n  A->>B: hi\n  Note over A,B: careful\n");
     expect(g.warning).toBeUndefined();
     expect(g.items?.some((i) => i.kind === "note")).toBe(true);
   });
@@ -446,7 +443,12 @@ describe("recovered constructs", () => {
       ["arrow_cross", true],
       ["arrow_circle", true],
     ]);
-    const out = serializeDiagram({ kind: "flowchart", direction: g1.direction, nodes: g1.nodes, edges: g1.edges });
+    const out = serializeDiagram({
+      kind: "flowchart",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges: g1.edges,
+    });
     expect(out).toContain("<-->");
     expect(out).toContain("x--x");
     expect(out).toContain("o--o");
@@ -455,15 +457,23 @@ describe("recovered constructs", () => {
   });
 
   it("state: choice/fork/join round-trip", async () => {
-    const code = "stateDiagram-v2\n  state c1 <<choice>>\n  state f1 <<fork>>\n  state j1 <<join>>\n  a --> c1\n  c1 --> b\n";
+    const code =
+      "stateDiagram-v2\n  state c1 <<choice>>\n  state f1 <<fork>>\n  state j1 <<join>>\n  a --> c1\n  c1 --> b\n";
     const g1 = await parseDiagram(code);
     const types = Object.fromEntries(
-      g1.nodes.filter((n) => n.type === "state").map((n) => [n.id, (n.data as { stateType: string }).stateType]),
+      g1.nodes
+        .filter((n) => n.type === "state")
+        .map((n) => [n.id, (n.data as { stateType: string }).stateType]),
     );
     expect(types.c1).toBe("choice");
     expect(types.f1).toBe("fork");
     expect(types.j1).toBe("join");
-    const out = serializeDiagram({ kind: "state", direction: g1.direction, nodes: g1.nodes, edges: g1.edges });
+    const out = serializeDiagram({
+      kind: "state",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges: g1.edges,
+    });
     expect(out).toContain("state c1 <<choice>>");
     expect(out).toContain("a --> c1");
     const g2 = await parseDiagram(out);
@@ -471,30 +481,44 @@ describe("recovered constructs", () => {
   });
 
   it("class: annotations, classifiers, and generics round-trip", async () => {
-    const code = "classDiagram\n  class Shape {\n    <<interface>>\n    +count$ int\n    +area()* int\n  }\n  class List~T~\n";
+    const code =
+      "classDiagram\n  class Shape {\n    <<interface>>\n    +count$ int\n    +area()* int\n  }\n  class List~T~\n";
     const g1 = await parseDiagram(code);
     const shape = g1.nodes.find((n) => n.id === "Shape");
     expect(shape?.type === "class" && shape.data.annotations).toEqual(["interface"]);
     expect(shape?.type === "class" && shape.data.methods[0]).toContain("*");
     const list = g1.nodes.find((n) => n.id === "List");
     expect(list?.type === "class" && list.data.generic).toBe("T");
-    const out = serializeDiagram({ kind: "class", direction: g1.direction, nodes: g1.nodes, edges: g1.edges });
+    const out = serializeDiagram({
+      kind: "class",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges: g1.edges,
+    });
     expect(out).toContain("<<interface>>");
     expect(out).toContain("List~T~");
     const g2 = await parseDiagram(out);
     const shape2 = g2.nodes.find((n) => n.id === "Shape");
     expect(shape2?.type === "class" && shape2.data.annotations).toEqual(["interface"]);
-    expect(shape2?.type === "class" && shape2.data.methods.some((m) => m.includes("*"))).toBe(true);
+    expect(shape2?.type === "class" && shape2.data.methods.some((m) => m.includes("*"))).toBe(
+      true,
+    );
   });
 
   it("class: namespaces and notes round-trip as groups and note nodes", async () => {
-    const code = 'classDiagram\n  namespace core {\n    class Inner\n  }\n  class Out\n  note for Out "attached"\n  note "free"\n';
+    const code =
+      'classDiagram\n  namespace core {\n    class Inner\n  }\n  class Out\n  note for Out "attached"\n  note "free"\n';
     const g1 = await parseDiagram(code);
     expect(g1.nodes.find((n) => n.id === "core")?.type).toBe("group");
     expect(g1.nodes.find((n) => n.id === "Inner")?.parentId).toBe("core");
     const notes = g1.nodes.filter((n) => n.type === "note");
     expect(notes).toHaveLength(2);
-    const out = serializeDiagram({ kind: "class", direction: g1.direction, nodes: g1.nodes, edges: g1.edges });
+    const out = serializeDiagram({
+      kind: "class",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges: g1.edges,
+    });
     expect(out).toContain("namespace core {");
     expect(out).toContain('note for Out "attached"');
     expect(out).toContain('note "free"');
@@ -524,7 +548,11 @@ describe("recovered constructs", () => {
     const g1 = await parseDiagram(code);
     expect(g1.items?.filter((i) => i.kind === "block")).toHaveLength(2);
     const out = serializeDiagram({
-      kind: "sequence", direction: g1.direction, nodes: g1.nodes, edges: g1.edges, items: g1.items,
+      kind: "sequence",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges: g1.edges,
+      items: g1.items,
     });
     expect(out).toContain("autonumber");
     expect(out).toContain("Note over A,B: nota");
@@ -539,13 +567,18 @@ describe("recovered constructs", () => {
   });
 
   it("sequence: deleting a message keeps blocks and notes intact", async () => {
-    const code = "sequenceDiagram\n  participant A\n  participant B\n  loop L\n    A->>B: uno\n    A->>B: due\n  end\n";
+    const code =
+      "sequenceDiagram\n  participant A\n  participant B\n  loop L\n    A->>B: uno\n    A->>B: due\n  end\n";
     const g1 = await parseDiagram(code);
     const removedId = g1.edges[0].id;
     const edges = g1.edges.filter((e) => e.id !== removedId);
     const items = g1.items!.filter((i) => i.kind !== "message" || i.edgeId !== removedId);
     const out = serializeDiagram({
-      kind: "sequence", direction: g1.direction, nodes: g1.nodes, edges, items,
+      kind: "sequence",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges,
+      items,
     });
     expect(out).toContain("loop L");
     expect(out).toContain("due");
@@ -554,15 +587,20 @@ describe("recovered constructs", () => {
   });
 
   it("c4: external db/queue variants and deployment nodes round-trip", async () => {
-    const code = 'C4Deployment\n  Node(n1, "Server") {\n    Container(c1, "App")\n  }\n  SystemQueue_Ext(q, "Queue")\n';
+    const code =
+      'C4Deployment\n  Node(n1, "Server") {\n    Container(c1, "App")\n  }\n  SystemQueue_Ext(q, "Queue")\n';
     const g1 = await parseDiagram(code);
     const q = g1.nodes.find((n) => n.id === "q");
     expect(q?.type === "c4" && q.data.c4Shape).toBe("external_system_queue");
     const n1 = g1.nodes.find((n) => n.id === "n1");
     expect(n1?.type).toBe("group");
     const out = serializeDiagram({
-      kind: "c4", direction: g1.direction, nodes: g1.nodes, edges: g1.edges,
-      c4Flavor: g1.c4Flavor, title: g1.title,
+      kind: "c4",
+      direction: g1.direction,
+      nodes: g1.nodes,
+      edges: g1.edges,
+      c4Flavor: g1.c4Flavor,
+      title: g1.title,
     });
     expect(out).toContain("SystemQueue_Ext(q");
     expect(out).toContain('Node(n1, "Server")');
@@ -573,8 +611,14 @@ describe("recovered constructs", () => {
 
 describe("accessibility metadata", () => {
   it("round-trips accTitle and accDescr on every kind", async () => {
-    for (const header of ["flowchart TD\n  a --> b", "stateDiagram-v2\n  a --> b", "architecture-beta\n  service a(cloud)[A]"]) {
-      const g1 = await parseDiagram(`${header.split("\n")[0]}\n  accTitle: My title\n  accDescr: My description\n${header.split("\n").slice(1).join("\n")}\n`);
+    for (const header of [
+      "flowchart TD\n  a --> b",
+      "stateDiagram-v2\n  a --> b",
+      "architecture-beta\n  service a(cloud)[A]",
+    ]) {
+      const g1 = await parseDiagram(
+        `${header.split("\n")[0]}\n  accTitle: My title\n  accDescr: My description\n${header.split("\n").slice(1).join("\n")}\n`,
+      );
       expect(g1.accTitle).toBe("My title");
       expect(g1.accDescr).toBe("My description");
       const out = serializeDiagram({
@@ -593,9 +637,16 @@ describe("accessibility metadata", () => {
 });
 
 describe("unsupported kinds", () => {
-  it("rejects unknown diagram types with a clear message", async () => {
-    await expect(parseDiagram("pie\n  \"a\": 1\n")).rejects.toThrow(
-      /Unsupported diagram type/,
-    );
+  it("reports unknown diagram types as their own error type", async () => {
+    // A distinct type rather than a message match: the app has to tell
+    // "cannot edit this" apart from "does not parse", and renders the former
+    // read-only instead of refusing the file.
+    await expect(parseDiagram('pie\n  "a": 1\n')).rejects.toThrow(UnsupportedDiagramError);
+  });
+
+  it("carries the diagram type so the UI can name it", async () => {
+    await expect(parseDiagram("gantt\n  title X\n")).rejects.toMatchObject({
+      diagramType: "gantt",
+    });
   });
 });

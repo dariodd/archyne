@@ -18,12 +18,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/archyne.git"
+    "url": "git+https://github.com/dariodd/archyne.git"
   },
   "bugs": {
-    "url": "https://github.com/OWNER/archyne/issues"
+    "url": "https://github.com/dariodd/archyne/issues"
   },
-  "homepage": "https://OWNER.github.io/archyne/",
+  "homepage": "https://dariodd.github.io/archyne/",
   "keywords": [
     "mermaid",
     "diagram",

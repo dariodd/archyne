@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import { t } from "../i18n";
 
 interface State {
   error: Error | null;
@@ -26,15 +27,12 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
     }
     return (
       <div className="crash-screen">
-        <h2>Something broke while rendering</h2>
+        <h2>{t("error.crashTitle")}</h2>
         <pre className="crash-error">{String(this.state.error.stack ?? this.state.error)}</pre>
-        <p>
-          Your diagram is safe — this is its current code. Copy it somewhere if in
-          doubt, then try to recover:
-        </p>
+        <p>{t("error.crashIntro")}</p>
         <textarea className="crash-code" readOnly value={saved} rows={10} />
         <div className="crash-actions">
-          <button onClick={() => location.reload()}>Reload</button>
+          <button onClick={() => location.reload()}>{t("error.reload")}</button>
           <button
             onClick={() => {
               try {
@@ -45,7 +43,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
               location.reload();
             }}
           >
-            Reset to sample diagram and reload
+            {t("error.reset")}
           </button>
         </div>
       </div>
