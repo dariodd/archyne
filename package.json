@@ -94,7 +94,7 @@
     "@types/node": "^26.1.1",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
-    "@vitejs/plugin-react": "^4.5.0",
+    "@vitejs/plugin-react": "^6.0.4",
     "axe-core": "^4.12.1",
     "electron": "^43.1.1",
     "electron-builder": "^26.15.3",
