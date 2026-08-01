@@ -69,7 +69,11 @@ if (unlicensed.length > 0) {
 }
 
 if (failed) {
-  console.error("\nUpdate THIRD-PARTY-NOTICES.md, then re-run.");
+  console.error(
+    "\nRun `npm run notices:update` to regenerate the package table, then " +
+      "check the Notes section by hand — a licence type new to the tree " +
+      "usually needs a sentence explaining how it is used.",
+  );
   process.exit(1);
 }
 console.log(

@@ -53,6 +53,7 @@
     "audit": "node scripts/audit-gate.mjs",
     "sbom": "node scripts/sbom.mjs",
     "notices:check": "node scripts/sbom.mjs && node scripts/check-notices.mjs",
+    "notices:update": "node scripts/sbom.mjs && node scripts/update-notices.mjs",
     "mcp": "tsx mcp/server.ts",
     "mcp:smoke": "tsx mcp/smoke.ts",
     "test:e2e:export": "tsx tests/e2e-export.mts",
