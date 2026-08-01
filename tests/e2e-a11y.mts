@@ -90,7 +90,8 @@ const SURFACES: Array<{
   { label: "editor" },
   { label: "outline", tab: "Outline", appears: "#panel-outline" },
   { label: "export dialog", open: "Export…", appears: ".modal" },
-  { label: "about dialog", open: "About Archyne and licenses", appears: ".modal" },
+  // The wordmark is no longer a button; About lives in the overflow menu.
+  { label: "about dialog", open: "More", then: "About Archyne", appears: ".modal" },
   { label: "template gallery", open: "Templates", appears: ".modal" },
   { label: "overflow menu", open: "More", appears: ".menu-popover" },
   { label: "command palette", key: "Control+k", appears: ".modal.command-palette" },

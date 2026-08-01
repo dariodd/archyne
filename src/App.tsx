@@ -188,12 +188,16 @@ export default function App() {
       )}
       <div className="app">
         <Toolbar />
-        <DocumentTabs />
         <div
           className={`main${paletteOpen ? " palette-open" : ""}${sideOpen ? " side-open" : ""}`}
         >
           <Palette />
-          <CanvasView />
+          {/* The tab strip belongs to the diagram, not to the window, so it
+              spans the canvas column rather than the whole application. */}
+          <div className="canvas-column">
+            <CanvasView />
+            <DocumentTabs />
+          </div>
           <aside className="side" aria-label={t("panel.sourceAndInspector")}>
             <CodePanel />
             <Inspector />

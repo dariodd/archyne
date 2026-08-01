@@ -190,14 +190,13 @@ body,
   background: var(--border);
 }
 
-.brand-button {
+.brand-lockup {
   display: flex;
   align-items: center;
   gap: 8px;
   background: none;
   border: none;
   padding: 0;
-  cursor: pointer;
   color: var(--text);
 }
 
@@ -415,9 +414,17 @@ body,
   min-height: 0;
 }
 
+.canvas-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .canvas-wrap {
   flex: 1;
   min-width: 0;
+  min-height: 0;
 }
 
 .side {
@@ -1880,7 +1887,7 @@ body,
   padding: 0 8px;
   height: 30px;
   background: var(--panel);
-  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -1891,11 +1898,13 @@ body,
   display: flex;
   align-items: center;
   min-width: 0;
-  border-radius: var(--r-sm) var(--r-sm) 0 0;
+  border-radius: 0 0 var(--r) var(--r);
 }
 .doc-tab.active {
   background: var(--bg);
-  box-shadow: inset 0 -2px 0 var(--accent);
+  /* The marker sits on the edge the strip is attached to, so the active tab
+     reads as continuous with the canvas above it. */
+  box-shadow: inset 0 2px 0 var(--accent);
 }
 
 .doc-tabs button {

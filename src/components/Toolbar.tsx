@@ -86,15 +86,13 @@ export function Toolbar() {
     <header className="toolbar">
       {/* Identity and document state — what you are looking at. */}
       <div className="tb-group tb-identity">
-        <button
-          className="brand-button"
-          title={t("toolbar.aboutTitle")}
-          aria-label={t("toolbar.about")}
-          onClick={() => setShowAbout(true)}
-        >
+        {/* A wordmark, not a control. It used to open the About dialog, which
+            is not what a logo is expected to do; About now sits in the
+            overflow menu with the other occasional things. */}
+        <span className="brand-lockup">
           <img src="./logo.svg" alt="" className="brand-logo" />
           <span className="brand">{t("app.name")}</span>
-        </button>
+        </span>
         <span className="kind-badge" role="status">
           {unsupported ? t("unsupported.badge", { type: unsupported }) : t(`kind.${kind}`)}
         </span>
