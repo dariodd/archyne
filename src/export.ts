@@ -88,6 +88,40 @@ function frameFor(nodes: AnyNode[], padding: number) {
  * Marker defs living outside the viewport are temporarily cloned in so
  * arrowheads survive the capture.
  */
+/**
+ * The stylesheet rules that paint SVG, gathered from the live document.
+ *
+ * html-to-image inlines each element's computed style, but only for HTML
+ * elements — SVG children are cloned without one. It does not copy
+ * stylesheets either, so a rule like `.shape-fill { fill: … }` simply
+ * vanished from the export, and every node shape fell back to the SVG
+ * default fill: **black**. Boxes came out solid black on any background.
+ *
+ * Rather than restate those rules here, where they would drift from the ones
+ * that actually paint the app, this collects any rule that sets `fill`,
+ * `stroke` or `stroke-width`. That is exactly the set html-to-image drops,
+ * and it stays correct as the stylesheet changes.
+ */
+function svgPaintRules(): string {
+  const out: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    let rules: CSSRuleList;
+    try {
+      rules = sheet.cssRules;
+    } catch {
+      // A cross-origin stylesheet cannot be read. Ours is same-origin; a
+      // browser extension's is not, and is not ours to export anyway.
+      continue;
+    }
+    for (const rule of Array.from(rules)) {
+      if (!(rule instanceof CSSStyleRule)) continue;
+      const s = rule.style;
+      if (s.fill || s.stroke || s.strokeWidth) out.push(rule.cssText);
+    }
+  }
+  return out.join("\n");
+}
+
 async function captureCanvas(
   format: "png" | "svg",
   width: number,
@@ -108,6 +142,12 @@ async function captureCanvas(
   temp.appendChild(defs);
   el.appendChild(temp);
 
+  // Carried inside the captured element so it is cloned along with it; the
+  // custom properties it relies on are already inlined onto the ancestors.
+  const paint = document.createElement("style");
+  paint.textContent = svgPaintRules();
+  el.appendChild(paint);
+
   try {
     const options = {
       ...(background ? { backgroundColor: background } : {}),
@@ -126,6 +166,7 @@ async function captureCanvas(
     return format === "png" ? await toPng(el, options) : await toSvg(el, options);
   } finally {
     temp.remove();
+    paint.remove();
   }
 }
 
