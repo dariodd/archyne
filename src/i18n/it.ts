@@ -181,6 +181,12 @@ export const messages: Messages = {
   "insp.distributeNeedsThree":
     "Distribuire richiede almeno tre nodi: dispone ciò che sta fra i due esterni.",
   "insp.label": "Etichetta",
+  "edge.addCorner": "Trascina per aggiungere un angolo",
+  "edge.removeCorner": "Trascina per spostare, doppio clic per rimuovere",
+  "insp.corners": "Angoli",
+  "insp.addCorner": "Aggiungi angolo",
+  "insp.removeCorner": "Rimuovi",
+  "insp.straighten": "Raddrizza",
   "insp.autoSize": "Dimensione automatica",
   "insp.width": "Larghezza",
   "insp.height": "Altezza",

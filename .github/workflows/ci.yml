@@ -113,6 +113,11 @@ jobs:
         env:
           ARCHYNE_URL: http://localhost:5173
 
+      - name: Edge routing
+        run: npm run test:e2e:waypoints
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Accessibility (WCAG 2.2 AA)
         run: npm run test:e2e:a11y
         env:

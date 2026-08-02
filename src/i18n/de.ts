@@ -182,6 +182,12 @@ export const messages: Messages = {
   "insp.distributeNeedsThree":
     "Verteilen braucht drei oder mehr: es ordnet, was zwischen den äußeren beiden liegt.",
   "insp.label": "Beschriftung",
+  "edge.addCorner": "Ziehen, um einen Knick hinzuzufügen",
+  "edge.removeCorner": "Ziehen zum Verschieben, Doppelklick zum Entfernen",
+  "insp.corners": "Knicke",
+  "insp.addCorner": "Knick hinzufügen",
+  "insp.removeCorner": "Entfernen",
+  "insp.straighten": "Begradigen",
   "insp.autoSize": "Automatische Größe",
   "insp.width": "Breite",
   "insp.height": "Höhe",

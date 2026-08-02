@@ -36,6 +36,13 @@ import {
   UnsupportedDiagramError,
 } from "./model/diagram";
 import { patchPositions, readPositions, type PositionMap } from "./model/positions";
+import {
+  patchWaypoints,
+  readWaypoints,
+  waypointKeys,
+  type Waypoint,
+  type WaypointMap,
+} from "./model/waypoints";
 import { removeSeqItemAt } from "./model/kinds/sequence";
 import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
 import { autoLayout } from "./layout/autoLayout";
@@ -174,6 +181,16 @@ function annotateParallel(kind: DiagramKind, edges: FlowEdge[]): FlowEdge[] {
     groups.set(key, [...(groups.get(key) ?? []), e.id]);
   }
   return edges.map((e) => {
+    // A hand-routed edge keeps its own route: bending one by hand is a more
+    // specific instruction than "these two overlap, spread them apart". The
+    // lane info goes with the fan-out, so it is dropped rather than left to
+    // reappear if the corners are removed later.
+    if (e.data?.points?.length) {
+      if (e.type === "routed" && !e.data.par) return e;
+      const data = { ...(e.data ?? { label: "" }) };
+      delete data.par;
+      return { ...e, type: "routed" as const, data };
+    }
     const g = groups.get(keyOf(e))!;
     if (g.length < 2) {
       // No longer parallel (siblings deleted): strip the stale lane info
@@ -181,7 +198,7 @@ function annotateParallel(kind: DiagramKind, edges: FlowEdge[]): FlowEdge[] {
       if (e.type !== "parallel" && !e.data?.par) return e;
       const data = { ...(e.data ?? { label: "" }) };
       delete data.par;
-      return { ...e, type: "smoothstep", data };
+      return { ...e, type: "routed", data };
     }
     return {
       ...e,
@@ -296,6 +313,33 @@ export interface GraphState {
    * to return to.
    */
   resetNodeSize: (id: string) => void;
+  /**
+   * Insert a corner into an edge's route, at `index` among the existing ones.
+   *
+   * The index is what makes this usable: a waypoint dragged out of the
+   * segment between the second and third corners has to land between them,
+   * not at the end, or the path folds back on itself.
+   */
+  addWaypoint: (edgeId: string, index: number, point: Waypoint, commit?: boolean) => void;
+  moveWaypoint: (edgeId: string, index: number, point: Waypoint, commit?: boolean) => void;
+  removeWaypoint: (edgeId: string, index: number) => void;
+  /**
+   * Add a corner at the middle of the edge's last segment.
+   *
+   * The pointer-free way in: the inspector has no geometry of its own, so
+   * the midpoint is worked out here, from where the two ends actually are.
+   */
+  appendWaypoint: (edgeId: string) => void;
+  /** Straighten an edge: drop every corner at once. */
+  clearWaypoints: (edgeId: string) => void;
+  /**
+   * Write a dragged route out, once.
+   *
+   * Dragging a corner passes `commit: false` on every pointer move: writing
+   * the comment at 60fps would fill the undo stack with one entry per frame
+   * and rewrite the document each time. The gesture ends here instead.
+   */
+  commitWaypoints: () => void;
   addNode: (seed: NodeSeed, position: { x: number; y: number }) => void;
   updateNodeData: (id: string, patch: Record<string, unknown>) => void;
   updateEdgeData: (id: string, patch: Partial<FlowEdgeData>) => void;
@@ -423,6 +467,52 @@ export const useGraphStore = create<GraphState>((set, get) => {
     return positions;
   };
 
+  const collectWaypoints = (): WaypointMap => {
+    const keys = waypointKeys(get().edges);
+    const map: WaypointMap = {};
+    for (const e of get().edges) {
+      const points = e.data?.points;
+      if (points?.length) map[keys.get(e.id)!] = points;
+    }
+    return map;
+  };
+
+  /**
+   * Apply an edit to one edge's corners and write the result out.
+   *
+   * Going through `repatchPositions` rather than `regenerate` is the point:
+   * a corner is layout, so the user's own text is left exactly as it is.
+   */
+  const patchWaypointList = (
+    edgeId: string,
+    edit: (points: Waypoint[]) => Waypoint[],
+    commit = true,
+  ): void => {
+    const edge = get().edges.find((e) => e.id === edgeId);
+    if (!edge) return;
+    const next = edit(edge.data?.points ?? []);
+    // Back through `annotateParallel` so the edge type is decided in one
+    // place: a straightened edge that overlaps another goes back to being
+    // fanned out, which nothing here would otherwise undo.
+    set({
+      edges: annotateParallel(
+        get().kind,
+        get().edges.map((e) =>
+          e.id === edgeId
+            ? {
+                ...e,
+                data: {
+                  ...(e.data ?? { label: "" }),
+                  ...(next.length > 0 ? { points: next } : { points: undefined }),
+                },
+              }
+            : e,
+        ),
+      ),
+    });
+    if (commit) repatchPositions();
+  };
+
   /** Rebuild the mermaid text from the canvas (structural change). */
   const regenerate = () => {
     // A read-only diagram has no parsed graph behind it. Serializing from the
@@ -443,7 +533,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
       accDescr,
       seqItems,
     } = get();
-    const code = serializeDiagram({
+    const serialized = serializeDiagram({
       kind,
       direction,
       nodes,
@@ -456,14 +546,21 @@ export const useGraphStore = create<GraphState>((set, get) => {
       items: seqItems,
       positions: collectPositions(),
     });
+    const code = patchWaypoints(serialized, collectWaypoints());
     set({ code, parseError: null });
     persist(code);
   };
 
-  /** Only positions changed (drag) — leave the user's text intact. */
+  /**
+   * Only the layout changed (a drag, a resize, a waypoint) — leave the
+   * user's text alone and rewrite the two trailing comments.
+   */
   const repatchPositions = () => {
     record(get().code);
-    const code = patchPositions(get().code, collectPositions());
+    const code = patchWaypoints(
+      patchPositions(get().code, collectPositions()),
+      collectWaypoints(),
+    );
     set({ code });
     persist(code);
   };
@@ -536,10 +633,22 @@ export const useGraphStore = create<GraphState>((set, get) => {
           nodes = nodes.map((n) => (selectedIds.has(n.id) ? { ...n, selected: true } : n));
         }
 
+        // Waypoints live in their own comment and are keyed by endpoints,
+        // so they are matched back onto the freshly parsed edges here rather
+        // than surviving on the edge objects, which do not.
+        const stored = readWaypoints(code);
+        const keys = waypointKeys(parsed.edges);
+        const routed = stored
+          ? parsed.edges.map((e) => {
+              const points = stored[keys.get(e.id)!];
+              return points ? { ...e, data: { ...(e.data ?? { label: "" }), points } } : e;
+            })
+          : parsed.edges;
+
         set({
           kind: parsed.kind,
           nodes,
-          edges: annotateParallel(parsed.kind, parsed.edges),
+          edges: annotateParallel(parsed.kind, routed),
           direction: parsed.direction,
           classDefs: parsed.classDefs,
           warning: parsed.warning ?? null,
@@ -769,6 +878,58 @@ export const useGraphStore = create<GraphState>((set, get) => {
         ),
       });
       repatchPositions();
+    },
+
+    addWaypoint: (edgeId, index, point, commit = true) => {
+      patchWaypointList(
+        edgeId,
+        (points) => [
+          ...points.slice(0, index),
+          { x: Math.round(point.x), y: Math.round(point.y) },
+          ...points.slice(index),
+        ],
+        commit,
+      );
+    },
+
+    moveWaypoint: (edgeId, index, point, commit = true) => {
+      patchWaypointList(
+        edgeId,
+        (points) =>
+          points.map((p, i) =>
+            i === index ? { x: Math.round(point.x), y: Math.round(point.y) } : p,
+          ),
+        commit,
+      );
+    },
+
+    commitWaypoints: () => repatchPositions(),
+
+    removeWaypoint: (edgeId, index) => {
+      patchWaypointList(edgeId, (points) => points.filter((_, i) => i !== index));
+    },
+
+    appendWaypoint: (edgeId) => {
+      const edge = get().edges.find((e) => e.id === edgeId);
+      if (!edge) return;
+      const boxes = absoluteBoxes(get().nodes);
+      const centre = (id: string): Waypoint | null => {
+        const b = boxes.get(id);
+        return b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : null;
+      };
+      const from = centre(edge.source);
+      const to = centre(edge.target);
+      if (!from || !to) return;
+      const points = edge.data?.points ?? [];
+      const last = points[points.length - 1] ?? from;
+      get().addWaypoint(edgeId, points.length, {
+        x: (last.x + to.x) / 2,
+        y: (last.y + to.y) / 2,
+      });
+    },
+
+    clearWaypoints: (edgeId) => {
+      patchWaypointList(edgeId, () => []);
     },
 
     addNode: (seed, position) => {

@@ -431,6 +431,35 @@ body,
   min-height: 0;
 }
 
+.corner-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Handles for routing an edge by hand. Only drawn on a selected edge, so
+   they never compete with the diagram itself for attention. */
+.edge-handle {
+  cursor: grab;
+  pointer-events: all;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.edge-handle.corner {
+  fill: var(--accent);
+}
+
+/* Hollow, because it is not a corner yet — dragging it makes one. */
+.edge-handle.add {
+  fill: var(--panel);
+  opacity: 0.75;
+}
+
+.edge-handle.add:hover {
+  opacity: 1;
+}
+
 /* Alignment guides. Drawn inside the transformed viewport, so the position
    comes from a transform and only the length is a dimension. Pointer events
    are off: a guide sits directly under the cursor mid-drag. */

@@ -87,6 +87,8 @@ const SURFACES: Array<{
   appears?: string;
   /** Clicked to close, where Escape is not what dismisses the surface. */
   dismiss?: string;
+  /** Click without the visibility check, for targets with no area. */
+  force?: boolean;
 }> = [
   // The document tab strip is always on screen, so it is covered here.
   { label: "editor" },
@@ -100,6 +102,17 @@ const SURFACES: Array<{
   { label: "shortcuts sheet", key: "Shift+Slash", appears: ".modal" },
   // The two document dialogs: rename from the overflow menu, delete from a
   // tab's close button.
+  // Selecting an edge fills the inspector with its routing controls and puts
+  // the corner handles on the canvas.
+  {
+    label: "edge inspector",
+    click: ".react-flow__edge-path",
+    // A straight vertical edge is a zero-width box, which Playwright reads
+    // as invisible. It is on screen; the click just has to be told so.
+    force: true,
+    appears: ".corner-list",
+    dismiss: ".react-flow__pane",
+  },
   // Selecting a node fills the inspector and puts resize handles on the
   // canvas — neither is on screen until something is selected.
   {
@@ -146,10 +159,10 @@ for (const theme of ["dark", "light"] as const) {
   await page.locator(".menu-popover").waitFor({ state: "hidden", timeout: 15000 });
   await page.waitForTimeout(TRANSITION_MS);
 
-  for (const { label, open, tab, key, then, click, appears, dismiss } of SURFACES) {
+  for (const { label, open, tab, key, then, click, appears, dismiss, force } of SURFACES) {
     if (tab) await page.getByRole("tab", { name: tab }).click();
     if (key) await page.keyboard.press(key);
-    if (click) await page.locator(click).first().click();
+    if (click) await page.locator(click).first().click({ force });
     if (open) await page.getByRole("button", { name: open }).click();
     if (then) {
       await page.locator(".menu-popover").waitFor({ state: "visible", timeout: 15000 });

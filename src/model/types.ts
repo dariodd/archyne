@@ -286,6 +286,8 @@ export interface FlowEdgeData extends Record<string, unknown> {
   /** Set when several edges share the same node pair: index, count, and
    *  a direction-normalizing sign for the perpendicular offset. */
   par?: { i: number; n: number; s?: 1 | -1 };
+  /** Corners the edge is routed through, in absolute canvas coordinates. */
+  points?: Array<{ x: number; y: number }>;
 }
 
 export type FlowEdge = Edge<FlowEdgeData>;

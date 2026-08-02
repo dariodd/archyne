@@ -29,6 +29,7 @@ const path = await import("node:path");
 const fs = await import("node:fs/promises");
 const { parseDiagram } = await import("../src/model/diagram.ts");
 const { carryOverPositions, readPositions } = await import("../src/model/positions.ts");
+const { carryOverWaypoints, waypointKeys } = await import("../src/model/waypoints.ts");
 
 const ROOT = path.resolve(process.env.GRAPH_DIR ?? process.cwd());
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git"]);
@@ -146,7 +147,7 @@ server.registerTool(
   {
     title: "Write diagram",
     description:
-      "Create or overwrite a .mmd diagram file. The code is validated with mermaid's parser first — invalid code is rejected and nothing is written. If the file already had a %% graph:positions line and the new code has none, positions are carried over for nodes that still exist, so the user's manual layout survives your edit.",
+      "Create or overwrite a .mmd diagram file. The code is validated with mermaid's parser first — invalid code is rejected and nothing is written. If the file already had %% graph:positions or %% graph:waypoints lines and the new code has none, the layout is carried over for the nodes and edges that still exist, so the user's manual work survives your edit.",
     inputSchema: {
       path: z.string().describe("Path relative to the diagram root, e.g. docs/flow.mmd"),
       code: z.string().describe("Complete mermaid diagram source"),
@@ -163,6 +164,13 @@ server.registerTool(
           existing,
           code,
           parsed.nodes.map((n) => n.id),
+        );
+        // The same bargain for hand-routed edges: an edit that does not
+        // mention the corners should not be read as removing them.
+        finalCode = carryOverWaypoints(
+          existing,
+          finalCode,
+          waypointKeys(parsed.edges).values(),
         );
       } catch {
         // new file — nothing to carry over

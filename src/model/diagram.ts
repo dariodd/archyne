@@ -228,7 +228,11 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
   // custom properties on SVG elements.
   const base: FlowEdge = {
     ...e,
-    type: "smoothstep",
+    // `routed` draws the smooth-step path unchanged until a corner is put in
+    // it, and it is the default so that the handles for putting the first
+    // corner in are there to begin with. Sequence messages override this
+    // below: the overlay owns their geometry.
+    type: "routed",
     label: d.label || undefined,
     labelStyle: { fill: pal.labelFill },
     labelBgStyle: { fill: pal.labelBg },

@@ -138,9 +138,9 @@ claude mcp add archyne -- npx tsx mcp/server.ts
 
 Writes are safe by construction: invalid code never touches disk, paths can't
 escape the root, and if an agent rewrites a diagram without the
-`%% graph:positions` line, the previous manual layout is carried over for the
-nodes that still exist — an LLM restructuring your diagram won't scramble
-your hand-arranged layout.
+`%% graph:positions` and `%% graph:waypoints` lines, the previous manual
+layout is carried over for the nodes and edges that still exist — an LLM
+restructuring your diagram won't scramble your hand-arranged layout.
 
 ## How it works
 
@@ -150,15 +150,19 @@ your hand-arranged layout.
 - **Code → canvas**: the text is parsed with mermaid's own parser, so anything
   mermaid accepts renders on the canvas. Parse errors are shown without destroying
   the last good canvas state.
-- **Positions** live in a single trailing comment the rest of the world ignores:
+- **Layout** lives in trailing comments the rest of the world ignores — node
+  positions and sizes in one, the corners of hand-routed edges in another:
 
   ```
-  %% graph:positions {"start":{"x":0,"y":0},...}
+  %% graph:positions {"start":{"x":0,"y":0},"db":{"x":40,"y":300,"w":220,"h":90}}
+  %% graph:waypoints {"start>check":[[120,80]]}
   ```
 
   So the file stays a 100% valid Mermaid diagram (GitHub, Notion, LLMs, mermaid-cli
   all render it), while your manual layout survives save/reload/LLM-edit cycles.
-  Diagrams without a positions line are auto-laid-out with ELK.
+  Diagrams without a positions line are auto-laid-out with ELK. Edges are keyed
+  by their endpoints rather than by index, so inserting a line above one does
+  not move its corners onto a different connection.
 
 ## Current scope
 
@@ -207,7 +211,7 @@ autosave, live Mermaid preview tab.
 
 - Open files from disk in the app and watch for MCP-side changes (live
   agent ↔ human co-editing)
-- Edge waypoints; resizing for the remaining node families
+- Resizing for the remaining node families
 
 ## For reviewers and buyers
 

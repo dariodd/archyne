@@ -180,6 +180,12 @@ export const messages: Messages = {
   "insp.distributeNeedsThree":
     "Distribuir necesita tres o más: ordena lo que hay entre los dos extremos.",
   "insp.label": "Etiqueta",
+  "edge.addCorner": "Arrastra para añadir un vértice",
+  "edge.removeCorner": "Arrastra para mover, doble clic para quitar",
+  "insp.corners": "Vértices",
+  "insp.addCorner": "Añadir vértice",
+  "insp.removeCorner": "Quitar",
+  "insp.straighten": "Enderezar",
   "insp.autoSize": "Tamaño automático",
   "insp.width": "Ancho",
   "insp.height": "Alto",

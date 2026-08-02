@@ -186,6 +186,12 @@ export const en = {
   "insp.distributeNeedsThree":
     "Distributing needs three or more: it arranges what lies between the outer two.",
   "insp.label": "Label",
+  "edge.addCorner": "Drag to add a corner",
+  "edge.removeCorner": "Drag to move, double-click to remove",
+  "insp.corners": "Corners",
+  "insp.addCorner": "Add corner",
+  "insp.removeCorner": "Remove",
+  "insp.straighten": "Straighten",
   "insp.autoSize": "Automatic size",
   "insp.width": "Width",
   "insp.height": "Height",

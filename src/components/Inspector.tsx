@@ -728,7 +728,72 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
           </label>
         </>
       )}
+      {!d.seq && <EdgeCorners edge={edge} />}
     </>
+  );
+}
+
+/**
+ * The corners of a routed edge, as numbers.
+ *
+ * The canvas gesture is a drag, and WCAG 2.5.7 asks for the same
+ * functionality without one. It is also the only way to put two corners at
+ * exactly the same x, which is what makes a bent edge look deliberate rather
+ * than approximate.
+ *
+ * Sequence messages are excluded: the overlay owns their geometry.
+ */
+function EdgeCorners({ edge }: { edge: FlowEdge }) {
+  const t = useT();
+  const appendWaypoint = useGraphStore((s) => s.appendWaypoint);
+  const moveWaypoint = useGraphStore((s) => s.moveWaypoint);
+  const removeWaypoint = useGraphStore((s) => s.removeWaypoint);
+  const clearWaypoints = useGraphStore((s) => s.clearWaypoints);
+  const points = edge.data?.points ?? [];
+
+  return (
+    <div className="corner-list">
+      <span className="field-label">{t("insp.corners")}</span>
+      {points.map((p, i) => (
+        <div className="size-row" key={i}>
+          <label>
+            x
+            <input
+              type="number"
+              step={10}
+              value={Math.round(p.x)}
+              onChange={(e) => moveWaypoint(edge.id, i, { x: Number(e.target.value), y: p.y })}
+            />
+          </label>
+          <label>
+            y
+            <input
+              type="number"
+              step={10}
+              value={Math.round(p.y)}
+              onChange={(e) => moveWaypoint(edge.id, i, { x: p.x, y: Number(e.target.value) })}
+            />
+          </label>
+          <button
+            className="mini"
+            aria-label={`${t("insp.removeCorner")} ${i + 1}`}
+            onClick={() => removeWaypoint(edge.id, i)}
+          >
+            {t("insp.removeCorner")}
+          </button>
+        </div>
+      ))}
+      <div className="size-row">
+        <button className="mini" onClick={() => appendWaypoint(edge.id)}>
+          {t("insp.addCorner")}
+        </button>
+        {points.length > 0 && (
+          <button className="mini" onClick={() => clearWaypoints(edge.id)}>
+            {t("insp.straighten")}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -18,6 +18,7 @@ import { ClassNodeView, EntityNodeView, MarkerDefs, StateNodeView } from "./Kind
 import { MessageEdge, ParticipantNodeView } from "./SequenceView";
 import { C4NodeView, JunctionNodeView, ServiceNodeView } from "./ArchView";
 import { ParallelEdge } from "./ParallelEdge";
+import { RoutedEdge } from "./RoutedEdge";
 import { NoteNodeView } from "./NoteNode";
 import { SequenceOverlay } from "./SequenceOverlay";
 import { useKeyboardConnect } from "./useKeyboardConnect";
@@ -45,6 +46,7 @@ const nodeTypes: NodeTypes = {
 const edgeTypes: EdgeTypes = {
   message: MessageEdge,
   parallel: ParallelEdge,
+  routed: RoutedEdge,
 };
 
 const DEFAULT_SEED: Record<DiagramKind, NodeSeed> = {

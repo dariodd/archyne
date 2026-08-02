@@ -62,6 +62,7 @@
     "test:e2e:rtl": "tsx tests/e2e-rtl.mts",
     "test:e2e:csp": "tsx tests/e2e-csp.mts",
     "test:e2e:drag": "tsx tests/e2e-drag.mts",
+    "test:e2e:waypoints": "tsx tests/e2e-waypoints.mts",
     "start": "node bin/archyne.mjs",
     "prepublishOnly": "npm run build",
     "desktop": "electron .",

@@ -12,7 +12,8 @@ versions. Once 1.0 ships, the following count as the public API for semver
 purposes:
 
 - the **`.mmd` file format contract** — in particular the `%% graph:positions`
-  comment, which must always leave the file valid Mermaid
+  and `%% graph:waypoints` comments, which must always leave the file valid
+  Mermaid
 - the **embed `postMessage` protocol** (`src/embed.ts`)
 - the **MCP tool names and their schemas** (`mcp/server.ts`)
 
@@ -38,6 +39,14 @@ CSS class names and internal store shape are _not_ public API.
   screen, unless that one is an untouched scratch.
 - The unsaved-changes guard covers every document, not just the one on
   screen.
+- **Edges can be routed by hand.** Selecting an edge puts a handle in the
+  middle of each segment; dragging one out of the line makes a corner, which
+  can then be moved, double-clicked away, or typed as numbers in the
+  inspector. The corners live in their own `%% graph:waypoints` comment,
+  keyed by the edge's endpoints rather than by its index — inserting a line
+  above an edge renames it, and the corners would otherwise follow the wrong
+  connection. Straightening an edge takes the comment out of the file with
+  it.
 - **Nodes can be resized, not only groups.** Flowchart shapes and sticky
   notes take drag handles, width and height fields in the inspector, and an
   **Automatic size** button — resizing is otherwise one-way, since nothing
