@@ -21,6 +21,9 @@ import { ParallelEdge } from "./ParallelEdge";
 import { NoteNodeView } from "./NoteNode";
 import { SequenceOverlay } from "./SequenceOverlay";
 import { useKeyboardConnect } from "./useKeyboardConnect";
+import { useDragGuides } from "./useDragGuides";
+import { GuideLines } from "./GuideLines";
+import { GRID } from "../guides";
 import { MermaidPreview } from "./MermaidPreview";
 import { useT } from "../i18n";
 import type { EdgeTypes } from "@xyflow/react";
@@ -69,6 +72,7 @@ export function CanvasView() {
   const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const connect = useKeyboardConnect();
+  const dragGuides = useDragGuides();
   const unsupported = useGraphStore((s) => s.unsupported);
   const code = useGraphStore((s) => s.code);
   const t = useT();
@@ -135,7 +139,11 @@ export function CanvasView() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeDragStop={(_, node) => onNodeDragStop(node)}
+        onNodeDrag={(_, __, dragged) => dragGuides.track(dragged)}
+        onNodeDragStop={(_, node, dragged) => {
+          dragGuides.settle(dragged);
+          onNodeDragStop(node);
+        }}
         onDrop={onDrop}
         onDragOver={(e) => {
           e.preventDefault();
@@ -191,12 +199,13 @@ export function CanvasView() {
         connectionMode={ConnectionMode.Loose}
         connectionRadius={38}
         snapToGrid
-        snapGrid={[12, 12]}
+        snapGrid={[GRID, GRID]}
         fitView
         proOptions={{ hideAttribution: true }}
         deleteKeyCode={["Delete", "Backspace"]}
       >
         <Background gap={18} />
+        <GuideLines />
         {kind === "sequence" && <SequenceOverlay />}
         <Controls />
         <MiniMap pannable zoomable />

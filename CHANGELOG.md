@@ -38,6 +38,12 @@ CSS class names and internal store shape are _not_ public API.
   screen, unless that one is an untouched scratch.
 - The unsaved-changes guard covers every document, not just the one on
   screen.
+- **Alignment guides while dragging.** Lines appear as a node lines up with
+  another's edge or centre, and the node snaps onto them — including onto
+  positions the 12px grid cannot reach on its own. Dragged groups do not
+  align to the children they are carrying, and a node inside a group can
+  still align to one outside it: this arithmetic is a delta, and a delta
+  means the same thing in every coordinate system.
 - **Align and distribute.** With two or more nodes selected the inspector
   offers the six alignments and, from three, evens out the gaps along either
   axis. Dragging gets two boxes nearly level; arithmetic gets them level —
@@ -61,6 +67,12 @@ CSS class names and internal store shape are _not_ public API.
   inspector and snapping back on the way to another tab.
 - The preview reserves its scrollbar's width, so the diagram no longer shifts
   sideways as the scrollbar appears.
+- **The editor no longer reports the store's own edits back as typing.**
+  Dragging a node rewrites the positions comment, which pushed new text into
+  CodeMirror, which called `onChange` — so the store recorded an undo entry
+  for an edit nobody made and re-parsed 400ms later. Re-parsing identical
+  code is invisible, except that it rebuilds every node from the source: a
+  drag started within that window was thrown away mid-gesture.
 - **A selection survives the re-parse it triggers.** Any position-only edit
   rewrites the positions comment, which schedules a re-parse; the rebuilt
   nodes came back unselected. Moving a node with the arrow keys therefore

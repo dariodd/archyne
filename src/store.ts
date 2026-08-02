@@ -41,6 +41,7 @@ import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
 import { autoLayout } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
 import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
+import type { Box } from "./guides";
 
 /** Smallest a group may be, whether dragged or typed. */
 export const GROUP_MIN = { width: 140, height: 100 };
@@ -55,7 +56,7 @@ export type AlignEdge = "left" | "centerX" | "right" | "top" | "middleY" | "bott
  * anything was rendered — so it is resolved in one place rather than at each
  * call site.
  */
-function boxOf(n: AnyNode): { x: number; y: number; w: number; h: number } {
+function boxOf(n: AnyNode): Box {
   const size = estimateSize(n);
   return {
     x: n.position.x,
@@ -63,6 +64,36 @@ function boxOf(n: AnyNode): { x: number; y: number; w: number; h: number } {
     w: Number(n.style?.width ?? n.measured?.width ?? n.width ?? size.width),
     h: Number(n.style?.height ?? n.measured?.height ?? n.height ?? size.height),
   };
+}
+
+/**
+ * Every node's box in canvas coordinates, with each group's offset folded in.
+ *
+ * React Flow stores a child's position relative to its parent, which is the
+ * right thing for dragging a group and wrong for anything that compares two
+ * nodes on screen. Resolved once for the whole graph rather than walking the
+ * parent chain per node, since the callers ask about all of them at once.
+ */
+export function absoluteBoxes(nodes: AnyNode[]): Map<string, Box> {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const out = new Map<string, Box>();
+  const resolve = (n: AnyNode, seen: Set<string>): Box => {
+    const cached = out.get(n.id);
+    if (cached) return cached;
+    const box = boxOf(n);
+    const parent = n.parentId ? byId.get(n.parentId) : undefined;
+    // `seen` guards against a parent cycle. Parsing cannot produce one, but
+    // this would hang rather than misbehave, which is the worse failure.
+    if (parent && !seen.has(parent.id)) {
+      const pb = resolve(parent, new Set(seen).add(n.id));
+      box.x += pb.x;
+      box.y += pb.y;
+    }
+    out.set(n.id, box);
+    return box;
+  };
+  for (const n of nodes) resolve(n, new Set([n.id]));
+  return out;
 }
 
 /**

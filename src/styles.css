@@ -18,6 +18,9 @@
   --error: #e06c6c;
   --checker-a: #1f2128;
   --checker-b: #16171d;
+  /* Alignment guides are deliberately not the accent: the accent means
+     "selected", and a guide is a hint about where something will land. */
+  --guide: #e08cc0;
 
   /* One radius for controls, one for surfaces that float. Mixing four
      values was a large part of what made this look generic. */
@@ -41,6 +44,7 @@
   --error: #c23c3c;
   --checker-a: #e6e7ee;
   --checker-b: #f3f4f8;
+  --guide: #c2418a;
   --shadow: 0 12px 28px -14px rgba(20, 22, 40, 0.35);
 }
 
@@ -425,6 +429,18 @@ body,
   flex: 1;
   min-width: 0;
   min-height: 0;
+}
+
+/* Alignment guides. Drawn inside the transformed viewport, so the position
+   comes from a transform and only the length is a dimension. Pointer events
+   are off: a guide sits directly under the cursor mid-drag. */
+.guide-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--guide);
+  pointer-events: none;
+  z-index: 5;
 }
 
 .side {

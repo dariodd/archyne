@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { EditorView, basicSetup } from "codemirror";
-import { EditorState, Prec } from "@codemirror/state";
+import { Annotation, EditorState, Prec } from "@codemirror/state";
 import { mermaid } from "codemirror-lang-mermaid";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { useThemeStore } from "../theme";
@@ -10,6 +10,19 @@ import { t } from "../i18n";
 
 /** Dialects codemirror-lang-mermaid actually highlights. */
 const LIB_KINDS = new Set(["flowchart", "sequence"]);
+
+/**
+ * Marks the edits this component makes to catch up with the store, so they
+ * are not reported back as if the user had typed them.
+ *
+ * Without it the two ends chase each other: dragging a node rewrites the
+ * positions comment, the effect below pushes that text into the editor, the
+ * editor calls `onChange`, and the store treats it as typing — which records
+ * an undo entry and schedules a re-parse 400ms later. Re-parsing the same
+ * code is usually invisible, but it rebuilds every node from the source, so
+ * a drag still in progress is thrown away mid-gesture.
+ */
+const fromStore = Annotation.define<boolean>();
 
 /** CodeMirror-based mermaid editor with syntax highlighting. */
 export function CodeEditor({
@@ -62,9 +75,9 @@ export function CodeEditor({
             }),
           ),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged) {
-              onChangeRef.current(update.state.doc.toString());
-            }
+            if (!update.docChanged) return;
+            if (update.transactions.some((tr) => tr.annotation(fromStore))) return;
+            onChangeRef.current(update.state.doc.toString());
           }),
         ],
       }),
@@ -85,6 +98,7 @@ export function CodeEditor({
     if (current !== value) {
       view.dispatch({
         changes: { from: 0, to: current.length, insert: value },
+        annotations: fromStore.of(true),
       });
     }
   }, [value]);

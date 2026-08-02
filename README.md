@@ -197,8 +197,9 @@ Five Mermaid diagram families, all with visual editing and two-way sync:
 The palette, inspector, and "New…" menu adapt to the active diagram kind.
 Plus: **undo/redo** (Ctrl+Z/Y — the code being the source of truth makes
 history a stack of snapshots), **copy/paste** (Ctrl+C/V, id-remapped, edges
-included), group resizing with drag handles, snap-to-grid, double-click any
-node or edge to rename it, drag-and-drop, direction switch, ELK auto-layout,
+included), group resizing with drag handles, snap-to-grid,
+**alignment guides** while dragging, double-click any node or edge to rename
+it, drag-and-drop, direction switch, ELK auto-layout,
 `.mmd` open/save, **PNG/SVG export** of the canvas, copy code, localStorage
 autosave, live Mermaid preview tab.
 
@@ -206,7 +207,7 @@ autosave, live Mermaid preview tab.
 
 - Open files from disk in the app and watch for MCP-side changes (live
   agent ↔ human co-editing)
-- Alignment guides; edge waypoints; resize for non-group nodes
+- Edge waypoints; resize for non-group nodes
 
 ## For reviewers and buyers
 
