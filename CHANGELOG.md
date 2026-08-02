@@ -47,13 +47,16 @@ CSS class names and internal store shape are _not_ public API.
   above an edge renames it, and the corners would otherwise follow the wrong
   connection. Straightening an edge takes the comment out of the file with
   it.
-- **Nodes can be resized, not only groups.** Flowchart shapes and sticky
-  notes take drag handles, width and height fields in the inspector, and an
+- **Nodes can be resized, not only groups.** Flowchart shapes, sticky notes,
+  states, ER entities, classes, architecture services and C4 elements take
+  drag handles, width and height fields in the inspector, and an
   **Automatic size** button — resizing is otherwise one-way, since nothing
   about a 300×90 box says what it would have been. The size travels in the
   positions comment beside the coordinates, and only for nodes that were
   resized on purpose: writing every node's measured size would bloat the
   comment and freeze each label at whatever width it happened to render at.
+  Notation keeps its own size — a junction is a dot, a fork bar is a bar, and
+  a sequence participant's geometry belongs to the overlay.
 - **Alignment guides while dragging.** Lines appear as a node lines up with
   another's edge or centre, and the node snaps onto them — including onto
   positions the 12px grid cannot reach on its own. Dragged groups do not

@@ -75,6 +75,38 @@ describe("resizing a node", () => {
   });
 });
 
+describe("every family that can be resized", () => {
+  // The size lives in the positions comment for all of them, so a family
+  // that stops round-tripping loses the user's work silently.
+  const FAMILIES: Array<[string, string, string]> = [
+    ["state", "stateDiagram-v2\n  [*] --> Idle\n  Idle --> Working : go\n", "Idle"],
+    ["entity", "erDiagram\n  CUSTOMER {\n    string name PK\n  }\n", "CUSTOMER"],
+    ["class", "classDiagram\n  class Animal {\n    +int age\n  }\n", "Animal"],
+    [
+      "service",
+      "architecture-beta\n  service web(internet)[Web]\n  service db(database)[DB]\n  web:R --> L:db\n",
+      "web",
+    ],
+    ["c4", 'C4Context\n  Person(user, "User")\n  System(app, "App")\n', "user"],
+  ];
+
+  it.each(FAMILIES)("keeps a typed size on a %s node", async (_family, source, id) => {
+    await load(source);
+    useGraphStore.getState().resizeNode(id, 260, 140);
+    expect(stored()[id]).toMatchObject({ w: 260, h: 140 });
+    await load(useGraphStore.getState().code);
+    expect(node(id).style).toMatchObject({ width: 260, height: 140 });
+  });
+
+  it.each(FAMILIES)("gives a %s node its own size back", async (_family, source, id) => {
+    await load(source);
+    useGraphStore.getState().resizeNode(id, 260, 140);
+    useGraphStore.getState().resetNodeSize(id);
+    expect(node(id).style?.width).toBeUndefined();
+    expect(stored()[id].w).toBeUndefined();
+  });
+});
+
 describe("giving a node its own size back", () => {
   it("clears the size and drops it from the source", async () => {
     await load(FLOWCHART);

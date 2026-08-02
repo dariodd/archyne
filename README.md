@@ -211,7 +211,6 @@ autosave, live Mermaid preview tab.
 
 - Open files from disk in the app and watch for MCP-side changes (live
   agent ↔ human co-editing)
-- Resizing for the remaining node families
 
 ## For reviewers and buyers
 

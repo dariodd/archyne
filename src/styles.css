@@ -1570,9 +1570,16 @@ body,
   box-shadow: var(--shadow);
 }
 
-/* Given an explicit size, the note fills it rather than staying inside the
-   width its text asked for. */
-.note-node.sized {
+/* Given an explicit size, a node fills it rather than staying inside the
+   width its content asked for. The ceiling has to go with it: a max-width
+   would otherwise quietly refuse a resize past it, and the handle would drag
+   with nothing happening. `overflow: hidden` is the honest consequence of
+   making a box smaller than what is in it. */
+.note-node.sized,
+.state-node.sized,
+.table-node.sized,
+.service-node.sized,
+.c4-node.sized {
   width: 100%;
   height: 100%;
   max-width: none;

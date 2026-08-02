@@ -118,6 +118,11 @@ jobs:
         env:
           ARCHYNE_URL: http://localhost:5173
 
+      - name: Node resizing
+        run: npm run test:e2e:resize
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Accessibility (WCAG 2.2 AA)
         run: npm run test:e2e:a11y
         env:

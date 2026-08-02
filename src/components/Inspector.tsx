@@ -146,13 +146,16 @@ function NodeFields({ node }: { node: AnyNode }) {
       );
     case "state":
       return node.data.stateType === "normal" ? (
-        <label>
-          {t("insp.label")}
-          <input
-            value={node.data.label}
-            onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
-          />
-        </label>
+        <>
+          <label>
+            {t("insp.label")}
+            <input
+              value={node.data.label}
+              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+            />
+          </label>
+          <NodeSize node={node} />
+        </>
       ) : (
         <div className="inspector-empty">
           {t("insp.pseudoState", { type: node.data.stateType })}
@@ -184,6 +187,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <NodeSize node={node} />
         </>
       );
     case "service":
@@ -208,6 +212,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }}
             />
           </label>
+          <NodeSize node={node} />
         </>
       );
     case "junction":
@@ -270,6 +275,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               onBlur={(e) => updateNodeData(node.id, { descr: e.target.value.trim() })}
             />
           </label>
+          <NodeSize node={node} />
         </>
       );
     case "participant":
@@ -356,6 +362,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <NodeSize node={node} />
         </>
       );
     case "group":

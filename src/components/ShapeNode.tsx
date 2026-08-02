@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Handle, NodeResizer, Position, useInternalNode, type NodeProps } from "@xyflow/react";
 import type { Direction, Shape, ShapeNode as ShapeNodeType } from "../model/types";
 import { defaultSize } from "../model/types";
-import { GROUP_MIN, NODE_MIN, useGraphStore } from "../store";
+import { GROUP_MIN, useGraphStore } from "../store";
+import { NodeResize } from "./NodeResize";
 
 function shapeSvg(shape: Shape, w: number, h: number) {
   const common = { className: "shape-fill", vectorEffect: "non-scaling-stroke" as const };
@@ -146,8 +147,6 @@ function styleProps(decls: string[]): {
 export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) {
   const updateNodeData = useGraphStore((s) => s.updateNodeData);
   const classDefs = useGraphStore((s) => s.classDefs);
-  const setNodeSize = useGraphStore((s) => s.setNodeSize);
-  const resizeEnd = useGraphStore((s) => s.onNodeDragStop);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   // The shape is drawn from real numbers rather than stretched, so a resized
@@ -183,13 +182,7 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
         setEditing(true);
       }}
     >
-      <NodeResizer
-        isVisible={selected}
-        minWidth={NODE_MIN.width}
-        minHeight={NODE_MIN.height}
-        onResize={(_, p) => setNodeSize(id, p.width, p.height, p.x, p.y)}
-        onResizeEnd={() => resizeEnd()}
-      />
+      <NodeResize id={id} visible={selected} />
       <svg
         width={w}
         height={h}

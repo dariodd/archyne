@@ -1,9 +1,11 @@
 import { Handle, type NodeProps } from "@xyflow/react";
 import type { ClassNode, EntityNode, StateNode } from "../model/types";
 import { handlePositions } from "./ShapeNode";
+import { NodeResize } from "./NodeResize";
+import { useSized } from "./useSized";
 import { useThemeStore } from "../theme";
 
-export function StateNodeView({ data, selected }: NodeProps<StateNode>) {
+export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
   const { target, source } = handlePositions(data.direction);
   if (data.stateType === "choice") {
     return (
@@ -30,19 +32,46 @@ export function StateNodeView({ data, selected }: NodeProps<StateNode>) {
       </div>
     );
   }
+  // Only ordinary states resize. A choice diamond, a fork bar and the start
+  // and end markers are notation with a fixed meaning, not boxes.
   return (
-    <div className={`state-node${selected ? " selected" : ""}`}>
+    <SizedBox id={id} className="state-node" selected={selected}>
       {data.label}
       <Handle type="target" position={target} />
       <Handle type="source" position={source} />
+    </SizedBox>
+  );
+}
+
+/**
+ * A node that fills the size it was given, and offers handles for changing
+ * it. Without `sized` these boxes are as big as their content, between a
+ * floor and (for some) a ceiling that would otherwise refuse the resize.
+ */
+function SizedBox({
+  id,
+  className,
+  selected,
+  children,
+}: {
+  id: string;
+  className: string;
+  selected: boolean;
+  children: React.ReactNode;
+}) {
+  const sized = useSized(id);
+  return (
+    <div className={`${className}${selected ? " selected" : ""}${sized ? " sized" : ""}`}>
+      <NodeResize id={id} visible={selected} />
+      {children}
     </div>
   );
 }
 
-export function EntityNodeView({ data, selected }: NodeProps<EntityNode>) {
+export function EntityNodeView({ id, data, selected }: NodeProps<EntityNode>) {
   const { target, source } = handlePositions(data.direction);
   return (
-    <div className={`table-node${selected ? " selected" : ""}`}>
+    <SizedBox id={id} className="table-node" selected={selected}>
       <div className="table-title">{data.label}</div>
       {data.attributes.length > 0 && (
         <div className="table-rows">
@@ -57,14 +86,14 @@ export function EntityNodeView({ data, selected }: NodeProps<EntityNode>) {
       )}
       <Handle type="target" position={target} />
       <Handle type="source" position={source} />
-    </div>
+    </SizedBox>
   );
 }
 
-export function ClassNodeView({ data, selected }: NodeProps<ClassNode>) {
+export function ClassNodeView({ id, data, selected }: NodeProps<ClassNode>) {
   const { target, source } = handlePositions(data.direction);
   return (
-    <div className={`table-node${selected ? " selected" : ""}`}>
+    <SizedBox id={id} className="table-node" selected={selected}>
       <div className="table-title">
         {(data.annotations ?? []).map((a) => (
           <div key={a} className="class-annotation">
@@ -94,7 +123,7 @@ export function ClassNodeView({ data, selected }: NodeProps<ClassNode>) {
       )}
       <Handle type="target" position={target} />
       <Handle type="source" position={source} />
-    </div>
+    </SizedBox>
   );
 }
 
