@@ -1541,6 +1541,15 @@ body,
   box-shadow: var(--shadow);
 }
 
+/* Given an explicit size, the note fills it rather than staying inside the
+   width its text asked for. */
+.note-node.sized {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  overflow: hidden;
+}
+
 .note-node::before {
   content: "";
   position: absolute;

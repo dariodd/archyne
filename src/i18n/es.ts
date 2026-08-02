@@ -180,6 +180,7 @@ export const messages: Messages = {
   "insp.distributeNeedsThree":
     "Distribuir necesita tres o más: ordena lo que hay entre los dos extremos.",
   "insp.label": "Etiqueta",
+  "insp.autoSize": "Tamaño automático",
   "insp.width": "Ancho",
   "insp.height": "Alto",
   "insp.shape": "Forma",

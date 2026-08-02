@@ -100,6 +100,14 @@ const SURFACES: Array<{
   { label: "shortcuts sheet", key: "Shift+Slash", appears: ".modal" },
   // The two document dialogs: rename from the overflow menu, delete from a
   // tab's close button.
+  // Selecting a node fills the inspector and puts resize handles on the
+  // canvas — neither is on screen until something is selected.
+  {
+    label: "node inspector",
+    click: ".react-flow__node",
+    appears: ".size-row",
+    dismiss: ".react-flow__pane",
+  },
   // Select-all shows the arrange panel, which replaces the single-node
   // fields; it is only reachable with more than one node selected.
   {

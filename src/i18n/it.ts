@@ -181,6 +181,7 @@ export const messages: Messages = {
   "insp.distributeNeedsThree":
     "Distribuire richiede almeno tre nodi: dispone ciò che sta fra i due esterni.",
   "insp.label": "Etichetta",
+  "insp.autoSize": "Dimensione automatica",
   "insp.width": "Larghezza",
   "insp.height": "Altezza",
   "insp.shape": "Forma",

@@ -1,4 +1,10 @@
-import { alignableSelection, GROUP_MIN, useGraphStore, type AlignEdge } from "../store";
+import {
+  alignableSelection,
+  hasCustomSize,
+  minSize,
+  useGraphStore,
+  type AlignEdge,
+} from "../store";
 import { useT } from "../i18n";
 import { useIconPrefs } from "../iconPrefs";
 import {
@@ -135,6 +141,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <NodeSize node={node} />
         </>
       );
     case "state":
@@ -228,6 +235,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <NodeSize node={node} />
         </>
       );
     case "c4":
@@ -361,7 +369,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
             />
           </label>
-          <GroupSize node={node} />
+          <NodeSize node={node} />
         </>
       );
     default:
@@ -374,21 +382,19 @@ function NodeFields({ node }: { node: AnyNode }) {
 }
 
 /**
- * Width and height for a group, in numbers.
+ * Width and height in numbers, for the nodes that can take one.
  *
  * The resize handles are a dragging gesture, and WCAG 2.5.7 asks for the
  * same functionality without one. Typing a size is also the only way to make
- * two groups exactly equal, which dragging never quite manages.
+ * two boxes exactly equal, which dragging never quite manages.
  */
-function GroupSize({ node }: { node: AnyNode }) {
+function NodeSize({ node }: { node: AnyNode }) {
   const t = useT();
   const resizeNode = useGraphStore((s) => s.resizeNode);
-  const width = Math.round(
-    Number(node.style?.width ?? node.measured?.width ?? GROUP_MIN.width),
-  );
-  const height = Math.round(
-    Number(node.style?.height ?? node.measured?.height ?? GROUP_MIN.height),
-  );
+  const resetNodeSize = useGraphStore((s) => s.resetNodeSize);
+  const min = minSize(node);
+  const width = Math.round(Number(node.style?.width ?? node.measured?.width ?? min.width));
+  const height = Math.round(Number(node.style?.height ?? node.measured?.height ?? min.height));
 
   return (
     <div className="size-row">
@@ -396,7 +402,7 @@ function GroupSize({ node }: { node: AnyNode }) {
         {t("insp.width")}
         <input
           type="number"
-          min={GROUP_MIN.width}
+          min={min.width}
           step={10}
           value={width}
           onChange={(e) => resizeNode(node.id, Number(e.target.value), height)}
@@ -406,12 +412,17 @@ function GroupSize({ node }: { node: AnyNode }) {
         {t("insp.height")}
         <input
           type="number"
-          min={GROUP_MIN.height}
+          min={min.height}
           step={10}
           value={height}
           onChange={(e) => resizeNode(node.id, width, Number(e.target.value))}
         />
       </label>
+      {hasCustomSize(node) && (
+        <button className="mini" onClick={() => resetNodeSize(node.id)}>
+          {t("insp.autoSize")}
+        </button>
+      )}
     </div>
   );
 }

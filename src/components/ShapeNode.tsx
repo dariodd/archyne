@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
+import { Handle, NodeResizer, Position, useInternalNode, type NodeProps } from "@xyflow/react";
 import type { Direction, Shape, ShapeNode as ShapeNodeType } from "../model/types";
 import { defaultSize } from "../model/types";
-import { GROUP_MIN, useGraphStore } from "../store";
+import { GROUP_MIN, NODE_MIN, useGraphStore } from "../store";
 
 function shapeSvg(shape: Shape, w: number, h: number) {
   const common = { className: "shape-fill", vectorEffect: "non-scaling-stroke" as const };
@@ -146,9 +146,21 @@ function styleProps(decls: string[]): {
 export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) {
   const updateNodeData = useGraphStore((s) => s.updateNodeData);
   const classDefs = useGraphStore((s) => s.classDefs);
+  const setNodeSize = useGraphStore((s) => s.setNodeSize);
+  const resizeEnd = useGraphStore((s) => s.onNodeDragStop);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
-  const { width: w, height: h } = defaultSize(data.shape);
+  // The shape is drawn from real numbers rather than stretched, so a resized
+  // diamond keeps its points sharp instead of scaling its strokes with it.
+  //
+  // Read from the node's own style, not from the `width` prop: that one is
+  // the *measured* size, which is measured from the box this style produces.
+  // Feeding it back in would make the element its own input, and one stray
+  // pixel of rounding would then compound on every render.
+  const style = useInternalNode(id)?.style;
+  const fallback = defaultSize(data.shape);
+  const w = Number(style?.width ?? fallback.width);
+  const h = Number(style?.height ?? fallback.height);
   const { target, source } = handlePositions(data.direction);
   const custom = styleProps([
     ...(data.classes ?? []).flatMap((c) => classDefs[c] ?? []),
@@ -171,6 +183,13 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
         setEditing(true);
       }}
     >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={NODE_MIN.width}
+        minHeight={NODE_MIN.height}
+        onResize={(_, p) => setNodeSize(id, p.width, p.height, p.x, p.y)}
+        onResizeEnd={() => resizeEnd()}
+      />
       <svg
         width={w}
         height={h}

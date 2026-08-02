@@ -182,6 +182,7 @@ export const messages: Messages = {
   "insp.distributeNeedsThree":
     "Verteilen braucht drei oder mehr: es ordnet, was zwischen den äußeren beiden liegt.",
   "insp.label": "Beschriftung",
+  "insp.autoSize": "Automatische Größe",
   "insp.width": "Breite",
   "insp.height": "Höhe",
   "insp.shape": "Form",

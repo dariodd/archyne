@@ -180,6 +180,7 @@ export const messages: Messages = {
   "insp.alignSameParent": "请在同一分组内选择两个或更多节点以进行排列。",
   "insp.distributeNeedsThree": "分布需要三个及以上节点：它排列的是两端之间的部分。",
   "insp.label": "标签",
+  "insp.autoSize": "自动尺寸",
   "insp.width": "宽度",
   "insp.height": "高度",
   "insp.shape": "形状",

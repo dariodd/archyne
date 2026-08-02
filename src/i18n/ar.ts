@@ -183,6 +183,7 @@ export const messages: Messages = {
   "insp.alignSameParent": "حدد عقدتين أو أكثر داخل المجموعة نفسها لترتيبها.",
   "insp.distributeNeedsThree": "التوزيع يحتاج ثلاث عقد أو أكثر: فهو يرتب ما بين الطرفين.",
   "insp.label": "التسمية",
+  "insp.autoSize": "حجم تلقائي",
   "insp.width": "العرض",
   "insp.height": "الارتفاع",
   "insp.shape": "الشكل",

@@ -180,6 +180,7 @@ export const messages: Messages = {
   "insp.alignSameParent": "同じグループ内のノードを2つ以上選択すると配置できます。",
   "insp.distributeNeedsThree": "均等配置には3つ以上必要です。両端の間にあるものを並べます。",
   "insp.label": "ラベル",
+  "insp.autoSize": "自動サイズ",
   "insp.width": "幅",
   "insp.height": "高さ",
   "insp.shape": "図形",

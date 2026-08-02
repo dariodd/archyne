@@ -46,6 +46,23 @@ import type { Box } from "./guides";
 /** Smallest a group may be, whether dragged or typed. */
 export const GROUP_MIN = { width: 140, height: 100 };
 
+/**
+ * Smallest anything else may be. Well under any default size, because the
+ * point of resizing a node is often to make it small — but not to zero,
+ * which would leave nothing to grab hold of again.
+ */
+export const NODE_MIN = { width: 48, height: 28 };
+
+/** The floor for one node: groups have their own, everything else shares. */
+export function minSize(n: AnyNode): { width: number; height: number } {
+  return isGroup(n) ? GROUP_MIN : NODE_MIN;
+}
+
+/** True when this node has been given a size, rather than taking its own. */
+export function hasCustomSize(n: AnyNode): boolean {
+  return !isGroup(n) && n.style?.width !== undefined;
+}
+
 export type AlignEdge = "left" | "centerX" | "right" | "top" | "middleY" | "bottom";
 
 /**
@@ -208,8 +225,11 @@ function placeNodes(nodes: AnyNode[], positions: PositionMap, kind: DiagramKind)
     return {
       ...n,
       position: { x: p.x, y: p.y },
-      ...(isGroup(n) && p.w !== undefined
-        ? { style: { ...n.style, width: p.w, height: p.h } }
+      // React Flow reads the explicit dimensions off both places, and the
+      // node views read `width`/`height` to draw themselves at the right
+      // size, so both are set rather than one being derived later.
+      ...(p.w !== undefined && p.h !== undefined
+        ? { style: { ...n.style, width: p.w, height: p.h }, width: p.w, height: p.h }
         : {}),
     };
   });
@@ -260,13 +280,22 @@ export interface GraphState {
   onNodeDragStop: (dragged?: AnyNode) => void;
   setNodeSize: (id: string, w: number, h: number, x: number, y: number) => void;
   /**
-   * Resize a group to an exact size and persist it.
+   * Resize a node to an exact size and persist it.
    *
    * `setNodeSize` is the live half of a drag; this is the whole gesture in
    * one call, for the inspector's width and height fields — the way to
-   * resize a group without dragging a handle (WCAG 2.5.7).
+   * resize without dragging a handle (WCAG 2.5.7).
    */
   resizeNode: (id: string, w: number, h: number) => void;
+  /**
+   * Give a node its content-driven size back.
+   *
+   * Resizing is one-way otherwise: nothing about a 300×90 box says what it
+   * would have been, and dragging a handle cannot land back on "whatever
+   * this label needs". Groups are excluded — they have no size of their own
+   * to return to.
+   */
+  resetNodeSize: (id: string) => void;
   addNode: (seed: NodeSeed, position: { x: number; y: number }) => void;
   updateNodeData: (id: string, patch: Record<string, unknown>) => void;
   updateEdgeData: (id: string, patch: Partial<FlowEdgeData>) => void;
@@ -376,12 +405,19 @@ export const useGraphStore = create<GraphState>((set, get) => {
       positions[n.id] = {
         x: n.position.x,
         y: n.position.y,
+        // A group has no natural size, so its own is always recorded. Every
+        // other node keeps whatever its content asks for unless it has been
+        // resized on purpose — writing the measured size of every node would
+        // bloat the comment and freeze labels at the width they happened to
+        // render at.
         ...(isGroup(n)
           ? {
               w: Number(n.style?.width ?? n.measured?.width ?? 320),
               h: Number(n.style?.height ?? n.measured?.height ?? 220),
             }
-          : {}),
+          : hasCustomSize(n)
+            ? { w: Number(n.style?.width), h: Number(n.style?.height) }
+            : {}),
       };
     }
     return positions;
@@ -690,7 +726,13 @@ export const useGraphStore = create<GraphState>((set, get) => {
       set({
         nodes: get().nodes.map((n) =>
           n.id === id
-            ? { ...n, position: { x, y }, style: { ...n.style, width: w, height: h } }
+            ? {
+                ...n,
+                position: { x, y },
+                style: { ...n.style, width: w, height: h },
+                width: w,
+                height: h,
+              }
             : n,
         ),
       });
@@ -699,13 +741,33 @@ export const useGraphStore = create<GraphState>((set, get) => {
     resizeNode: (id, w, h) => {
       const node = get().nodes.find((n) => n.id === id);
       if (!node) return;
+      const min = minSize(node);
       get().setNodeSize(
         id,
-        Math.max(GROUP_MIN.width, Math.round(w)),
-        Math.max(GROUP_MIN.height, Math.round(h)),
+        Math.max(min.width, Math.round(w)),
+        Math.max(min.height, Math.round(h)),
         node.position.x,
         node.position.y,
       );
+      repatchPositions();
+    },
+
+    resetNodeSize: (id) => {
+      const node = get().nodes.find((n) => n.id === id);
+      if (!node || isGroup(node)) return;
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === id
+            ? {
+                ...n,
+                style: { ...n.style, width: undefined, height: undefined },
+                width: undefined,
+                height: undefined,
+                measured: undefined,
+              }
+            : n,
+        ),
+      });
       repatchPositions();
     },
 

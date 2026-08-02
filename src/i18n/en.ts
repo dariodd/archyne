@@ -186,6 +186,7 @@ export const en = {
   "insp.distributeNeedsThree":
     "Distributing needs three or more: it arranges what lies between the outer two.",
   "insp.label": "Label",
+  "insp.autoSize": "Automatic size",
   "insp.width": "Width",
   "insp.height": "Height",
   "insp.shape": "Shape",
