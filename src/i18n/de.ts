@@ -188,6 +188,11 @@ export const messages: Messages = {
   "insp.addCorner": "Knick hinzufügen",
   "insp.removeCorner": "Entfernen",
   "insp.straighten": "Begradigen",
+  "watch.reloaded": "{name} wurde auf der Festplatte geändert — neu geladen",
+  "watch.conflict":
+    "{name} wurde auf der Festplatte geändert. Deine ungespeicherten Änderungen bleiben erhalten.",
+  "menu.reloadFromDisk": "Von Festplatte neu laden",
+  "toast.reloadedFromDisk": "Von Festplatte neu geladen",
   "insp.autoSize": "Automatische Größe",
   "insp.width": "Breite",
   "insp.height": "Höhe",

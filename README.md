@@ -142,6 +142,12 @@ escape the root, and if an agent rewrites a diagram without the
 layout is carried over for the nodes and edges that still exist — an LLM
 restructuring your diagram won't scramble your hand-arranged layout.
 
+**Live co-editing.** A file open in the editor is watched, so an agent's write
+lands on the canvas within a couple of seconds without a reload. A document
+with unsaved changes is never overwritten: you are told the file moved and
+your work stays, with **Reload from disk** in the overflow menu when you want
+the other version.
+
 ## How it works
 
 - **Canvas → code**: structural edits (add/delete/connect/rename/reshape) regenerate
@@ -206,11 +212,6 @@ snap-to-grid, **alignment guides** while dragging, double-click any node or
 edge to rename it, drag-and-drop, direction switch, ELK auto-layout,
 `.mmd` open/save, **PNG/SVG export** of the canvas, copy code, localStorage
 autosave, live Mermaid preview tab.
-
-## Roadmap
-
-- Open files from disk in the app and watch for MCP-side changes (live
-  agent ↔ human co-editing)
 
 ## For reviewers and buyers
 

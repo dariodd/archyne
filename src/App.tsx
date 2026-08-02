@@ -18,6 +18,7 @@ import { useThemeStore } from "./theme";
 import { initEmbedBridge, isEmbedded } from "./embed";
 import { useLayoutStore } from "./layoutStore";
 import { initDesktopFiles, useFileStore } from "./files";
+import { useWorkspace } from "./workspace";
 import { adoptFileHere, openFileHere, unsavedDocuments } from "./documents";
 import { toast, toastError } from "./toast";
 import { Toasts } from "./components/Toasts";
@@ -25,6 +26,7 @@ import { ShortcutsDialog } from "./components/ShortcutsDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { useT } from "./i18n";
 import { singleKeyShortcutsEnabled } from "./prefs";
+import { watchDisk } from "./diskWatch";
 
 export default function App() {
   const applyCode = useGraphStore((s) => s.applyCode);
@@ -44,6 +46,12 @@ export default function App() {
   useEffect(() => {
     // Pick up a file the desktop shell was launched with. No-op on the web.
     initDesktopFiles((f) => void adoptFileHere(f));
+  }, []);
+
+  useEffect(() => {
+    // Notice edits made to open files outside the app — typically an agent
+    // writing through the MCP server. No-op until a file is actually open.
+    return watchDisk();
   }, []);
 
   useEffect(() => {
@@ -86,6 +94,10 @@ export default function App() {
         return buildExport({ ...DEFAULT_EXPORT_OPTIONS, ...opts }, s.nodes, s.code);
       },
       store: useGraphStore,
+      // The file binding and the workspace index, so a test can stand a
+      // document on a fake file handle and let the real watcher find it.
+      files: useFileStore,
+      workspace: useWorkspace,
       state: () => {
         const s = useGraphStore.getState();
         return {

@@ -101,6 +101,26 @@ function registerIpc() {
     return filePath;
   });
 
+  // Reading a file the renderer already holds a path for: no dialog, and no
+  // new capability — the path can only have come from an open or save the
+  // user went through.
+  ipcMain.handle("archyne:stat-file", async (_event, { path: filePath }) => {
+    try {
+      const stat = await fsp.stat(filePath);
+      return { mtimeMs: stat.mtimeMs };
+    } catch {
+      return null; // moved, deleted, or being written to
+    }
+  });
+
+  ipcMain.handle("archyne:read-file", async (_event, { path: filePath }) => {
+    try {
+      return await fsp.readFile(filePath, "utf8");
+    } catch {
+      return null;
+    }
+  });
+
   ipcMain.handle("archyne:write-file", async (_event, { path: filePath, content }) => {
     await fsp.writeFile(filePath, content, "utf8");
   });

@@ -4,7 +4,13 @@ import { useThemeStore, type ThemeChoice } from "../theme";
 import { usePrefs } from "../prefs";
 import { useLayoutStore } from "../layoutStore";
 import { useFileStore } from "../files";
-import { createDoc, documentMenuActions, openContentHere, openFileHere } from "../documents";
+import {
+  createDoc,
+  documentMenuActions,
+  openContentHere,
+  openFileHere,
+  reloadFromDisk,
+} from "../documents";
 import { toast, toastError } from "../toast";
 import { LOCALES, useI18n, useT, type Locale } from "../i18n";
 import { ExportDialog } from "./ExportDialog";
@@ -45,6 +51,9 @@ export function Toolbar() {
   const toggleSide = useLayoutStore((s) => s.toggleSide);
   const saveFile = useFileStore((s) => s.save);
   const saveAsFile = useFileStore((s) => s.saveAs);
+  // Subscribed rather than read once: the item has to appear the moment a
+  // file is opened, and the toolbar has no other reason to re-render then.
+  const fileBacked = useFileStore((s) => Boolean(s.path || s.handle));
   const themeChoice = useThemeStore((s) => s.choice);
   const singleKeys = usePrefs((s) => s.singleKeyShortcuts);
   const setSingleKeys = usePrefs((s) => s.setSingleKeyShortcuts);
@@ -75,6 +84,14 @@ export function Toolbar() {
     void fn()
       .then(() => toast("toast.saved"))
       .catch((err: unknown) => toastError("toast.saveFailed", err));
+
+  const reload = async () => {
+    try {
+      if (await reloadFromDisk()) toast("toast.reloadedFromDisk");
+    } catch (err) {
+      toastError("toast.openFailed", err);
+    }
+  };
 
   const copy = async () => {
     await navigator.clipboard.writeText(useGraphStore.getState().code);
@@ -195,6 +212,13 @@ export function Toolbar() {
       <MenuButton className="overflow-menu" label={t("toolbar.more")}>
         <>
           <MenuItem onSelect={runSave(saveAsFile)}>{t("toolbar.saveAs")}</MenuItem>
+          {/* Only offered when there is a file behind the document. It is
+              also the way out of a conflict: the watcher will not overwrite
+              unsaved work, which leaves the disk version otherwise
+              unreachable. */}
+          {fileBacked && (
+            <MenuItem onSelect={() => void reload()}>{t("menu.reloadFromDisk")}</MenuItem>
+          )}
           <MenuItem onSelect={docActions.rename}>{t("doc.rename")}</MenuItem>
           <MenuItem onSelect={docActions.duplicate}>{t("doc.duplicate")}</MenuItem>
           <MenuItem onSelect={() => void copy()}>

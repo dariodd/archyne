@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useGraphStore, SAMPLE, NEW_DIAGRAM } from "./store";
 import { pickFile, useFileStore, type PickedFile } from "./files";
+import { forgetWatched, readIfChanged } from "./diskWatch";
 
 import type { DiagramKind } from "./model/types";
 import {
@@ -139,6 +140,7 @@ export async function deleteDoc(id: string): Promise<void> {
 
   const remaining = docs.filter((d) => d.id !== id);
   removeDocCode(id);
+  forgetWatched(id);
 
   if (remaining.length === 0) {
     useWorkspace.setState({ docs: [], activeId: "" });
@@ -155,6 +157,23 @@ export async function deleteDoc(id: string): Promise<void> {
   } else {
     writeIndex(useWorkspace.getState());
   }
+}
+
+/**
+ * Re-read the active document from disk, discarding what is on screen.
+ *
+ * The escape hatch from a conflict: the watcher refuses to overwrite unsaved
+ * work, which leaves the disk version unreachable without this. Also the
+ * honest answer to "I have made a mess, give me back what is in the file".
+ */
+export async function reloadFromDisk(): Promise<boolean> {
+  const { path, handle } = useFileStore.getState();
+  const changed = await readIfChanged({ path, handle }, 0);
+  if (!changed) return false;
+  await useGraphStore.getState().applyCode(changed.content, { record: true });
+  useFileStore.setState({ savedCode: changed.content });
+  patchDoc(useWorkspace.getState().activeId, { savedCode: changed.content });
+  return true;
 }
 
 /** Documents for a picker: most recently edited first, active one marked. */

@@ -187,6 +187,11 @@ export const messages: Messages = {
   "insp.addCorner": "Aggiungi angolo",
   "insp.removeCorner": "Rimuovi",
   "insp.straighten": "Raddrizza",
+  "watch.reloaded": "{name} è cambiato su disco — ricaricato",
+  "watch.conflict":
+    "{name} è cambiato su disco. Le tue modifiche non salvate sono state mantenute.",
+  "menu.reloadFromDisk": "Ricarica da disco",
+  "toast.reloadedFromDisk": "Ricaricato da disco",
   "insp.autoSize": "Dimensione automatica",
   "insp.width": "Larghezza",
   "insp.height": "Altezza",

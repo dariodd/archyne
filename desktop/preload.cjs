@@ -41,4 +41,18 @@ contextBridge.exposeInMainWorld("archyne", {
    * @param {string} content
    */
   writeFile: (path, content) => ipcRenderer.invoke("archyne:write-file", { path, content }),
+  /**
+   * Modification time of a path already opened, for noticing edits made
+   * outside the app — an agent writing through the MCP server edits the
+   * same file the user has open.
+   * @param {string} path
+   */
+  statFile: (path) => ipcRenderer.invoke("archyne:stat-file", { path }),
+
+  /**
+   * Re-read a path already opened. No dialog, and no new capability: the
+   * path can only have come from an open or save the user went through.
+   * @param {string} path
+   */
+  readFile: (path) => ipcRenderer.invoke("archyne:read-file", { path }),
 });

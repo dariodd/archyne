@@ -39,6 +39,15 @@ CSS class names and internal store shape are _not_ public API.
   screen, unless that one is an untouched scratch.
 - The unsaved-changes guard covers every document, not just the one on
   screen.
+- **Open files are watched for changes made outside the app.** The MCP server
+  writes `.mmd` files straight to disk, so an agent asked to restructure a
+  diagram edits the file the editor has open — and the editor kept showing the
+  version it read at open time until the next save quietly overwrote the
+  agent's work. A changed file now lands on the canvas within a couple of
+  seconds, including for documents open in other tabs of the workspace.
+  A document with unsaved changes is never overwritten: the change is
+  announced and the work stays, with **Reload from disk** in the overflow menu
+  as the way to the other version.
 - **Edges can be routed by hand.** Selecting an edge puts a handle in the
   middle of each segment; dragging one out of the line makes a corner, which
   can then be moved, double-clicked away, or typed as numbers in the

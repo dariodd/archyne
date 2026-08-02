@@ -26,10 +26,22 @@ interface DesktopBridge {
   showOpen(): Promise<{ path: string; content: string } | null>;
   showSave(defaultPath: string, content: string): Promise<string | null>;
   writeFile(path: string, content: string): Promise<void>;
+  /**
+   * Modification time of a file, for noticing edits made outside the app.
+   * Optional: a desktop build older than this feature will not have it, and
+   * an app that simply does not watch is better than one that throws.
+   */
+  statFile?(path: string): Promise<{ mtimeMs: number } | null>;
+  readFile?(path: string): Promise<string | null>;
 }
 
 function desktop(): DesktopBridge | null {
   return (globalThis as { archyne?: DesktopBridge }).archyne ?? null;
+}
+
+/** The desktop bridge, for the modules that need it beyond open and save. */
+export function desktopBridge(): DesktopBridge | null {
+  return desktop();
 }
 
 function supportsFsAccess(): boolean {
