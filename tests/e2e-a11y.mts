@@ -85,6 +85,8 @@ const SURFACES: Array<{
   click?: string;
   /** Must be visible before auditing, and gone again afterwards. */
   appears?: string;
+  /** Clicked to close, where Escape is not what dismisses the surface. */
+  dismiss?: string;
 }> = [
   // The document tab strip is always on screen, so it is covered here.
   { label: "editor" },
@@ -98,6 +100,15 @@ const SURFACES: Array<{
   { label: "shortcuts sheet", key: "Shift+Slash", appears: ".modal" },
   // The two document dialogs: rename from the overflow menu, delete from a
   // tab's close button.
+  // Select-all shows the arrange panel, which replaces the single-node
+  // fields; it is only reachable with more than one node selected.
+  {
+    label: "selection panel",
+    key: "Control+a",
+    appears: ".align-grid",
+    // Escape does not clear a selection; clicking empty canvas does.
+    dismiss: ".react-flow__pane",
+  },
   { label: "rename dialog", open: "More", then: "Rename…", appears: ".modal" },
   { label: "delete confirmation", click: ".doc-tab-close", appears: ".modal" },
 ];
@@ -127,7 +138,7 @@ for (const theme of ["dark", "light"] as const) {
   await page.locator(".menu-popover").waitFor({ state: "hidden", timeout: 15000 });
   await page.waitForTimeout(TRANSITION_MS);
 
-  for (const { label, open, tab, key, then, click, appears } of SURFACES) {
+  for (const { label, open, tab, key, then, click, appears, dismiss } of SURFACES) {
     if (tab) await page.getByRole("tab", { name: tab }).click();
     if (key) await page.keyboard.press(key);
     if (click) await page.locator(click).first().click();
@@ -165,7 +176,8 @@ for (const theme of ["dark", "light"] as const) {
     }
 
     if (open || key || click) {
-      await page.keyboard.press("Escape");
+      if (dismiss) await page.locator(dismiss).click({ position: { x: 5, y: 5 } });
+      else await page.keyboard.press("Escape");
       if (appears) {
         await page.locator(appears).first().waitFor({ state: "hidden", timeout: 15000 });
       }

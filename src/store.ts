@@ -45,6 +45,42 @@ import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from
 /** Smallest a group may be, whether dragged or typed. */
 export const GROUP_MIN = { width: 140, height: 100 };
 
+export type AlignEdge = "left" | "centerX" | "right" | "top" | "middleY" | "bottom";
+
+/**
+ * A node's box in its parent's coordinates.
+ *
+ * The width can come from three places depending on how the node got here —
+ * a typed group size, what the browser measured, or an estimate made before
+ * anything was rendered — so it is resolved in one place rather than at each
+ * call site.
+ */
+function boxOf(n: AnyNode): { x: number; y: number; w: number; h: number } {
+  const size = estimateSize(n);
+  return {
+    x: n.position.x,
+    y: n.position.y,
+    w: Number(n.style?.width ?? n.measured?.width ?? n.width ?? size.width),
+    h: Number(n.style?.height ?? n.measured?.height ?? n.height ?? size.height),
+  };
+}
+
+/**
+ * The selected nodes, but only when they can be reasoned about together.
+ *
+ * React Flow keeps a child's position relative to its parent, so aligning a
+ * top-level node against one inside a group would be comparing two different
+ * coordinate systems and would move things somewhere nobody asked for. When
+ * the selection spans parents there is no sensible answer, so there is no
+ * answer: the commands are hidden rather than silently doing half the job.
+ */
+export function alignableSelection(nodes: AnyNode[]): AnyNode[] {
+  const selected = nodes.filter((n) => n.selected);
+  if (selected.length < 2) return [];
+  const parent = selected[0].parentId;
+  return selected.every((n) => n.parentId === parent) ? selected : [];
+}
+
 export const SAMPLE = `flowchart TD
   start(["Start"])
   input[/"User request"/]
@@ -221,6 +257,16 @@ export interface GraphState {
   selectAll: () => void;
   /** Move every selected node by a pixel delta (keyboard nudging). */
   nudgeSelection: (dx: number, dy: number) => void;
+  /**
+   * Line the selected nodes up on one edge, or on their shared centre.
+   *
+   * Dragging can get two boxes nearly level; only arithmetic gets them
+   * actually level. It is also a way to arrange a diagram without dragging
+   * anything, which is the same reason the group size fields exist.
+   */
+  alignSelection: (edge: AlignEdge) => void;
+  /** Even the gaps between the selected nodes along one axis. */
+  distributeSelection: (axis: "x" | "y") => void;
   deleteSelection: () => void;
   /** Re-derive edge presentation (colors) — used on theme change. */
   refreshEdges: () => void;
@@ -405,6 +451,24 @@ export const useGraphStore = create<GraphState>((set, get) => {
           positions = await autoLayout(nodes, parsed.edges, parsed.direction);
           nodes = placeNodes(parsed.nodes, positions, parsed.kind);
         }
+        // Carry the selection across the re-parse.
+        //
+        // Re-parsing rebuilds every node from the text, and the rebuilt ones
+        // arrived unselected. Any position-only edit rewrites the positions
+        // comment, which schedules a re-parse 400ms later — so moving a node
+        // with the arrow keys deselected it a moment afterwards and the next
+        // press did nothing. Aligning a selection had the same fate, and made
+        // it obvious. A node that is still there keeps its selection; one
+        // that the edit removed cannot.
+        const selectedIds = new Set(
+          get()
+            .nodes.filter((n) => n.selected)
+            .map((n) => n.id),
+        );
+        if (selectedIds.size > 0) {
+          nodes = nodes.map((n) => (selectedIds.has(n.id) ? { ...n, selected: true } : n));
+        }
+
         set({
           kind: parsed.kind,
           nodes,
@@ -1032,6 +1096,86 @@ export const useGraphStore = create<GraphState>((set, get) => {
       });
       // Position-only change: rewrite the positions comment and leave the
       // rest of the user's mermaid text alone, exactly as a drag does.
+      repatchPositions();
+    },
+
+    alignSelection: (edge) => {
+      const targets = alignableSelection(get().nodes);
+      if (targets.length === 0) return;
+
+      const boxes = targets.map(boxOf);
+      // The bounding box of the selection, which is what every edge is
+      // measured against — including the centre, so "centre" means the
+      // middle of what you selected rather than the average of the nodes.
+      const left = Math.min(...boxes.map((b) => b.x));
+      const right = Math.max(...boxes.map((b) => b.x + b.w));
+      const top = Math.min(...boxes.map((b) => b.y));
+      const bottom = Math.max(...boxes.map((b) => b.y + b.h));
+
+      const moved = new Map<string, { x: number; y: number }>();
+      targets.forEach((n, i) => {
+        const b = boxes[i];
+        const pos = { x: b.x, y: b.y };
+        if (edge === "left") pos.x = left;
+        else if (edge === "right") pos.x = right - b.w;
+        else if (edge === "centerX") pos.x = (left + right) / 2 - b.w / 2;
+        else if (edge === "top") pos.y = top;
+        else if (edge === "bottom") pos.y = bottom - b.h;
+        else if (edge === "middleY") pos.y = (top + bottom) / 2 - b.h / 2;
+        moved.set(n.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
+      });
+
+      set({
+        // Only what moves gets a new object. Replacing every node makes
+        // React Flow re-sync its list and drop the selection, so the panel
+        // vanished after one click and nothing could be chained — which is
+        // why `nudgeSelection` touches only what it moves too.
+        nodes: get().nodes.map((n) => {
+          const next = moved.get(n.id);
+          return next ? { ...n, position: next } : n;
+        }),
+      });
+      repatchPositions();
+    },
+
+    distributeSelection: (axis) => {
+      const targets = alignableSelection(get().nodes);
+      // Two nodes are already evenly spaced with respect to each other;
+      // there is nothing between them to move.
+      if (targets.length < 3) return;
+
+      const withBoxes = targets
+        .map((n) => ({ n, b: boxOf(n) }))
+        .sort((p, q) => (axis === "x" ? p.b.x - q.b.x : p.b.y - q.b.y));
+
+      const first = withBoxes[0].b;
+      const last = withBoxes[withBoxes.length - 1].b;
+      const span = axis === "x" ? last.x + last.w - first.x : last.y + last.h - first.y;
+      const used = withBoxes.reduce((sum, { b }) => sum + (axis === "x" ? b.w : b.h), 0);
+      // Equal *gaps*, not equal centres: with boxes of different sizes those
+      // are different arrangements, and even gaps is what looks tidy.
+      const gap = (span - used) / (withBoxes.length - 1);
+
+      const moved = new Map<string, { x: number; y: number }>();
+      let cursor = axis === "x" ? first.x : first.y;
+      for (const { n, b } of withBoxes) {
+        moved.set(n.id, {
+          x: axis === "x" ? Math.round(cursor) : b.x,
+          y: axis === "y" ? Math.round(cursor) : b.y,
+        });
+        cursor += (axis === "x" ? b.w : b.h) + gap;
+      }
+
+      set({
+        // Only what moves gets a new object. Replacing every node makes
+        // React Flow re-sync its list and drop the selection, so the panel
+        // vanished after one click and nothing could be chained — which is
+        // why `nudgeSelection` touches only what it moves too.
+        nodes: get().nodes.map((n) => {
+          const next = moved.get(n.id);
+          return next ? { ...n, position: next } : n;
+        }),
+      });
       repatchPositions();
     },
 

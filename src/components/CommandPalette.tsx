@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useGraphStore } from "../store";
+import { alignableSelection, useGraphStore, type AlignEdge } from "../store";
 import { useFileStore } from "../files";
 import { createDoc, documentList, openFileHere, switchTo } from "../documents";
 import { useThemeStore } from "../theme";
@@ -129,6 +129,40 @@ function buildCommands(t: Translate, nodes: AnyNode[], close: () => void): Comma
       label: t(`kind.${kind}`),
       run: wrap(() => void createDoc(kind)),
     });
+  }
+
+  // Arranging only means anything with a selection to arrange, so these
+  // appear when they can act rather than sitting greyed out.
+  const arrangeable = alignableSelection(nodes).length;
+  if (arrangeable >= 2) {
+    for (const [edge, key] of [
+      ["left", "insp.alignLeft"],
+      ["centerX", "insp.alignCenterX"],
+      ["right", "insp.alignRight"],
+      ["top", "insp.alignTop"],
+      ["middleY", "insp.alignMiddleY"],
+      ["bottom", "insp.alignBottom"],
+    ] as Array<[AlignEdge, MessageKey]>) {
+      commands.push({
+        id: `align-${edge}`,
+        group: "palette.groupArrange",
+        label: `${t("insp.align")}: ${t(key)}`,
+        run: wrap(() => graph().alignSelection(edge)),
+      });
+    }
+  }
+  if (arrangeable >= 3) {
+    for (const [axis, key] of [
+      ["x", "insp.distributeX"],
+      ["y", "insp.distributeY"],
+    ] as Array<["x" | "y", MessageKey]>) {
+      commands.push({
+        id: `distribute-${axis}`,
+        group: "palette.groupArrange",
+        label: `${t("insp.distribute")}: ${t(key)}`,
+        run: wrap(() => graph().distributeSelection(axis)),
+      });
+    }
   }
 
   // Documents before nodes: with several open, "which diagram" is the

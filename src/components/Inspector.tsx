@@ -1,4 +1,4 @@
-import { GROUP_MIN, useGraphStore } from "../store";
+import { alignableSelection, GROUP_MIN, useGraphStore, type AlignEdge } from "../store";
 import { useT } from "../i18n";
 import { useIconPrefs } from "../iconPrefs";
 import {
@@ -728,6 +728,22 @@ export function Inspector() {
 
   const node = nodes.find((n) => n.selected);
   const edge = edges.find((e) => e.selected);
+  const selectedCount = nodes.filter((n) => n.selected).length;
+
+  // With several nodes selected the panel used to show the fields of
+  // whichever happened to be first, which is misleading — editing them
+  // silently affected one node out of five. Arranging the selection is the
+  // thing that actually applies to all of them.
+  if (selectedCount > 1) {
+    return (
+      <section className="inspector">
+        <div className="panel-title">
+          {t("insp.selection", { count: String(selectedCount) })}
+        </div>
+        <SelectionFields nodes={nodes} />
+      </section>
+    );
+  }
 
   if (node) {
     return (
@@ -795,5 +811,73 @@ function DiagramMeta() {
       </label>
       <div className="inspector-empty">{t("inspector.empty")}</div>
     </section>
+  );
+}
+
+/**
+ * Arranging a multi-selection: align on an edge, or even out the gaps.
+ *
+ * Dragging gets two boxes nearly level; arithmetic gets them level. These
+ * are also the way to arrange a diagram without dragging anything, which is
+ * the same reason a group's size can be typed.
+ */
+function SelectionFields({ nodes }: { nodes: AnyNode[] }) {
+  const t = useT();
+  const alignSelection = useGraphStore((s) => s.alignSelection);
+  const distributeSelection = useGraphStore((s) => s.distributeSelection);
+
+  const targets = alignableSelection(nodes);
+  const canAlign = targets.length >= 2;
+  const canDistribute = targets.length >= 3;
+
+  const ALIGN: Array<[AlignEdge, string]> = [
+    ["left", "insp.alignLeft"],
+    ["centerX", "insp.alignCenterX"],
+    ["right", "insp.alignRight"],
+    ["top", "insp.alignTop"],
+    ["middleY", "insp.alignMiddleY"],
+    ["bottom", "insp.alignBottom"],
+  ];
+
+  return (
+    <>
+      <div className="field-label">{t("insp.align")}</div>
+      <div className="align-grid">
+        {ALIGN.map(([edge, key]) => (
+          <button
+            key={edge}
+            type="button"
+            disabled={!canAlign}
+            onClick={() => alignSelection(edge)}
+          >
+            {t(key as Parameters<typeof t>[0])}
+          </button>
+        ))}
+      </div>
+
+      <div className="field-label">{t("insp.distribute")}</div>
+      <div className="align-grid two">
+        <button
+          type="button"
+          disabled={!canDistribute}
+          onClick={() => distributeSelection("x")}
+        >
+          {t("insp.distributeX")}
+        </button>
+        <button
+          type="button"
+          disabled={!canDistribute}
+          onClick={() => distributeSelection("y")}
+        >
+          {t("insp.distributeY")}
+        </button>
+      </div>
+
+      {/* Say why, rather than leaving dead buttons to be puzzled over. */}
+      {!canAlign && <p className="field-hint">{t("insp.alignSameParent")}</p>}
+      {canAlign && !canDistribute && (
+        <p className="field-hint">{t("insp.distributeNeedsThree")}</p>
+      )}
+    </>
   );
 }

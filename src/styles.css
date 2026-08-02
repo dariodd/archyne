@@ -2328,3 +2328,24 @@ body,
   flex: 1;
   min-width: 0;
 }
+
+/* Align and distribute, for a multi-selection. Three across matches the
+   three edges on each axis: left/centre/right, then top/middle/bottom. */
+.align-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.align-grid.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+.align-grid button {
+  font-size: 11.5px;
+  padding: 6px 4px;
+}
+.field-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}

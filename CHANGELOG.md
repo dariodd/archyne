@@ -38,6 +38,10 @@ CSS class names and internal store shape are _not_ public API.
   screen, unless that one is an untouched scratch.
 - The unsaved-changes guard covers every document, not just the one on
   screen.
+- **Align and distribute.** With two or more nodes selected the inspector
+  offers the six alignments and, from three, evens out the gaps along either
+  axis. Dragging gets two boxes nearly level; arithmetic gets them level —
+  and this is another way to arrange a diagram without dragging anything.
 
 ### Changed
 
@@ -57,6 +61,10 @@ CSS class names and internal store shape are _not_ public API.
   inspector and snapping back on the way to another tab.
 - The preview reserves its scrollbar's width, so the diagram no longer shifts
   sideways as the scrollbar appears.
+- **A selection survives the re-parse it triggers.** Any position-only edit
+  rewrites the positions comment, which schedules a re-parse; the rebuilt
+  nodes came back unselected. Moving a node with the arrow keys therefore
+  deselected it a moment later and the next press did nothing.
 
 ## [0.1.0-alpha.1] — 2026-08-01
 
