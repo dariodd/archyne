@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { useGraphStore, SAMPLE, NEW_DIAGRAM } from "./store";
-import { useFileStore } from "./files";
+import { pickFile, useFileStore, type PickedFile } from "./files";
 
 import type { DiagramKind } from "./model/types";
 import {
@@ -175,9 +175,14 @@ export function documentList(): Array<DocMeta & { active: boolean }> {
  */
 export function shouldOpenInNewDoc(): boolean {
   if (EMBEDDED) return false;
-  const doc = activeDoc();
-  if (!doc) return false;
-  const isScratch = !doc.path && !doc.handle && doc.savedCode === null;
+  if (!activeDoc()) return false;
+
+  // The live binding for the document on screen is in `useFileStore`, not in
+  // its metadata — the metadata only catches up when you switch away. Reading
+  // the stale copy meant a second Open saw a pristine scratch and replaced a
+  // document that was already backed by a file.
+  const { path, handle, savedCode } = useFileStore.getState();
+  const isScratch = !path && !handle && savedCode === null;
   const code = useGraphStore.getState().code;
   return !(isScratch && (code === SAMPLE || code.trim() === ""));
 }
@@ -200,4 +205,88 @@ export function documentMenuActions() {
     rename: () => useDocDialogs.setState({ renaming: useWorkspace.getState().activeId }),
     duplicate: () => void duplicateDoc(useWorkspace.getState().activeId),
   };
+}
+
+/**
+ * Put an opened file where it belongs.
+ *
+ * Opening used to replace whatever was on screen, which was the only option
+ * when there was one document. With a workspace that is the wrong default:
+ * someone with work in progress expects a second file to arrive beside it,
+ * not on top of it. A pristine scratch document is the exception — landing
+ * in it is what "open a file" means when nothing has been started.
+ */
+async function placeFile(file: PickedFile): Promise<void> {
+  if (shouldOpenInNewDoc()) await createDoc();
+
+  await useGraphStore.getState().applyCode(file.content, { record: true });
+  useFileStore.setState({
+    name: file.name,
+    path: file.path,
+    handle: file.handle,
+    savedCode: file.content,
+  });
+  // The tab takes the file's name, not "Untitled".
+  patchDoc(useWorkspace.getState().activeId, {
+    name: file.name,
+    path: file.path,
+    handle: file.handle,
+    savedCode: file.content,
+  });
+}
+
+/**
+ * Place a file read some other way — the hidden `<input type=file>` that
+ * browsers without a picker fall back to.
+ *
+ * There is no path or handle to bind: that fallback cannot write back, so
+ * Save becomes Save-as. What matters is that it goes through the same
+ * placement as everything else. It did not, and on Firefox and Safari
+ * opening a file still replaced whatever was on screen.
+ */
+export async function openContentHere(name: string, content: string): Promise<void> {
+  await placeFile({ name, content, path: null, handle: null });
+}
+
+/** Show the picker, then place the result. Throws `no-picker` as before. */
+export async function openFileHere(): Promise<void> {
+  const picked = await pickFile();
+  if (picked) await placeFile(picked);
+}
+
+/**
+ * A file handed over by the desktop shell, placed the same way.
+ *
+ * Returns the promise rather than swallowing it: the shell has nothing to
+ * wait for, but anything sequencing edits — tests, above all — needs a way
+ * to know the file has actually been parsed.
+ */
+export function adoptFileHere(file: { path: string; content: string }): Promise<void> {
+  // Either separator: the desktop shell hands over Windows paths too.
+  const name = file.path.split(/[\\/]/).pop() || file.path;
+  return placeFile({ name, content: file.content, path: file.path, handle: null });
+}
+
+/**
+ * Every document with edits that are not on disk — not just the one on
+ * screen.
+ *
+ * The unsaved-changes guard used to ask `isDirty()`, which only ever knew
+ * about the active document. With a workspace that quietly stopped being the
+ * question: closing the tab with unsaved work in the *other* four documents
+ * warned about none of them.
+ *
+ * A document with no `savedCode` has never been written to a file. It is a
+ * scratch diagram, autosaved to localStorage, and warning about it would be
+ * noise — which is the same rule `isDirty()` already used.
+ */
+export function unsavedDocuments(): DocMeta[] {
+  const { docs, activeId } = useWorkspace.getState();
+  const active = useFileStore.getState();
+  return docs.filter((doc) => {
+    const saved = doc.id === activeId ? active.savedCode : doc.savedCode;
+    if (saved === null) return false;
+    const current = doc.id === activeId ? useGraphStore.getState().code : readDocCode(doc.id);
+    return current !== null && current !== saved;
+  });
 }

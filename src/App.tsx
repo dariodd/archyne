@@ -17,7 +17,8 @@ import {
 import { useThemeStore } from "./theme";
 import { initEmbedBridge, isEmbedded } from "./embed";
 import { useLayoutStore } from "./layoutStore";
-import { initDesktopFiles, isDirty, useFileStore } from "./files";
+import { initDesktopFiles, useFileStore } from "./files";
+import { adoptFileHere, openFileHere, unsavedDocuments } from "./documents";
 import { toast, toastError } from "./toast";
 import { Toasts } from "./components/Toasts";
 import { ShortcutsDialog } from "./components/ShortcutsDialog";
@@ -42,14 +43,14 @@ export default function App() {
 
   useEffect(() => {
     // Pick up a file the desktop shell was launched with. No-op on the web.
-    initDesktopFiles();
+    initDesktopFiles((f) => void adoptFileHere(f));
   }, []);
 
   useEffect(() => {
     // Only guards edits made since the last open/save. A scratch diagram is
     // autosaved to localStorage, so warning about it would be noise.
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!isDirty()) return;
+      if (unsavedDocuments().length === 0) return;
       e.preventDefault();
     };
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -159,13 +160,10 @@ export default function App() {
         setShowPalette((open) => !open);
       } else if (key === "o") {
         e.preventDefault();
-        void useFileStore
-          .getState()
-          .open()
-          .catch(() => {
-            // "no-picker" browsers fall back to the toolbar's file input.
-            document.querySelector<HTMLInputElement>('input[type="file"]')?.click();
-          });
+        void openFileHere().catch(() => {
+          // "no-picker" browsers fall back to the toolbar's file input.
+          document.querySelector<HTMLInputElement>('input[type="file"]')?.click();
+        });
       }
     };
     window.addEventListener("keydown", onKey);

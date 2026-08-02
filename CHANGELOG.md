@@ -34,6 +34,10 @@ CSS class names and internal store shape are _not_ public API.
   requires dragging a handle (WCAG 2.5.7).
 - The single-key shortcuts `C` and `?` can be switched off from the overflow
   menu, remembered across sessions (WCAG 2.1.4).
+- Opening a file lands in a new document rather than replacing the one on
+  screen, unless that one is an untouched scratch.
+- The unsaved-changes guard covers every document, not just the one on
+  screen.
 
 ### Changed
 

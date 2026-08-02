@@ -40,6 +40,46 @@ const MMD_TYPES = [
   { description: "Mermaid diagram", accept: { "text/plain": [".mmd", ".mermaid", ".txt"] } },
 ];
 
+/** A file the user chose, before anything has been done with it. */
+export interface PickedFile {
+  name: string;
+  content: string;
+  path: string | null;
+  handle: FileSystemFileHandle | null;
+}
+
+/**
+ * Show the picker and read the file. Nothing else.
+ *
+ * `open()` below applies the result to the current document, which is what
+ * the app did when there was only one. With a workspace, *where* an opened
+ * file lands is a decision that belongs to `documents.ts` — so it takes the
+ * picking from here and does the placing itself. Keeping the two apart is
+ * also what stops the import cycle: this module knows nothing of documents.
+ */
+export async function pickFile(): Promise<PickedFile | null> {
+  const bridge = desktop();
+  if (bridge) {
+    const file = await bridge.showOpen();
+    if (!file) return null;
+    return { name: basename(file.path), content: file.content, path: file.path, handle: null };
+  }
+
+  if (supportsFsAccess()) {
+    let handle: FileSystemFileHandle;
+    try {
+      [handle] = await globalThis.showOpenFilePicker({ types: MMD_TYPES });
+    } catch {
+      return null; // user cancelled
+    }
+    const content = await (await handle.getFile()).text();
+    return { name: handle.name, content, path: null, handle };
+  }
+
+  // No picker API: the caller falls back to a hidden <input type=file>.
+  throw new Error("no-picker");
+}
+
 interface FileState {
   /** Display name of the open file, or null for an unsaved scratch diagram. */
   name: string | null;
@@ -171,12 +211,20 @@ export const useFileStore = create<FileState>((set, get) => ({
   },
 }));
 
-/** Pick up a file the desktop shell was launched with, or opened later. */
-export function initDesktopFiles(): void {
+/**
+ * Pick up a file the desktop shell was launched with, or opened later.
+ *
+ * The handler is passed in rather than hard-coded: with a workspace, a file
+ * arriving from the shell should land beside your work rather than on top of
+ * it, and that decision lives in `documents.ts`.
+ */
+export function initDesktopFiles(
+  onFile: (file: { path: string; content: string }) => void,
+): void {
   const bridge = desktop();
   if (!bridge) return;
   void bridge.openedFile().then((file) => {
-    if (file) void useFileStore.getState().adopt(file);
+    if (file) onFile(file);
   });
-  bridge.onOpenFile((file) => void useFileStore.getState().adopt(file));
+  bridge.onOpenFile(onFile);
 }

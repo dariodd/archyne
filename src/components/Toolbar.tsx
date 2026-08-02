@@ -4,7 +4,7 @@ import { useThemeStore, type ThemeChoice } from "../theme";
 import { usePrefs } from "../prefs";
 import { useLayoutStore } from "../layoutStore";
 import { useFileStore } from "../files";
-import { createDoc, documentMenuActions } from "../documents";
+import { createDoc, documentMenuActions, openContentHere, openFileHere } from "../documents";
 import { toast, toastError } from "../toast";
 import { LOCALES, useI18n, useT, type Locale } from "../i18n";
 import { ExportDialog } from "./ExportDialog";
@@ -30,7 +30,6 @@ export function Toolbar() {
   const unsupported = useGraphStore((s) => s.unsupported);
   const setDirection = useGraphStore((s) => s.setDirection);
   const runAutoLayout = useGraphStore((s) => s.runAutoLayout);
-  const applyCode = useGraphStore((s) => s.applyCode);
   const undo = useGraphStore((s) => s.undo);
   const redo = useGraphStore((s) => s.redo);
   const canUndo = useGraphStore((s) => s.canUndo);
@@ -44,7 +43,6 @@ export function Toolbar() {
   const sideOpen = useLayoutStore((s) => s.sideOpen);
   const togglePalette = useLayoutStore((s) => s.togglePalette);
   const toggleSide = useLayoutStore((s) => s.toggleSide);
-  const openFile = useFileStore((s) => s.open);
   const saveFile = useFileStore((s) => s.save);
   const saveAsFile = useFileStore((s) => s.saveAs);
   const themeChoice = useThemeStore((s) => s.choice);
@@ -63,7 +61,7 @@ export function Toolbar() {
    */
   const open = async () => {
     try {
-      await openFile();
+      await openFileHere();
     } catch (err) {
       if (err instanceof Error && err.message === "no-picker") {
         fileRef.current?.click();
@@ -252,7 +250,8 @@ export function Toolbar() {
         hidden
         onChange={async (e) => {
           const file = e.target.files?.[0];
-          if (file) await applyCode(await file.text(), { record: true });
+          // Same placement as the picker: beside your work, not on top of it.
+          if (file) await openContentHere(file.name, await file.text());
           e.target.value = "";
         }}
       />

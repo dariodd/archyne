@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useGraphStore } from "../store";
 import { useFileStore } from "../files";
-import { createDoc, documentList, switchTo } from "../documents";
+import { createDoc, documentList, openFileHere, switchTo } from "../documents";
 import { useThemeStore } from "../theme";
 import { toast, toastError } from "../toast";
 import { useI18n, useT, type MessageKey, type Translate } from "../i18n";
@@ -64,12 +64,7 @@ function buildCommands(t: Translate, nodes: AnyNode[], close: () => void): Comma
       group: "palette.groupCommands",
       label: t("toolbar.open"),
       hint: "Ctrl+O",
-      run: wrap(
-        () =>
-          void files()
-            .open()
-            .catch(() => undefined),
-      ),
+      run: wrap(() => void openFileHere().catch(() => undefined)),
     },
     {
       id: "save",

@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useGraphStore, loadInitialCode, SAMPLE } from "./store";
 import { useFileStore } from "./files";
 import {
+  adoptFileHere,
   createDoc,
   deleteDoc,
   documentList,
   duplicateDoc,
   renameDoc,
+  shouldOpenInNewDoc,
   switchTo,
+  unsavedDocuments,
 } from "./documents";
 import { DOC_PREFIX, INDEX_KEY, LEGACY_KEY, loadWorkspace, useWorkspace } from "./workspace";
 
@@ -234,5 +237,115 @@ describe("persistence", () => {
     const entry = stored.docs.find((d) => d.id === id);
     expect(entry).toBeDefined();
     expect("handle" in (entry ?? {})).toBe(false);
+  });
+});
+
+describe("opening a file", () => {
+  const picked = { path: "/tmp/arch.mmd", content: FLOWCHART };
+
+  /** The desktop hand-off, which goes through the same placement as the picker. */
+  const placeFileForTest = (f: { path: string; content: string }) => adoptFileHere(f);
+
+  it("lands in the current document when it is an untouched scratch", async () => {
+    await boot();
+    const before = useWorkspace.getState().activeId;
+
+    expect(shouldOpenInNewDoc()).toBe(false);
+    await placeFileForTest(picked);
+
+    expect(useWorkspace.getState().activeId).toBe(before);
+    expect(documentList()).toHaveLength(1);
+    expect(useGraphStore.getState().code).toBe(FLOWCHART);
+    // The tab takes the file's name rather than staying "Untitled".
+    expect(documentList()[0].name).toBe("arch.mmd");
+  });
+
+  it("arrives beside work in progress rather than on top of it", async () => {
+    await boot();
+    const first = useWorkspace.getState().activeId;
+    await useGraphStore.getState().applyCode(OTHER, { record: false });
+
+    expect(shouldOpenInNewDoc()).toBe(true);
+    await placeFileForTest(picked);
+
+    expect(useWorkspace.getState().activeId).not.toBe(first);
+    expect(documentList()).toHaveLength(2);
+    expect(useGraphStore.getState().code).toBe(FLOWCHART);
+
+    // The work that was open is untouched.
+    await switchTo(first);
+    expect(useGraphStore.getState().code).toBe(OTHER);
+  });
+
+  it("takes the file's name from either path separator", async () => {
+    await boot();
+    // The desktop shell hands over Windows paths; the browser picker does not.
+    await adoptFileHere({ path: String.raw`C:\work\arch.mmd`, content: FLOWCHART });
+    expect(documentList().find((d) => d.active)?.name).toBe("arch.mmd");
+
+    await adoptFileHere({ path: "/tmp/other.mmd", content: OTHER });
+    expect(documentList().find((d) => d.active)?.name).toBe("other.mmd");
+  });
+
+  it("does not reopen into a document already bound to a file", async () => {
+    await boot();
+    useFileStore.setState({
+      name: "a.mmd",
+      path: "/tmp/a.mmd",
+      handle: null,
+      savedCode: SAMPLE,
+    });
+    expect(shouldOpenInNewDoc()).toBe(true);
+  });
+});
+
+describe("the unsaved-changes guard", () => {
+  it("says nothing about scratch documents, which are autosaved", async () => {
+    await boot();
+    await useGraphStore.getState().applyCode(OTHER, { record: false });
+    expect(unsavedDocuments()).toHaveLength(0);
+  });
+
+  it("notices the document on screen", async () => {
+    await boot();
+    useFileStore.setState({
+      name: "a.mmd",
+      path: "/tmp/a.mmd",
+      handle: null,
+      savedCode: SAMPLE,
+    });
+    await useGraphStore.getState().applyCode(OTHER, { record: false });
+    expect(unsavedDocuments()).toHaveLength(1);
+  });
+
+  it("notices a document that is not on screen", async () => {
+    await boot();
+    const first = useWorkspace.getState().activeId;
+    // Bind the first document to a file, then dirty it.
+    useFileStore.setState({
+      name: "a.mmd",
+      path: "/tmp/a.mmd",
+      handle: null,
+      savedCode: SAMPLE,
+    });
+    await useGraphStore.getState().applyCode(OTHER, { record: false });
+
+    // Move away. Before the workspace, this is where the warning was lost.
+    await createDoc();
+    expect(useWorkspace.getState().activeId).not.toBe(first);
+    expect(unsavedDocuments().map((d) => d.id)).toEqual([first]);
+  });
+
+  it("goes quiet once the other document is back in step with its file", async () => {
+    await boot();
+    useFileStore.setState({
+      name: "a.mmd",
+      path: "/tmp/a.mmd",
+      handle: null,
+      savedCode: OTHER,
+    });
+    await useGraphStore.getState().applyCode(OTHER, { record: false });
+    await createDoc();
+    expect(unsavedDocuments()).toHaveLength(0);
   });
 });
