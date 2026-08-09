@@ -19,6 +19,32 @@ function normalizeShape(type: unknown): Shape {
   return "square";
 }
 
+/**
+ * The picture on a node, as mermaid's parser reports it.
+ *
+ * Mermaid keeps these beside the vertex rather than in its `type`, and a
+ * node that has one has no `type` at all — which is why an image node used
+ * to come back as a plain rectangle with its picture quietly dropped on the
+ * next save. `icon` is read for the same reason and only to hand it back
+ * unchanged; Archyne never writes one.
+ */
+function imageOf(v: Record<string, unknown>): Partial<ShapeNode["data"]> {
+  const img = typeof v.img === "string" && v.img ? v.img : undefined;
+  const icon = typeof v.icon === "string" && v.icon ? v.icon : undefined;
+  if (!img && !icon) return {};
+
+  const width = Number(v.assetWidth);
+  const height = Number(v.assetHeight);
+  return {
+    ...(img ? { img } : {}),
+    ...(icon ? { icon } : {}),
+    ...(v.pos === "t" || v.pos === "b" ? { imgPos: v.pos } : {}),
+    ...(Number.isFinite(width) && width > 0 ? { imgWidth: width } : {}),
+    ...(Number.isFinite(height) && height > 0 ? { imgHeight: height } : {}),
+    ...(v.constraint === "on" ? { imgConstrained: true } : {}),
+  };
+}
+
 export function parseFlowchart(db: Record<string, (...a: unknown[]) => unknown>): {
   direction: Direction;
   nodes: AnyNode[];
@@ -78,6 +104,7 @@ export function parseFlowchart(db: Record<string, (...a: unknown[]) => unknown>)
         direction,
         ...(classes.length ? { classes } : {}),
         ...(styles.length ? { styles } : {}),
+        ...imageOf(v),
       },
       ...(parent ? { parentId: parent } : {}),
     };
@@ -106,6 +133,30 @@ export function parseFlowchart(db: Record<string, (...a: unknown[]) => unknown>)
 }
 
 /* ---------- serialize ---------- */
+
+/**
+ * A node written in mermaid's `@{ … }` form, for the two kinds that cannot
+ * be written any other way — or null when the node is an ordinary shape.
+ *
+ * The label goes inside the braces rather than in brackets beside them:
+ * mermaid accepts only one of the two forms per node, and mixing them is a
+ * parse error rather than a merge.
+ */
+function pictureDecl(data: ShapeNode["data"]): string | null {
+  if (!data.img && !data.icon) return null;
+
+  const parts = [
+    data.img ? `img: ${quote(data.img)}` : `icon: ${quote(data.icon ?? "")}`,
+    `label: ${quote(data.label)}`,
+  ];
+  // Only what was asked for: mermaid has its own defaults, and writing them
+  // back out would fill the file with values nobody chose.
+  if (data.imgPos) parts.push(`pos: "${data.imgPos}"`);
+  if (data.imgWidth) parts.push(`w: ${Math.round(data.imgWidth)}`);
+  if (data.imgHeight) parts.push(`h: ${Math.round(data.imgHeight)}`);
+  if (data.imgConstrained) parts.push(`constraint: "on"`);
+  return `@{ ${parts.join(", ")} }`;
+}
 
 function bracket(shape: Shape, label: string): string {
   const l = quote(label);
@@ -179,7 +230,8 @@ export function serializeFlowchart(
 
   const emitNode = (n: AnyNode, indent: string) => {
     if (n.type !== "shape") return;
-    lines.push(`${indent}${n.id}${bracket(n.data.shape, n.data.label)}`);
+    const picture = pictureDecl(n.data);
+    lines.push(`${indent}${n.id}${picture ?? bracket(n.data.shape, n.data.label)}`);
   };
 
   for (const n of byParent.get(undefined) ?? []) emitNode(n, "  ");

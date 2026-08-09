@@ -2,19 +2,22 @@ import { toPng, toSvg } from "html-to-image";
 import type { AnyNode } from "./model/types";
 import { estimateSize, isGroup } from "./model/types";
 import { stripPositions } from "./model/positions";
-import { withMermaid } from "./model/fromMermaid";
+import { renderWithMermaid } from "./model/fromMermaid";
+import type { PageSize, PdfImage } from "./pdf";
 
 export interface ExportOptions {
   /** What to render: the canvas as-is, or mermaid's own renderer. */
   source: "canvas" | "mermaid";
-  format: "png" | "svg";
+  format: "png" | "svg" | "pdf";
   background: "dark" | "light" | "transparent";
-  /** PNG pixel density. */
+  /** PNG pixel density; for PDF, how much detail goes on the page. */
   scale: 1 | 2 | 3;
   /** Margin around the diagram (canvas source only). */
   padding: number;
   /** mermaid theme (mermaid source only). */
   theme: "default" | "dark" | "neutral" | "forest" | "base";
+  /** Paper to place the diagram on (PDF only). */
+  page: PageSize;
 }
 
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
@@ -24,7 +27,16 @@ export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   scale: 2,
   padding: 48,
   theme: "dark",
+  page: "fit",
 };
+
+/** The MIME type and file extension each format is delivered as. */
+export const FORMAT_INFO: Record<ExportOptions["format"], { mime: string; extension: string }> =
+  {
+    png: { mime: "image/png", extension: "png" },
+    svg: { mime: "image/svg+xml", extension: "svg" },
+    pdf: { mime: "application/pdf", extension: "pdf" },
+  };
 
 const BG: Record<ExportOptions["background"], string | undefined> = {
   dark: "#12141a",
@@ -221,12 +233,81 @@ function svgToPng(
 
 async function renderMermaid(opts: ExportOptions, code: string): Promise<string> {
   const src = `%%{init: {"theme": "${opts.theme}"}}%%\n${stripPositions(code)}`;
-  const raw = await withMermaid(async (m) => (await m.render(`export-${Date.now()}`, src)).svg);
+  const raw = (await renderWithMermaid(`export-${Date.now()}`, src)).svg;
   const { svg, width, height } = prepareSvg(raw, BG[opts.background]);
   if (opts.format === "svg") {
     return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
   }
   return svgToPng(svg, width, height, opts.scale, BG[opts.background]);
+}
+
+/* ---------- pdf source ---------- */
+
+/**
+ * Pull the pixels back out of a rendered PNG.
+ *
+ * The PDF is built from the very image the preview showed rather than from a
+ * second capture, so what is downloaded cannot differ from what was on screen.
+ */
+function decodePng(dataUrl: string): Promise<PdfImage> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("no 2d context to read the diagram back from"));
+      ctx.drawImage(img, 0, 0);
+      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      const count = canvas.width * canvas.height;
+      const rgb = new Uint8Array(count * 3);
+      const alpha = new Uint8Array(count);
+      let opaque = true;
+      for (let i = 0; i < count; i++) {
+        rgb[i * 3] = data[i * 4];
+        rgb[i * 3 + 1] = data[i * 4 + 1];
+        rgb[i * 3 + 2] = data[i * 4 + 2];
+        alpha[i] = data[i * 4 + 3];
+        if (alpha[i] !== 255) opaque = false;
+      }
+      // A soft mask doubles the object count and every reader has to blend
+      // it; skip it entirely for the two backgrounds that are not see-through.
+      resolve({
+        rgb,
+        width: canvas.width,
+        height: canvas.height,
+        ...(opaque ? {} : { alpha }),
+      });
+    };
+    img.onerror = () => reject(new Error("could not read the rendered diagram back"));
+    img.src = dataUrl;
+  });
+}
+
+/**
+ * The options to render a preview with: a PDF is a PNG on a page, so the
+ * preview is that PNG and the page is applied on the way out.
+ */
+export function previewOptions(opts: ExportOptions): ExportOptions {
+  return opts.format === "pdf" ? { ...opts, format: "png" } : opts;
+}
+
+/**
+ * Wrap an already-rendered PNG data URL as a PDF data URL.
+ *
+ * The writer and the compressor it needs are fetched on demand: PDF is one
+ * of three formats behind a dialog most sessions never open, and neither
+ * belongs in the bundle everyone downloads.
+ */
+export async function pdfFromPng(pngDataUrl: string, opts: ExportOptions): Promise<string> {
+  if (!pngDataUrl) return "";
+  const [{ buildPdf, pdfDataUrl }, image] = await Promise.all([
+    import("./pdf"),
+    decodePng(pngDataUrl),
+  ]);
+  return pdfDataUrl(buildPdf(image, { page: opts.page, pixelRatio: opts.scale }));
 }
 
 /* ---------- public API ---------- */
@@ -237,10 +318,67 @@ export async function buildExport(
   nodes: AnyNode[],
   code: string,
 ): Promise<string> {
+  if (opts.format === "pdf") {
+    return pdfFromPng(await buildExport(previewOptions(opts), nodes, code), opts);
+  }
   if (opts.source === "mermaid") return renderMermaid(opts, code);
   if (nodes.length === 0) return "";
   const { width, height, viewport } = frameFor(nodes, opts.padding);
   return captureCanvas(opts.format, width, height, viewport, BG[opts.background], opts.scale);
+}
+
+/* ---------- clipboard ---------- */
+
+/**
+ * Turn a data URL into a blob without `fetch`.
+ *
+ * `fetch("data:…")` would be the one-liner, but the Content Security Policy
+ * names the handful of hosts `connect-src` allows and `data:` is not among
+ * them — and widening it for a clipboard convenience is not a trade worth
+ * making. Both shapes the exports produce are handled: base64 for the raster
+ * formats, percent-encoded text for SVG.
+ */
+export function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  if (!dataUrl.startsWith("data:") || comma < 0) throw new Error("not a data URL");
+  const header = dataUrl.slice(5, comma);
+  const payload = dataUrl.slice(comma + 1);
+  const mime = header.split(";")[0] || "application/octet-stream";
+
+  if (header.endsWith(";base64")) {
+    const binary = atob(payload);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+  return new Blob([decodeURIComponent(payload)], { type: mime });
+}
+
+/**
+ * Whether this browser can be handed an image. Firefox only gained
+ * `ClipboardItem` in 127 and the desktop shell can be older still, so the
+ * button is hidden rather than offered and then failing.
+ */
+export function canCopyImage(): boolean {
+  return (
+    typeof ClipboardItem !== "undefined" && typeof navigator.clipboard?.write === "function"
+  );
+}
+
+/**
+ * Put the export on the clipboard, ready to paste into a document.
+ *
+ * SVG goes across as its markup: pasted into an editor it is the source, and
+ * the applications that accept vector from the clipboard read the text too.
+ * Everything else goes as a PNG image — including PDF, which no application
+ * accepts as pasted content, so the picture is what the user meant.
+ */
+export async function copyExport(dataUrl: string): Promise<void> {
+  if (dataUrl.startsWith("data:image/svg+xml")) {
+    await navigator.clipboard.writeText(await dataUrlToBlob(dataUrl).text());
+    return;
+  }
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": dataUrlToBlob(dataUrl) })]);
 }
 
 export function downloadDataUrl(dataUrl: string, filename: string) {

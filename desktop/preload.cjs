@@ -7,8 +7,8 @@
  * narrow, explicit API instead: read the file we were launched with, and
  * write back to a known path.
  *
- * Only these four calls cross the boundary — `contextIsolation` and
- * `sandbox` stay on.
+ * Only the calls below cross the boundary — `contextIsolation` and `sandbox`
+ * stay on.
  */
 const { contextBridge, ipcRenderer } = require("electron");
 
@@ -24,8 +24,13 @@ contextBridge.exposeInMainWorld("archyne", {
     ipcRenderer.on("archyne:open-file", (_event, file) => callback(file));
   },
 
-  /** Native open dialog. Returns `{ path, content }`, or null if cancelled. */
-  showOpen: () => ipcRenderer.invoke("archyne:show-open"),
+  /**
+   * Native open dialog. Returns `{ path, content }`, or null if cancelled.
+   * `mode` picks the filter list: "open" offers Mermaid, "import" the
+   * foreign formats.
+   * @param {"open" | "import"} [mode]
+   */
+  showOpen: (mode) => ipcRenderer.invoke("archyne:show-open", { mode }),
 
   /**
    * Native save dialog. Returns the chosen path, or null if cancelled.
@@ -55,4 +60,20 @@ contextBridge.exposeInMainWorld("archyne", {
    * @param {string} path
    */
   readFile: (path) => ipcRenderer.invoke("archyne:read-file", { path }),
+
+  /**
+   * Tell the shell which theme the app is showing, so the parts Chromium
+   * draws itself match it. Fire-and-forget: nothing waits on the answer.
+   * @param {"dark" | "light"} theme
+   */
+  setTheme: (theme) => ipcRenderer.send("archyne:set-theme", theme),
+
+  /**
+   * Download icons from links the user pasted. The shell does it because it
+   * is not bound by CORS and can therefore take a vendor's `.zip`, which the
+   * page cannot. Returns the icons it got and the links that gave nothing;
+   * the renderer sanitises everything before it is stored or drawn.
+   * @param {string[]} urls
+   */
+  fetchIcons: (urls) => ipcRenderer.invoke("archyne:fetch-icons", { urls }),
 });

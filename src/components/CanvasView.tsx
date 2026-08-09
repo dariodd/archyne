@@ -23,6 +23,7 @@ import { NoteNodeView } from "./NoteNode";
 import { SequenceOverlay } from "./SequenceOverlay";
 import { useKeyboardConnect } from "./useKeyboardConnect";
 import { useDragGuides } from "./useDragGuides";
+import { useCoarsePointer } from "./useMediaQuery";
 import { GuideLines } from "./GuideLines";
 import { GRID } from "../guides";
 import { MermaidPreview } from "./MermaidPreview";
@@ -75,6 +76,7 @@ export function CanvasView() {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const connect = useKeyboardConnect();
   const dragGuides = useDragGuides();
+  const coarse = useCoarsePointer();
   const unsupported = useGraphStore((s) => s.unsupported);
   const code = useGraphStore((s) => s.code);
   const t = useT();
@@ -194,9 +196,13 @@ export function CanvasView() {
             target: "pane",
           });
         }}
-        selectionOnDrag
+        /* A mouse drags a selection rectangle and pans with the middle or
+           right button. A touchscreen has neither of those buttons, so there
+           the same gesture has to pan — otherwise a finger only ever draws a
+           marquee and the diagram cannot be moved at all. */
+        selectionOnDrag={!coarse}
         selectionMode={SelectionMode.Partial}
-        panOnDrag={[1, 2]}
+        panOnDrag={coarse ? true : [1, 2]}
         onMove={() => (panMovedRef.current = true)}
         connectionMode={ConnectionMode.Loose}
         connectionRadius={38}

@@ -1,0 +1,144 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page 1" id="ZmXTrZOVJ9DDxelsGraw">
+    <mxGraphModel dx="2054" dy="1103" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="user" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Utente / Client&lt;/b&gt;&lt;br&gt;Browser / Mobile App" vertex="1">
+          <mxGeometry height="60" width="140" x="450" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="dns" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="&lt;b&gt;Route53 / Cloudflare&lt;/b&gt;&lt;br&gt;DNS &amp;amp; Protezione DDoS" vertex="1">
+          <mxGeometry height="60" width="140" x="450" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="vpc" parent="1" style="swimlane;startSize=24;fillColor=#f9f9f9;strokeColor=#cccccc;html=1;" value="Amazon VPC (10.0.0.0/16)" vertex="1">
+          <mxGeometry height="680" width="960" x="40" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="pub_sub" parent="vpc" style="swimlane;startSize=24;fillColor=#e8f4f8;strokeColor=#b0c4de;html=1;" value="Subnet Pubblica (DMZ)" vertex="1">
+          <mxGeometry height="130" width="920" x="20" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="waf" parent="pub_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;AWS WAF&lt;/b&gt;&lt;br&gt;Firewall Applicativo" vertex="1">
+          <mxGeometry height="60" width="130" x="150" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="alb" parent="pub_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;Application Load Balancer&lt;/b&gt;&lt;br&gt;Bilanciamento del Carico" vertex="1">
+          <mxGeometry height="60" width="160" x="390" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="nat" parent="pub_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="&lt;b&gt;NAT Gateway&lt;/b&gt;&lt;br&gt;Uscita Internet Sicura" vertex="1">
+          <mxGeometry height="60" width="130" x="670" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="pub_sub" source="waf" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4c6ef5;strokeWidth=2;html=1;" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="priv_sub" parent="vpc" style="swimlane;startSize=24;fillColor=#e8f5e9;strokeColor=#a3c1ad;html=1;" value="Subnet Privata (Application Layer)" vertex="1">
+          <mxGeometry height="260" width="920" x="20" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="api_gw" parent="priv_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;API Gateway&lt;/b&gt;&lt;br&gt;Routing &amp;amp; Rate Limiting" vertex="1">
+          <mxGeometry height="60" width="140" x="30" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="auth_srv" parent="priv_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Servizio Autenticazione&lt;/b&gt;&lt;br&gt;OAuth2 / JWT" vertex="1">
+          <mxGeometry height="60" width="150" x="210" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="order_srv" parent="priv_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Servizio Ordini&lt;/b&gt;&lt;br&gt;Gestione Carrello" vertex="1">
+          <mxGeometry height="60" width="140" x="400" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_srv" parent="priv_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Servizio Pagamenti&lt;/b&gt;&lt;br&gt;Integrazione Stripe" vertex="1">
+          <mxGeometry height="60" width="140" x="580" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="notif_srv" parent="priv_sub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;Servizio Notifiche&lt;/b&gt;&lt;br&gt;Invio Email &amp;amp; SMS" vertex="1">
+          <mxGeometry height="60" width="140" x="750" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="cache" parent="priv_sub" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" value="&lt;b&gt;Redis Cache&lt;/b&gt;&lt;br&gt;Sessioni &amp;amp; Token" vertex="1">
+          <mxGeometry height="70" width="100" x="235" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_queue" parent="priv_sub" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&lt;b&gt;RabbitMQ / Kafka&lt;/b&gt;&lt;br&gt;Coda di Messaggi" vertex="1">
+          <mxGeometry height="70" width="120" x="490" y="155" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="priv_sub" source="api_gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="auth_srv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="priv_sub" source="api_gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="order_srv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="priv_sub" source="api_gw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="pay_srv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="priv_sub" source="auth_srv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="cache">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="priv_sub" source="order_srv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2f9e44;strokeWidth=1.5;" target="msg_queue" value="Pubblica Ordine">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="priv_sub" source="msg_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2f9e44;strokeWidth=1.5;" target="pay_srv" value="Elabora Pagamento">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="priv_sub" source="msg_queue" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#2f9e44;strokeWidth=1.5;" target="notif_srv" value="Invia Notifica">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="data_sub" parent="vpc" style="swimlane;startSize=24;fillColor=#fff0e6;strokeColor=#f4a460;html=1;" value="Subnet Dati (Isolata)" vertex="1">
+          <mxGeometry height="190" width="920" x="20" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="db_master" parent="data_sub" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;PostgreSQL Scrittura&lt;/b&gt;&lt;br&gt;Database Primario" vertex="1">
+          <mxGeometry height="80" width="130" x="180" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="db_replica" parent="data_sub" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="&lt;b&gt;PostgreSQL Lettura&lt;/b&gt;&lt;br&gt;Replica Sola Lettura" vertex="1">
+          <mxGeometry height="80" width="130" x="400" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="nosql" parent="data_sub" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="&lt;b&gt;MongoDB&lt;/b&gt;&lt;br&gt;Catalogo Prodotti" vertex="1">
+          <mxGeometry height="80" width="120" x="620" y="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="data_sub" source="db_master" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;html=1;strokeColor=#f03e3e;strokeWidth=1.5;" target="db_replica" value="Replica">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="vpc" source="alb" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4c6ef5;strokeWidth=2;html=1;" target="api_gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="vpc" source="order_srv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#e8590c;strokeWidth=2;" target="db_master" value="Scrittura">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="vpc" source="order_srv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#1c7ed6;strokeWidth=1.5;" target="db_replica" value="Lettura">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="vpc" source="order_srv" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" target="nosql">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ops_container" parent="1" style="swimlane;startSize=24;fillColor=#fce4ec;strokeColor=#d81b60;html=1;" value="Monitoraggio &amp;amp; Sicurezza" vertex="1">
+          <mxGeometry height="680" width="220" x="1030" y="220" as="geometry">
+            <mxRectangle height="30" width="180" x="1030" y="220" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="prometheus" parent="ops_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Prometheus&lt;/b&gt;&lt;br&gt;Raccolta Metriche" vertex="1">
+          <mxGeometry height="60" width="140" x="40" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana" parent="ops_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Grafana&lt;/b&gt;&lt;br&gt;Dashboard Analisi" vertex="1">
+          <mxGeometry height="60" width="140" x="40" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="elk" parent="ops_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" value="&lt;b&gt;Elasticsearch Stack&lt;/b&gt;&lt;br&gt;Centralizzazione Log" vertex="1">
+          <mxGeometry height="60" width="140" x="40" y="300" as="geometry" />
+        </mxCell>
+        <mxCell id="vault" parent="ops_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="&lt;b&gt;HashiCorp Vault&lt;/b&gt;&lt;br&gt;Gestione Segreti" vertex="1">
+          <mxGeometry height="60" width="140" x="40" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="ops_container" source="grafana" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d946ef;" target="prometheus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="user" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4c6ef5;strokeWidth=2;html=1;" target="dns">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="dns" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#4c6ef5;strokeWidth=2;html=1;" target="waf">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="prometheus" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;html=1;strokeColor=#e64980;" target="api_gw">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="prometheus" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;html=1;strokeColor=#e64980;" target="order_srv">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="elk" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;html=1;strokeColor=#862e9c;" target="vpc" value="Ingestione Log">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="vault" style="edgeStyle=orthogonalEdgeStyle;rounded=1;dashed=1;html=1;strokeColor=#495057;" target="auth_srv" value="Chiavi API">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

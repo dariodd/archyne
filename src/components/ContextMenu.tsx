@@ -1,6 +1,8 @@
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { useGraphStore } from "../store";
+import { absoluteBoxes, useGraphStore } from "../store";
+import { nearestSegment, type Point } from "../routing";
+import type { AnyNode, FlowEdge } from "../model/types";
 import { isGroup, type DiagramKind, type NodeSeed } from "../model/types";
 import { useT } from "../i18n";
 
@@ -20,6 +22,28 @@ const DEFAULT_SEED: Record<DiagramKind, NodeSeed> = {
   architecture: { type: "service", icon: "server" },
   c4: { type: "c4", c4Shape: "system" },
 };
+
+/**
+ * Which place in the corner list a corner dropped *here* should take.
+ *
+ * The order matters: put in the wrong place, a new corner sends the line
+ * doubling back on itself. Node centres stand in for the ends — the handles'
+ * exact positions belong to the renderer, and for deciding which stretch of
+ * the line was clicked the centre is close enough.
+ */
+function cornerIndexAt(edge: FlowEdge | undefined, at: Point, nodes: AnyNode[]): number {
+  const corners = edge?.data?.points ?? [];
+  if (!edge || corners.length === 0) return 0;
+  const boxes = absoluteBoxes(nodes);
+  const centre = (id: string): Point | null => {
+    const b = boxes.get(id);
+    return b ? { x: b.x + b.w / 2, y: b.y + b.h / 2 } : null;
+  };
+  const route = [centre(edge.source), ...corners, centre(edge.target)].filter(
+    (q): q is Point => q !== null,
+  );
+  return nearestSegment(route, at);
+}
 
 function focusInspectorLabel() {
   requestAnimationFrame(() => document.getElementById("inspector-label")?.focus());
@@ -131,10 +155,47 @@ export function ContextMenu({ menu, onClose }: { menu: MenuState; onClose: () =>
     );
   } else if (menu.target === "edge" && menu.id) {
     const id = menu.id;
-    items.push(
-      { label: t("menu.editLabel"), action: run(() => focusInspectorLabel()) },
-      { label: t("menu.delete"), danger: true, action: run(() => s.deleteElement(id, "edge")) },
+    const edge = s.edges.find((e) => e.id === id);
+    const corners = edge?.data?.points ?? [];
+    const at = screenToFlowPosition({ x: menu.x, y: menu.y }, { snapToGrid: false });
+
+    /**
+     * The corner right-clicked on, if the pointer is near enough to one to
+     * have meant it. Twenty units is about the dot itself at ordinary zoom —
+     * far enough to be forgiving, near enough that "remove" never takes away
+     * a corner the user was not pointing at.
+     */
+    const nearest = corners.reduce<{ index: number; away: number }>(
+      (best, q, i) => {
+        const away = Math.hypot(q.x - at.x, q.y - at.y);
+        return away < best.away ? { index: i, away } : best;
+      },
+      { index: -1, away: Infinity },
     );
+    const onCorner = nearest.index >= 0 && nearest.away <= 20;
+
+    items.push({ label: t("menu.editLabel"), action: run(() => focusInspectorLabel()) });
+    // Adding and removing corners lives here rather than in a list of
+    // coordinates in the side panel: you point at the place you mean.
+    if (onCorner) {
+      items.push({
+        label: t("menu.removeCorner"),
+        action: run(() => s.removeWaypoint(id, nearest.index)),
+      });
+    } else {
+      items.push({
+        label: t("menu.addCornerHere"),
+        action: run(() => s.addWaypoint(id, cornerIndexAt(edge, at, s.nodes), at)),
+      });
+    }
+    if (corners.length > 0) {
+      items.push({ label: t("menu.straighten"), action: run(() => s.clearWaypoints(id)) });
+    }
+    items.push({
+      label: t("menu.delete"),
+      danger: true,
+      action: run(() => s.deleteElement(id, "edge")),
+    });
   } else {
     items.push(
       {

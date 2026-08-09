@@ -1,9 +1,12 @@
 import { useState } from "react";
-import { Handle, NodeResizer, Position, useInternalNode, type NodeProps } from "@xyflow/react";
-import type { Direction, Shape, ShapeNode as ShapeNodeType } from "../model/types";
+import { Label } from "./Label";
+import { NodeResizer, useInternalNode, type NodeProps } from "@xyflow/react";
+import type { Shape, ShapeNode as ShapeNodeType } from "../model/types";
 import { defaultSize } from "../model/types";
 import { GROUP_MIN, useGraphStore } from "../store";
 import { NodeResize } from "./NodeResize";
+import { IconView } from "./ArchView";
+import { SideHandles } from "./SideHandles";
 
 function shapeSvg(shape: Shape, w: number, h: number) {
   const common = { className: "shape-fill", vectorEffect: "non-scaling-stroke" as const };
@@ -108,19 +111,6 @@ function shapeSvg(shape: Shape, w: number, h: number) {
   }
 }
 
-export function handlePositions(direction: Direction): { target: Position; source: Position } {
-  switch (direction) {
-    case "LR":
-      return { target: Position.Left, source: Position.Right };
-    case "RL":
-      return { target: Position.Right, source: Position.Left };
-    case "BT":
-      return { target: Position.Bottom, source: Position.Top };
-    default:
-      return { target: Position.Top, source: Position.Bottom };
-  }
-}
-
 /** Extract SVG-applicable props from mermaid style declarations. */
 function styleProps(decls: string[]): {
   fill?: string;
@@ -160,7 +150,6 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
   const fallback = defaultSize(data.shape);
   const w = Number(style?.width ?? fallback.width);
   const h = Number(style?.height ?? fallback.height);
-  const { target, source } = handlePositions(data.direction);
   const custom = styleProps([
     ...(data.classes ?? []).flatMap((c) => classDefs[c] ?? []),
     ...(data.styles ?? []),
@@ -212,12 +201,30 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
           }}
         />
       ) : (
-        <div className="shape-label" style={custom.color ? { color: custom.color } : undefined}>
-          {data.label}
+        <div
+          className={`shape-label${data.img ? ` with-image pos-${data.imgPos ?? "b"}` : ""}`}
+          style={custom.color ? { color: custom.color } : undefined}
+        >
+          {/* Mermaid's image shape, drawn the way mermaid draws it: the
+              picture from its URL, the label above or below. Loaded from the
+              network on purpose — that URL is the whole point of the shape,
+              since it is what makes the icon appear in other tools too. */}
+          {data.img && (
+            <img
+              className="shape-image"
+              src={data.img}
+              alt=""
+              width={data.imgWidth ?? 60}
+              height={data.imgHeight ?? 60}
+              draggable={false}
+            />
+          )}
+          <span>
+            <Label text={data.label} />
+          </span>
         </div>
       )}
-      <Handle type="target" position={target} />
-      <Handle type="source" position={source} />
+      <SideHandles />
     </div>
   );
 }
@@ -230,7 +237,12 @@ export function GroupNodeView({
   const resizeEnd = useGraphStore((s) => s.onNodeDragStop);
   const setNodeSize = useGraphStore((s) => s.setNodeSize);
   return (
-    <div className={`group-node${selected ? " selected" : ""}`}>
+    <div
+      className={
+        `group-node${selected ? " selected" : ""}` +
+        (data.style?.look && data.style.look !== "boxed" ? ` ${data.style.look}` : "")
+      }
+    >
       <NodeResizer
         isVisible={selected}
         minWidth={GROUP_MIN.width}
@@ -238,9 +250,17 @@ export function GroupNodeView({
         onResize={(_, p) => setNodeSize(id, p.width, p.height, p.x, p.y)}
         onResizeEnd={() => resizeEnd()}
       />
-      <div className="group-title">{data.label}</div>
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
+      {/* A container names itself in a header strip, and carries the icon
+          mermaid already lets it declare — `group vnet(logos:azure)[VNet]`.
+          It is how draw.io labels an Azure or AWS container, and without it
+          the only difference between two nested boxes was their wording. */}
+      <div className="group-title">
+        {data.icon && <IconView name={data.icon} size={15} />}
+        <span>
+          <Label text={data.label} />
+        </span>
+      </div>
+      <SideHandles />
     </div>
   );
 }

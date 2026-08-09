@@ -1,0 +1,57 @@
+Archyne
+Copyright (c) Dario D.
+
+Archyne is licensed under the MIT License (see LICENSE). The MIT grant covers
+Archyne's own source code. It does NOT cover everything in this repository or
+in a build produced from it — the exception is recorded here.
+
+--------------------------------------------------------------------------------
+Azure architecture icons — Microsoft Corporation
+--------------------------------------------------------------------------------
+
+Files:   src/icons-azure.generated.json
+         (and the copies of it in any built artifact: dist/, the npm package,
+         and the desktop installers)
+
+Source:  https://learn.microsoft.com/azure/architecture/icons/
+         "Azure Public Service Icons" V24, converted to Iconify format by
+         scripts/build-azure-icons.mjs. The artwork is unmodified: the
+         conversion changes the container, not the drawings.
+
+These icons are Microsoft's. They are NOT licensed under Archyne's MIT
+licence, and no permission over them is granted by it. Microsoft's terms, in
+full, as published on the page above:
+
+    "Microsoft permits the use of these icons in architectural diagrams,
+     training materials, or documentation. You can copy, distribute, and
+     display the icons only for the permitted use unless granted explicit
+     permission by Microsoft. Microsoft reserves all other rights."
+
+And Microsoft's guidance for using them:
+
+    Do   - use the icons to illustrate how products work together
+    Do   - include the product name near the icon in a diagram
+    Do   - use the icons as they appear within Azure
+    Don't- crop, flip, rotate, distort or otherwise change an icon's shape
+    Don't- use Microsoft product icons to represent your product or service
+
+Archyne bundles them so that architecture diagrams can be drawn with the
+icons the subject matter actually has: Iconify's 231 collections contain no
+Azure set, and without these there is no icon for a virtual network, a subnet
+or a Key Vault. They are shipped for use in diagrams — the permitted use —
+and Archyne does not use them as its own branding, in its interface chrome,
+or to represent Archyne itself.
+
+If Microsoft would prefer this pack were not distributed with Archyne, please
+open an issue at https://github.com/dariodd/archyne/issues and it will be
+removed promptly: it is one generated file and one loader entry, and every
+icon remains importable by the user from Microsoft's own download.
+
+Microsoft, Azure and the Azure icons are trademarks of the Microsoft group of
+companies. Archyne is an independent project, not affiliated with, endorsed
+by, or sponsored by Microsoft.
+
+--------------------------------------------------------------------------------
+
+Licences for the packages Archyne depends on are listed in
+THIRD-PARTY-NOTICES.md.

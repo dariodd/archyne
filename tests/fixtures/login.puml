@@ -1,0 +1,23 @@
+@startuml
+' A login flow, with the constructs a real sequence diagram uses.
+!theme plain
+title Login
+skinparam responseMessageBelowArrow true
+
+actor User
+participant "Web app" as Web
+database DB
+
+autonumber
+User -> Web : GET /login
+activate Web
+alt cached
+  Web --> User : 200 (cache)
+else miss
+  Web -> DB : SELECT user
+  DB --> Web : row
+  Web --> User : 200
+end
+deactivate Web
+note right of DB : read replica
+@enduml

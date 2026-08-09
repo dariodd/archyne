@@ -43,12 +43,38 @@ import {
   type Waypoint,
   type WaypointMap,
 } from "./model/waypoints";
+import {
+  isPlain,
+  patchEdgeStyles,
+  readEdgeStyles,
+  type EdgeStyle,
+  type EdgeStyleMap,
+} from "./model/edgeStyle";
+import {
+  isPlainNode,
+  patchNodeStyles,
+  readNodeStyles,
+  type NodeStyle,
+  type NodeStyleMap,
+} from "./model/nodeStyle";
+import {
+  CUSTOM,
+  iconName,
+  patchIconLibrary,
+  readIconLibrary,
+  usedIcons,
+  type IconLibrary,
+} from "./model/iconLibrary";
+import { sanitiseSvg } from "./model/svg";
+import { setCarriedIcons } from "./icons";
+import { useIconPack } from "./iconPack";
 import { removeSeqItemAt } from "./model/kinds/sequence";
 import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
 import { autoLayout } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
 import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
 import type { Box } from "./guides";
+import { carryWaypoints } from "./orthogonal";
 
 /** Smallest a group may be, whether dragged or typed. */
 export const GROUP_MIN = { width: 140, height: 100 };
@@ -171,7 +197,7 @@ export const NEW_DIAGRAM: Record<DiagramKind, string> = {
  * Mark edges that share a node pair (and, for architecture, the same
  * handles) so the canvas can fan them out instead of overlapping them.
  */
-function annotateParallel(kind: DiagramKind, edges: FlowEdge[]): FlowEdge[] {
+export function annotateParallel(kind: DiagramKind, edges: FlowEdge[]): FlowEdge[] {
   if (kind === "sequence") return edges; // messages are stacked by order
   const keyOf = (e: FlowEdge) =>
     `${[e.source, e.target].sort().join("~")}|${e.sourceHandle ?? ""}|${e.targetHandle ?? ""}`;
@@ -214,7 +240,11 @@ function annotateParallel(kind: DiagramKind, edges: FlowEdge[]): FlowEdge[] {
 }
 
 /** Assign stored/cascade positions to bare nodes. */
-function placeNodes(nodes: AnyNode[], positions: PositionMap, kind: DiagramKind): AnyNode[] {
+export function placeNodes(
+  nodes: AnyNode[],
+  positions: PositionMap,
+  kind: DiagramKind,
+): AnyNode[] {
   if (kind === "sequence") {
     // Participants live on a single top row; x order = participant order.
     let col = 0;
@@ -324,6 +354,36 @@ export interface GraphState {
   moveWaypoint: (edgeId: string, index: number, point: Waypoint, commit?: boolean) => void;
   removeWaypoint: (edgeId: string, index: number) => void;
   /**
+   * Replace an edge's corners outright.
+   *
+   * Sliding a run of an orthogonal route can add corners, drop them and move
+   * others all at once — the arithmetic in `orthogonal.ts` returns the whole
+   * new path — so there is nothing sensible to express as one insertion or
+   * one move.
+   */
+  setWaypoints: (edgeId: string, points: Waypoint[], commit?: boolean) => void;
+  /**
+   * Change how one edge is presented — where its label sits, how it routes.
+   * Merged into whatever is already there, so moving a label does not undo a
+   * routing choice made a moment before.
+   */
+  setEdgeStyle: (edgeId: string, patch: EdgeStyle, commit?: boolean) => void;
+  /** Change how one node is drawn — a box with its icon, or the icon alone. */
+  setNodeStyle: (nodeId: string, patch: NodeStyle) => void;
+  /** The icons this document carries, by name, already sanitised. */
+  iconLibrary: IconLibrary;
+  /**
+   * Take an SVG into the document under `name`, and answer with the
+   * reference a node should use. The markup is cleaned first; anything that
+   * is not an icon is refused.
+   */
+  addCustomIcon: (name: string, svg: string) => string | null;
+  /**
+   * Take a whole folder in at once. Answers with the references accepted, in
+   * the order given, so a caller can point a node at the first of them.
+   */
+  addCustomIcons: (files: Array<{ name: string; svg: string }>) => string[];
+  /**
    * Add a corner at the middle of the edge's last segment.
    *
    * The pointer-free way in: the inspector has no geometry of its own, so
@@ -411,6 +471,34 @@ export function loadInitialCode(): string {
   return code;
 }
 
+/**
+ * Move every connection's corners to keep up with the nodes that moved.
+ *
+ * Reads the absolute geometry twice — before the change and after — because
+ * a node inside a group moves when the group is dragged without its own
+ * position changing at all, and the corners have to follow that too.
+ */
+function carryEdges(before: AnyNode[], after: AnyNode[], edges: FlowEdge[]): FlowEdge[] {
+  const was = absoluteBoxes(before);
+  const now = absoluteBoxes(after);
+  const shift = (id: string) => {
+    const a = was.get(id);
+    const b = now.get(id);
+    return a && b ? { x: b.x - a.x, y: b.y - a.y } : { x: 0, y: 0 };
+  };
+
+  let touched = false;
+  const next = edges.map((e) => {
+    const points = e.data?.points;
+    if (!points || points.length === 0) return e;
+    const carried = carryWaypoints(points, shift(e.source), shift(e.target));
+    if (carried === points) return e;
+    touched = true;
+    return { ...e, data: { ...(e.data ?? { label: "" }), points: carried } };
+  });
+  return touched ? next : edges;
+}
+
 export const useGraphStore = create<GraphState>((set, get) => {
   /**
    * Undo/redo: because the mermaid code is the single source of truth, the
@@ -473,6 +561,33 @@ export const useGraphStore = create<GraphState>((set, get) => {
     for (const e of get().edges) {
       const points = e.data?.points;
       if (points?.length) map[keys.get(e.id)!] = points;
+    }
+    return map;
+  };
+
+  /** The icons the document should keep: the ones its nodes still name. */
+  const collectIcons = (): IconLibrary => {
+    const referenced = get()
+      .nodes.map((n) => (n.data as { icon?: string }).icon)
+      .filter((i): i is string => typeof i === "string");
+    return usedIcons(get().iconLibrary, referenced);
+  };
+
+  const collectNodeStyles = (): NodeStyleMap => {
+    const map: NodeStyleMap = {};
+    for (const n of get().nodes) {
+      const style = (n.data as { style?: NodeStyle }).style;
+      if (!isPlainNode(style)) map[n.id] = style!;
+    }
+    return map;
+  };
+
+  const collectEdgeStyles = (): EdgeStyleMap => {
+    const keys = waypointKeys(get().edges);
+    const map: EdgeStyleMap = {};
+    for (const e of get().edges) {
+      const style = e.data?.style;
+      if (!isPlain(style)) map[keys.get(e.id)!] = style!;
     }
     return map;
   };
@@ -546,7 +661,13 @@ export const useGraphStore = create<GraphState>((set, get) => {
       items: seqItems,
       positions: collectPositions(),
     });
-    const code = patchWaypoints(serialized, collectWaypoints());
+    const code = patchIconLibrary(
+      patchNodeStyles(
+        patchEdgeStyles(patchWaypoints(serialized, collectWaypoints()), collectEdgeStyles()),
+        collectNodeStyles(),
+      ),
+      collectIcons(),
+    );
     set({ code, parseError: null });
     persist(code);
   };
@@ -557,9 +678,15 @@ export const useGraphStore = create<GraphState>((set, get) => {
    */
   const repatchPositions = () => {
     record(get().code);
-    const code = patchWaypoints(
-      patchPositions(get().code, collectPositions()),
-      collectWaypoints(),
+    const code = patchIconLibrary(
+      patchNodeStyles(
+        patchEdgeStyles(
+          patchWaypoints(patchPositions(get().code, collectPositions()), collectWaypoints()),
+          collectEdgeStyles(),
+        ),
+        collectNodeStyles(),
+      ),
+      collectIcons(),
     );
     set({ code });
     persist(code);
@@ -633,19 +760,48 @@ export const useGraphStore = create<GraphState>((set, get) => {
           nodes = nodes.map((n) => (selectedIds.has(n.id) ? { ...n, selected: true } : n));
         }
 
+        // How a node is drawn lives in its own comment, keyed by id, and is
+        // matched back on here rather than surviving on the node objects,
+        // which a re-parse replaces.
+        // The document's own icons, over the ones this browser has kept: a
+        // file that carries a different drawing under the same name is
+        // describing itself, and wins.
+        const carried = { ...useIconPack.getState().icons, ...(readIconLibrary(code) ?? {}) };
+        setCarriedIcons(carried);
+
+        const looks = readNodeStyles(code);
+        if (looks) {
+          nodes = nodes.map((n) =>
+            looks[n.id] ? ({ ...n, data: { ...n.data, style: looks[n.id] } } as AnyNode) : n,
+          );
+        }
+
         // Waypoints live in their own comment and are keyed by endpoints,
         // so they are matched back onto the freshly parsed edges here rather
         // than surviving on the edge objects, which do not.
         const stored = readWaypoints(code);
+        const styles = readEdgeStyles(code);
         const keys = waypointKeys(parsed.edges);
-        const routed = stored
-          ? parsed.edges.map((e) => {
-              const points = stored[keys.get(e.id)!];
-              return points ? { ...e, data: { ...(e.data ?? { label: "" }), points } } : e;
-            })
-          : parsed.edges;
+        const routed =
+          stored || styles
+            ? parsed.edges.map((e) => {
+                const key = keys.get(e.id)!;
+                const points = stored?.[key];
+                const style = styles?.[key];
+                if (!points && !style) return e;
+                return {
+                  ...e,
+                  data: {
+                    ...(e.data ?? { label: "" }),
+                    ...(points ? { points } : {}),
+                    ...(style ? { style } : {}),
+                  },
+                };
+              })
+            : parsed.edges;
 
         set({
+          iconLibrary: carried,
           kind: parsed.kind,
           nodes,
           edges: annotateParallel(parsed.kind, routed),
@@ -709,7 +865,15 @@ export const useGraphStore = create<GraphState>((set, get) => {
         set({ nodes, edges });
         regenerate();
       } else {
-        set({ nodes });
+        // A connection's corners are absolute positions, so moving a node
+        // would otherwise leave them exactly where they were and send the
+        // line off on an errand. Carry them the same way instead — each
+        // corner following the end it is nearer.
+        const moved = changes.some((c) => c.type === "position" && c.position);
+        set({
+          nodes,
+          ...(moved ? { edges: carryEdges(get().nodes, nodes, get().edges) } : {}),
+        });
       }
     },
 
@@ -903,6 +1067,75 @@ export const useGraphStore = create<GraphState>((set, get) => {
       );
     },
 
+    setWaypoints: (edgeId, points, commit = true) => {
+      patchWaypointList(
+        edgeId,
+        () => points.map((q) => ({ x: Math.round(q.x), y: Math.round(q.y) })),
+        commit,
+      );
+    },
+
+    iconLibrary: {},
+
+    addCustomIcons: (files) => {
+      // Through the browser's pack first: it cleans, names and keeps them, so
+      // the same icons are there for the next diagram too.
+      const refs = useIconPack.getState().add(files);
+      const pack = useIconPack.getState().icons;
+      const library = { ...get().iconLibrary };
+      for (const ref of refs) {
+        const key = ref.slice(CUSTOM.length + 1);
+        if (pack[key]) library[key] = pack[key];
+      }
+      set({ iconLibrary: library });
+      setCarriedIcons(library);
+      return refs;
+    },
+
+    addCustomIcon: (name, svg) => {
+      const clean = sanitiseSvg(svg);
+      if (!clean) return null;
+      const key = iconName(name);
+      const library = { ...get().iconLibrary, [key]: clean };
+      set({ iconLibrary: library });
+      setCarriedIcons(library);
+      return `${CUSTOM}:${key}`;
+    },
+
+    setNodeStyle: (nodeId, patch) => {
+      set({
+        nodes: get().nodes.map((n) =>
+          n.id === nodeId
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  style: { ...(n.data as { style?: NodeStyle }).style, ...patch },
+                },
+              }
+            : n,
+        ) as AnyNode[],
+      });
+      repatchPositions();
+    },
+
+    setEdgeStyle: (edgeId, patch, commit = true) => {
+      set({
+        edges: get().edges.map((e) =>
+          e.id === edgeId
+            ? {
+                ...e,
+                data: {
+                  ...(e.data ?? { label: "" }),
+                  style: { ...(e.data?.style ?? {}), ...patch },
+                },
+              }
+            : e,
+        ),
+      });
+      if (commit) repatchPositions();
+    },
+
     commitWaypoints: () => repatchPositions(),
 
     removeWaypoint: (edgeId, index) => {
@@ -1080,7 +1313,10 @@ export const useGraphStore = create<GraphState>((set, get) => {
             data: {
               label: gid,
               subgraphId: gid,
-              ...(kind === "architecture" ? { icon: "cloud" } : {}),
+              // A named icon when the palette gave one — dropping the
+              // Azure "Virtual Networks" icon should make a VNet, not a
+              // generic cloud with the wrong picture on it.
+              ...(kind === "architecture" ? { icon: seed.icon ?? "cloud" } : {}),
               ...(kind === "c4" ? { boundaryType: "SYSTEM" } : {}),
             },
             style: { width: 340, height: 240 },
@@ -1260,7 +1496,22 @@ export const useGraphStore = create<GraphState>((set, get) => {
         kind !== "class"
       )
         return;
-      const selected = nodes.filter((n) => n.selected && !isGroup(n));
+      // Groups may be grouped. A VNet holding a Subnet holding its machines
+      // is the ordinary shape of a cloud diagram, and excluding groups here
+      // meant the only way to nest one was to write it in the source by hand.
+      const chosen = nodes.filter((n) => n.selected);
+      const byId = new Map(nodes.map((n) => [n.id, n]));
+      const inside = (n: AnyNode, ancestor: string): boolean => {
+        for (let p = n.parentId; p; p = byId.get(p)?.parentId) {
+          if (p === ancestor) return true;
+        }
+        return false;
+      };
+      // A selected group brings its contents with it; taking those in as
+      // members of their own accord would move them twice.
+      const selected = chosen.filter(
+        (n) => !chosen.some((other) => other.id !== n.id && inside(n, other.id)),
+      );
       if (selected.length === 0) return;
       const parent = selected[0].parentId;
       if (!selected.every((n) => n.parentId === parent)) return;
@@ -1269,11 +1520,20 @@ export const useGraphStore = create<GraphState>((set, get) => {
       const TITLE = 34;
       const boxes = selected.map((n) => {
         const s = estimateSize(n);
+        // A container is as big as it was drawn, which is in its style; only
+        // a leaf can be estimated from its contents. `Number(undefined)` is
+        // NaN rather than nullish, so the fallback has to be explicit.
+        const styled = (v: unknown): number | null => {
+          const parsed = Number(v);
+          return Number.isFinite(parsed) ? parsed : null;
+        };
+        const w = n.measured?.width ?? styled(n.style?.width) ?? s.width;
+        const h = n.measured?.height ?? styled(n.style?.height) ?? s.height;
         return {
           x1: n.position.x,
           y1: n.position.y,
-          x2: n.position.x + (n.measured?.width ?? s.width),
-          y2: n.position.y + (n.measured?.height ?? s.height),
+          x2: n.position.x + w,
+          y2: n.position.y + h,
         };
       });
       const x1 = Math.min(...boxes.map((b) => b.x1)) - PAD;

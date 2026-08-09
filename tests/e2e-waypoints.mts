@@ -88,8 +88,8 @@ check("an unbent edge has no handles on it", (await handles()) === 0, "handles w
 await page.locator(".react-flow__edge").first().click({ force: true });
 await page.waitForTimeout(250);
 check(
-  "selecting the edge offers one place to put a corner",
-  (await handles()) === 1,
+  "selecting a straight edge offers the bar for its single run",
+  (await handles()) === 1 && (await page.locator(".edge-handle.run").count()) === 1,
   `${await handles()} handles`,
 );
 check(
@@ -98,16 +98,18 @@ check(
   "the path changed when the edge was selected",
 );
 
-// Drag the hollow handle sideways: this is how the first corner is made.
-const add = page.locator(".edge-handle.add").first();
-const box = (await add.boundingBox())!;
+// Pull the run sideways: this is how the first corner is made. There is no
+// dot to pull a point out of any more — on an orthogonal connector the
+// gesture is moving a run, as it is in draw.io and Visio.
+const bar = page.locator(".edge-handle.run").first();
+const box = (await bar.boundingBox())!;
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 await page.mouse.down();
 await page.mouse.move(box.x + box.width / 2 + 90 * zoom, box.y + box.height / 2, { steps: 8 });
 await page.waitForTimeout(150);
 
 const mid = await edgeState(page);
-check("dragging it bends the edge", (mid.points?.length ?? 0) === 1, "no corner appeared");
+check("dragging the run bends the edge", (mid.points?.length ?? 0) >= 1, "no corner appeared");
 check(
   "nothing is written to the file until the pointer is released",
   mid.line === null,
@@ -119,8 +121,10 @@ await page.waitForTimeout(800);
 
 const after = await edgeState(page);
 check(
-  "releasing writes the corner into the source",
-  /graph:waypoints \{"a>b":\[\[\d+,\d+\]\]\}/.test(after.line ?? ""),
+  "releasing writes the corners into the source",
+  // Holding a run where it was put takes a corner at each of its ends —
+  // one alone would leave the router free to move it back.
+  /graph:waypoints \{"a>b":\[(\[\d+,\d+\],?){2}\]\}/.test(after.line ?? ""),
   `comment was ${after.line}`,
 );
 check(
@@ -128,10 +132,16 @@ check(
   (await pathOf())?.includes("Q") === true,
   `path was ${await pathOf()}`,
 );
+// One dot per corner the user placed, one bar per run of the squared path.
+// It used to be the corner plus a dot either side of it; the runs replaced
+// those when the route became orthogonal, because on such a path the useful
+// gesture is sliding a run rather than pulling a new point out of a midpoint.
+const corners = await page.locator(".edge-handle.corner").count();
+const bars = await page.locator(".edge-handle.run").count();
 check(
-  "a bent edge offers three handles: the corner and a place either side",
-  (await handles()) === 3,
-  `${await handles()} handles`,
+  "a bent edge offers a dot for every corner and a bar for every run",
+  corners === 2 && bars >= 2 && corners + bars === (await handles()),
+  `${corners} corner(s), ${bars} run bar(s), ${await handles()} handles in all`,
 );
 
 // Reload from the code the app produced.
@@ -152,16 +162,68 @@ check(
 );
 await reloaded.close();
 
-// The pointer-free path, which is what WCAG 2.5.7 asks for.
-await page.getByRole("button", { name: "Add corner" }).click();
+// The paths that do not involve dragging. The corner list in the side panel
+// used to be this; the context menu replaced it, on the grounds that pointing
+// at the place you mean beats typing its coordinates.
+/** A point genuinely on the stroke; the bounding box's corners are not. */
+const onLine = (fraction: number) =>
+  page.evaluate((f) => {
+    const path = document.querySelector(".edge-grab") as SVGPathElement;
+    const at = path.getPointAtLength(path.getTotalLength() * f);
+    const m = path.getScreenCTM()!;
+    return { x: at.x * m.a + at.y * m.c + m.e, y: at.x * m.b + at.y * m.d + m.f };
+  }, fraction);
+
+// Right-clicking the corner itself offers to take that one away. The dots
+// are only drawn on a selected edge, so select it first.
+const anywhere = await onLine(0.3);
+await page.mouse.click(anywhere.x, anywhere.y);
+await page.waitForTimeout(400);
+const dot = (await page.locator(".edge-handle.corner").first().boundingBox())!;
+await page.mouse.click(dot.x + dot.width / 2, dot.y + dot.height / 2, { button: "right" });
+await page.waitForTimeout(400);
+await page.getByRole("menuitem", { name: /remove this corner/i }).click();
 await page.waitForTimeout(600);
 check(
-  "the inspector can add a corner without a drag",
-  (await edgeState(page)).points?.length === 2,
-  "the corner count did not go up",
+  "the menu removes the corner it was opened on",
+  (await edgeState(page)).points?.length === 1,
+  "the corner is still there",
 );
 
-await page.getByRole("button", { name: "Straighten" }).click();
+// Right-clicking anywhere else on the line offers to put one there.
+const spot = await onLine(0.5);
+await page.mouse.click(spot.x, spot.y, { button: "right" });
+await page.waitForTimeout(400);
+await page.getByRole("menuitem", { name: /add a corner here/i }).click();
+await page.waitForTimeout(600);
+check(
+  "and adds one where the line was pointed at, without a drag",
+  (await edgeState(page)).points?.length === 2,
+  "no corner appeared",
+);
+
+// And without a pointer at all: the corner takes focus and the arrow keys
+// move it. This is the WCAG 2.5.7 path — everything a drag does here has to
+// be possible without dragging.
+await page.evaluate(`document.querySelector('[role="button"][aria-label^="Corner"]').focus()`);
+const wasAt = (await edgeState(page)).points?.[0];
+await page.keyboard.press("ArrowRight");
+await page.waitForTimeout(300);
+await page.keyboard.press("Shift+ArrowDown");
+await page.waitForTimeout(300);
+const nowAt = (await edgeState(page)).points?.[0];
+check(
+  "the arrow keys move a corner, a unit at a time and a cell with Shift",
+  !!wasAt && !!nowAt && nowAt.x === wasAt.x + 1 && nowAt.y === wasAt.y + 12,
+  `${JSON.stringify(wasAt)} became ${JSON.stringify(nowAt)}`,
+);
+
+// Near the start of the line, clear of the corners now on it: the menu
+// offers to straighten whatever it is opened on.
+const middle = await onLine(0.12);
+await page.mouse.click(middle.x, middle.y, { button: "right" });
+await page.waitForTimeout(400);
+await page.getByRole("menuitem", { name: /straighten the line/i }).click();
 await page.waitForTimeout(600);
 const flat = await edgeState(page);
 check("straightening drops every corner", flat.points === null, "corners were left behind");

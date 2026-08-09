@@ -4,8 +4,13 @@ import { useT } from "../i18n";
 import { useGraphStore } from "../store";
 import {
   buildExport,
+  canCopyImage,
+  copyExport,
   downloadDataUrl,
+  pdfFromPng,
+  previewOptions,
   DEFAULT_EXPORT_OPTIONS,
+  FORMAT_INFO,
   type ExportOptions,
 } from "../export";
 
@@ -17,6 +22,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
   const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const set = (patch: Partial<ExportOptions>) => setOpts((o) => ({ ...o, ...patch }));
 
@@ -28,7 +34,9 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       if (!alive) return;
       setBusy(true);
       setError(null);
-      buildExport(opts, nodes, code)
+      // A PDF cannot go in an <img>, so the preview is the image that will be
+      // placed on the page. The paper is applied when the button is pressed.
+      buildExport(previewOptions(opts), nodes, code)
         .then((url) => {
           if (!alive) return;
           setPreview(url);
@@ -46,9 +54,33 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
     };
   }, [opts, nodes, code]);
 
+  const failed = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
+
   const doExport = () => {
-    if (preview) downloadDataUrl(preview, `diagram.${opts.format}`);
-    onClose();
+    if (!preview) return onClose();
+    const { extension } = FORMAT_INFO[opts.format];
+    const deliver = (url: string) => {
+      downloadDataUrl(url, `diagram.${extension}`);
+      onClose();
+    };
+    if (opts.format !== "pdf") return deliver(preview);
+    setBusy(true);
+    pdfFromPng(preview, opts)
+      .then(deliver)
+      .catch((err: unknown) => {
+        failed(err);
+        setBusy(false);
+      });
+  };
+
+  const doCopy = () => {
+    if (!preview) return;
+    copyExport(preview)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(failed);
   };
 
   return (
@@ -73,8 +105,22 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             >
               <option value="png">{t("export.formatPng")}</option>
               <option value="svg">{t("export.formatSvg")}</option>
+              <option value="pdf">{t("export.formatPdf")}</option>
             </select>
           </label>
+          {opts.format === "pdf" && (
+            <label>
+              {t("export.page")}
+              <select
+                value={opts.page}
+                onChange={(e) => set({ page: e.target.value as ExportOptions["page"] })}
+              >
+                <option value="fit">{t("export.pageFit")}</option>
+                <option value="a4">{t("export.pageA4")}</option>
+                <option value="letter">{t("export.pageLetter")}</option>
+              </select>
+            </label>
+          )}
           <label>
             {t("export.background")}
             <select
@@ -103,7 +149,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               </select>
             </label>
           )}
-          {opts.format === "png" && (
+          {opts.format !== "svg" && (
             <label>
               {t("export.quality")}
               <select
@@ -131,6 +177,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
               />
             </label>
           )}
+          {opts.format === "pdf" && <p className="field-hint">{t("export.pdfHint")}</p>}
         </div>
         {/* The preview is regenerated as options change, so announce the
               outcome rather than leaving it to sighted users only. */}
@@ -146,8 +193,17 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       </div>
       <div className="modal-actions">
         <button onClick={onClose}>{t("export.cancel")}</button>
+        {canCopyImage() && (
+          <button onClick={doCopy} disabled={busy || !!error}>
+            {copied
+              ? t("export.copied")
+              : opts.format === "svg"
+                ? t("export.copyMarkup")
+                : t("export.copyImage")}
+          </button>
+        )}
         <button className="primary" onClick={doExport} disabled={busy || !!error}>
-          {t("export.confirm", { format: opts.format.toUpperCase() })}
+          {t("export.confirm", { format: FORMAT_INFO[opts.format].extension.toUpperCase() })}
         </button>
       </div>
     </Modal>

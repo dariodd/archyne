@@ -1,25 +1,23 @@
-import { Handle, type NodeProps } from "@xyflow/react";
+import { type NodeProps } from "@xyflow/react";
+import { Label } from "./Label";
 import type { ClassNode, EntityNode, StateNode } from "../model/types";
-import { handlePositions } from "./ShapeNode";
 import { NodeResize } from "./NodeResize";
 import { useSized } from "./useSized";
 import { useThemeStore } from "../theme";
+import { SideHandles } from "./SideHandles";
 
 export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
-  const { target, source } = handlePositions(data.direction);
   if (data.stateType === "choice") {
     return (
       <div className={`choice-state${selected ? " selected" : ""}`}>
-        <Handle type="target" position={target} />
-        <Handle type="source" position={source} />
+        <SideHandles />
       </div>
     );
   }
   if (data.stateType === "fork" || data.stateType === "join") {
     return (
       <div className={`forkjoin-state${selected ? " selected" : ""}`}>
-        <Handle type="target" position={target} />
-        <Handle type="source" position={source} />
+        <SideHandles />
       </div>
     );
   }
@@ -27,8 +25,7 @@ export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
     return (
       <div className={`pseudo-state ${data.stateType}${selected ? " selected" : ""}`}>
         {data.stateType === "end" && <div className="pseudo-inner" />}
-        <Handle type="target" position={target} />
-        <Handle type="source" position={source} />
+        <SideHandles />
       </div>
     );
   }
@@ -36,9 +33,8 @@ export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
   // and end markers are notation with a fixed meaning, not boxes.
   return (
     <SizedBox id={id} className="state-node" selected={selected}>
-      {data.label}
-      <Handle type="target" position={target} />
-      <Handle type="source" position={source} />
+      <Label text={data.label} />
+      <SideHandles />
     </SizedBox>
   );
 }
@@ -69,10 +65,11 @@ function SizedBox({
 }
 
 export function EntityNodeView({ id, data, selected }: NodeProps<EntityNode>) {
-  const { target, source } = handlePositions(data.direction);
   return (
     <SizedBox id={id} className="table-node" selected={selected}>
-      <div className="table-title">{data.label}</div>
+      <div className="table-title">
+        <Label text={data.label} />
+      </div>
       {data.attributes.length > 0 && (
         <div className="table-rows">
           {data.attributes.map((a, i) => (
@@ -84,14 +81,12 @@ export function EntityNodeView({ id, data, selected }: NodeProps<EntityNode>) {
           ))}
         </div>
       )}
-      <Handle type="target" position={target} />
-      <Handle type="source" position={source} />
+      <SideHandles />
     </SizedBox>
   );
 }
 
 export function ClassNodeView({ id, data, selected }: NodeProps<ClassNode>) {
-  const { target, source } = handlePositions(data.direction);
   return (
     <SizedBox id={id} className="table-node" selected={selected}>
       <div className="table-title">
@@ -100,7 +95,7 @@ export function ClassNodeView({ id, data, selected }: NodeProps<ClassNode>) {
             «{a}»
           </div>
         ))}
-        {data.label}
+        <Label text={data.label} />
         {data.generic ? `<${data.generic}>` : ""}
       </div>
       {data.members.length > 0 && (
@@ -121,8 +116,7 @@ export function ClassNodeView({ id, data, selected }: NodeProps<ClassNode>) {
           ))}
         </div>
       )}
-      <Handle type="target" position={target} />
-      <Handle type="source" position={source} />
+      <SideHandles />
     </SizedBox>
   );
 }

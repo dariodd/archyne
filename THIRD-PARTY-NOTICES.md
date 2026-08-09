@@ -187,6 +187,7 @@ Archyne is MIT-licensed. It bundles or depends on the following packages
 | express-rate-limit@8.6.0 | MIT | https://github.com/express-rate-limit/express-rate-limit |
 | fast-deep-equal@3.1.3 | MIT | https://github.com/epoberezkin/fast-deep-equal |
 | fast-uri@3.1.5 | BSD-3-Clause | https://github.com/fastify/fast-uri |
+| fflate@0.8.3 | MIT | https://github.com/101arrowz/fflate |
 | finalhandler@2.1.1 | MIT | pillarjs/finalhandler |
 | forwarded@0.2.0 | MIT | jshttp/forwarded |
 | fresh@2.0.0 | MIT | jshttp/fresh |
@@ -300,3 +301,9 @@ Archyne is MIT-licensed. It bundles or depends on the following packages
   **tabler**: MIT; **carbon**: Apache-2.0) are openly licensed. The vendor
   logos they depict remain trademarks of their respective owners and are
   shown nominatively.
+- **Azure architecture icons** are bundled (`src/icons-azure.generated.json`)
+  and are **not** covered by Archyne's MIT licence. They are Microsoft's, used
+  under the terms published with them, which permit use in architectural
+  diagrams, training materials and documentation. They are not a package
+  dependency, so the generated table above does not list them —
+  [`NOTICE`](NOTICE) records the terms in full, and how to have them removed.

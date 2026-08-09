@@ -128,6 +128,11 @@ jobs:
         env:
           ARCHYNE_URL: http://localhost:5173
 
+      - name: Diagram import (draw.io, Graphviz)
+        run: npm run test:e2e:import
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Accessibility (WCAG 2.2 AA)
         run: npm run test:e2e:a11y
         env:
@@ -155,6 +160,8 @@ jobs:
           name: e2e-output
           path: |
             export-e2e.png
+            export-e2e-*.pdf
+            import-e2e-*.png
             e2e-out/
             dev-server.log
             preview-server.log

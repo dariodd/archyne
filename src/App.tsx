@@ -17,7 +17,7 @@ import {
 import { useThemeStore } from "./theme";
 import { initEmbedBridge, isEmbedded } from "./embed";
 import { useLayoutStore } from "./layoutStore";
-import { initDesktopFiles, useFileStore } from "./files";
+import { desktopBridge, initDesktopFiles, useFileStore } from "./files";
 import { useWorkspace } from "./workspace";
 import { adoptFileHere, openFileHere, unsavedDocuments } from "./documents";
 import { toast, toastError } from "./toast";
@@ -69,7 +69,14 @@ export default function App() {
     // Apply the stored theme, follow OS changes under "system", and
     // re-derive edge colors whenever the resolved theme flips.
     document.documentElement.dataset.theme = useThemeStore.getState().resolved;
-    const unsub = useThemeStore.subscribe(() => useGraphStore.getState().refreshEdges());
+    // On the desktop the shell needs it too: the widgets Chromium draws
+    // itself take no notice of the page's CSS. No-op in a browser, where
+    // `color-scheme` in the stylesheet is the whole of the story.
+    desktopBridge()?.setTheme?.(useThemeStore.getState().resolved);
+    const unsub = useThemeStore.subscribe((s) => {
+      useGraphStore.getState().refreshEdges();
+      desktopBridge()?.setTheme?.(s.resolved);
+    });
     const mq = window.matchMedia("(prefers-color-scheme: light)");
     const onChange = () => useThemeStore.getState().sync();
     mq.addEventListener("change", onChange);
@@ -216,12 +223,27 @@ export default function App() {
           {/* Only rendered while a drawer is open, and only reachable at the
               narrow breakpoint where drawers exist. */}
           {(paletteOpen || sideOpen) && (
-            <button
-              type="button"
-              className="drawer-backdrop"
-              aria-label={t("palette.close")}
-              onClick={closeDrawers}
-            />
+            <>
+              <button
+                type="button"
+                className="drawer-backdrop"
+                aria-label={t("palette.close")}
+                onClick={closeDrawers}
+              />
+              {/* An open drawer covers the canvas, and the only ways out of
+                  one were a 47px strip of unmarked backdrop and the toolbar
+                  toggle that opened it — neither of which reads as "close".
+                  Sits over whichever drawer is open: the side panel is flush
+                  with the right edge, the palette with the left. */}
+              <button
+                type="button"
+                className={`drawer-close${sideOpen ? " at-end" : " at-start"}`}
+                aria-label={t("palette.close")}
+                onClick={closeDrawers}
+              >
+                <span aria-hidden="true">×</span>
+              </button>
+            </>
           )}
         </div>
         <StatusAnnouncer />

@@ -1,4 +1,6 @@
 import type { Mermaid } from "mermaid";
+import { carriedIconPack, normaliseIconRefs } from "../icons";
+import { CUSTOM } from "./iconLibrary";
 
 // mermaid is imported lazily: it is ~2 MB and (in Node) requires DOM globals
 // to exist before the module is evaluated.
@@ -10,6 +12,26 @@ let mermaidPromise: Promise<Mermaid> | null = null;
  * error). Every mermaid operation must go through this lock.
  */
 let chain: Promise<unknown> = Promise.resolve();
+/**
+ * Render with mermaid, having first told it what this diagram is drawn with.
+ *
+ * Both of the things done here exist because the canvas and the preview drew
+ * *different pictures* of one file: the canvas knows the icons a diagram
+ * carries and the names it can fall back on, and mermaid knew neither.
+ *
+ * Every route to mermaid's renderer goes through this — the preview tab, the
+ * read-only view for families Archyne cannot edit, and export — so the two
+ * views cannot drift apart again by somebody forgetting a step.
+ */
+export function renderWithMermaid(id: string, code: string): Promise<{ svg: string }> {
+  return withMermaid(async (m) => {
+    // Re-registered per render: it is a map assignment, and the icons a
+    // document carries change as they are imported.
+    m.registerIconPacks([{ name: CUSTOM, icons: carriedIconPack() }]);
+    return m.render(id, normaliseIconRefs(code));
+  });
+}
+
 export function withMermaid<T>(fn: (m: Mermaid) => Promise<T>): Promise<T> {
   const run = chain.then(async () => fn(await getMermaid()));
   chain = run.catch(() => undefined);
@@ -52,6 +74,13 @@ export function getMermaid(): Promise<Mermaid> {
       });
       // Vendor icons for architecture-beta (bundled, no network).
       m.default.registerIconPacks([
+        {
+          // Microsoft's, under their terms — see NOTICE. Registered here as
+          // well as in the canvas renderer so the preview draws the same
+          // diagram the canvas does.
+          name: "azure",
+          loader: () => import("../icons-azure.generated.json").then((mod) => mod.default),
+        },
         {
           name: "logos",
           loader: () => import("@iconify-json/logos").then((mod) => mod.icons),

@@ -1,7 +1,17 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Modal } from "./Modal";
-import { useWorkspace } from "../workspace";
-import { createDoc, deleteDoc, renameDoc, switchTo, useDocDialogs } from "../documents";
+import { readDocCode, useWorkspace } from "../workspace";
+import { sniffKind } from "../model/sniff";
+import type { DiagramKind } from "../model/types";
+import {
+  closeAllDocs,
+  createDoc,
+  deleteDoc,
+  renameDoc,
+  switchTo,
+  unsavedDocuments,
+  useDocDialogs,
+} from "../documents";
 import { useGraphStore } from "../store";
 import { useFileStore } from "../files";
 import { useT } from "../i18n";
@@ -20,6 +30,17 @@ import { useT } from "../i18n";
  * second document arrives would shift the canvas under the pointer, and a
  * lone tab beside a `+` is how every editor says "there can be more".
  */
+/** Two letters per family: short enough for a tab, distinct from each other. */
+const KIND_TAG: Record<DiagramKind, string> = {
+  flowchart: "FL",
+  state: "ST",
+  er: "ER",
+  class: "CL",
+  sequence: "SQ",
+  architecture: "AR",
+  c4: "C4",
+};
+
 export function DocumentTabs() {
   const t = useT();
   const docs = useWorkspace((s) => s.docs);
@@ -30,8 +51,28 @@ export function DocumentTabs() {
   const confirmDelete = useDocDialogs((s) => s.deleting);
   const setRenaming = (id: string | null) => useDocDialogs.setState({ renaming: id });
   const setConfirmDelete = (id: string | null) => useDocDialogs.setState({ deleting: id });
+  const [confirmCloseAll, setConfirmCloseAll] = useState(false);
 
   const activeDirty = savedCode !== null && savedCode !== code;
+  // Named in the dialog rather than counted: "two documents have unsaved
+  // changes" leaves you to work out which two.
+  const unsaved = confirmCloseAll ? unsavedDocuments() : [];
+
+  /**
+   * Each document's family, read from its stored source.
+   *
+   * Re-read when the documents change or the open one is edited — which is
+   * when a family can change, since it changes by rewriting the header. The
+   * active document is taken from the store rather than from storage, so a
+   * kind switched a moment ago shows immediately.
+   */
+  const kinds = useMemo(() => {
+    const out: Record<string, DiagramKind | null> = {};
+    for (const d of docs) {
+      out[d.id] = sniffKind(d.id === activeId ? code : (readDocCode(d.id) ?? ""));
+    }
+    return out;
+  }, [docs, activeId, code]);
   const target = docs.find((d) => d.id === (renaming ?? confirmDelete));
 
   return (
@@ -48,10 +89,23 @@ export function DocumentTabs() {
                 type="button"
                 className="doc-tab-name"
                 aria-current={active ? "true" : undefined}
-                title={d.name}
+                title={kinds[d.id] ? `${d.name} — ${t(`kind.${kinds[d.id]!}`)}` : d.name}
                 onClick={() => void switchTo(d.id)}
                 onDoubleClick={() => setRenaming(d.id)}
               >
+                {/* Which family this is, without opening it. Two letters and
+                    a hue rather than a drawing: at this size a glyph for
+                    seven families would be seven smudges, and the letters can
+                    be read as well as recognised. The full name is on the
+                    tab's title and in the badge's own label. */}
+                {kinds[d.id] && (
+                  <span
+                    className={`doc-kind k-${kinds[d.id]!}`}
+                    aria-label={t(`kind.${kinds[d.id]!}`)}
+                  >
+                    {KIND_TAG[kinds[d.id]!]}
+                  </span>
+                )}
                 {d.name}
                 {active && activeDirty && (
                   <em className="file-dirty" aria-label={t("file.unsaved")}>
@@ -79,8 +133,50 @@ export function DocumentTabs() {
         >
           <span aria-hidden="true">+</span>
         </button>
+        {docs.length > 1 && (
+          /* Only with something to close. One document and a "close all" is
+             a button that says the same thing as the × beside it. */
+          <button
+            type="button"
+            className="doc-tab-close-all"
+            onClick={() => setConfirmCloseAll(true)}
+          >
+            {t("doc.closeAll")}
+          </button>
+        )}
         <span className="doc-tabs-hint">{t("doc.tabsHint")}</span>
       </div>
+
+      {confirmCloseAll && (
+        <Modal
+          title={t("doc.closeAllTitle", { count: docs.length })}
+          onClose={() => setConfirmCloseAll(false)}
+          className="narrow"
+        >
+          <div className="modal-body">
+            <p>{unsaved.length > 0 ? t("doc.closeAllUnsaved") : t("doc.closeAllBody")}</p>
+            {unsaved.length > 0 && (
+              <ul className="doc-unsaved-list">
+                {unsaved.map((d) => (
+                  <li key={d.id}>{d.name}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button onClick={() => setConfirmCloseAll(false)}>{t("common.cancel")}</button>
+            <button
+              className="danger"
+              onClick={() => {
+                setConfirmCloseAll(false);
+                void closeAllDocs();
+              }}
+            >
+              {t("doc.closeAll")}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {renaming && target && (
         <RenameDialog
@@ -97,6 +193,7 @@ export function DocumentTabs() {
         <Modal
           title={t("doc.deleteTitle", { name: target.name })}
           onClose={() => setConfirmDelete(null)}
+          className="narrow"
         >
           <div className="modal-body">
             <p>
@@ -137,14 +234,14 @@ function RenameDialog({
   const [value, setValue] = useState(initial);
 
   return (
-    <Modal title={t("doc.renameTitle")} onClose={onClose}>
+    <Modal title={t("doc.renameTitle")} onClose={onClose} className="narrow">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit(value);
         }}
       >
-        <div className="modal-body">
+        <div className="modal-body stacked">
           <label className="field">
             {t("doc.nameLabel")}
             {/* Autofocus is the point of the dialog: it exists to take a name. */}

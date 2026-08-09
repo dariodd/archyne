@@ -45,7 +45,12 @@ function SideHandles() {
 export function ServiceNodeView({ id, data, selected }: NodeProps<ServiceNode>) {
   const sized = useSized(id);
   return (
-    <div className={`service-node${selected ? " selected" : ""}${sized ? " sized" : ""}`}>
+    <div
+      className={
+        `service-node${selected ? " selected" : ""}${sized ? " sized" : ""}` +
+        (data.style?.look === "icon" ? " bare" : "")
+      }
+    >
       <NodeResize id={id} visible={selected} />
       {data.icon && <IconView name={data.icon} size={44} />}
       <div className="service-label">{data.label || id}</div>

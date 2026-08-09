@@ -4,16 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!--
-      Archyne makes no network requests of its own: everything, including the
-      icon packs and mermaid's renderers, is bundled. `connect-src 'self'`
-      therefore states a real invariant rather than a hope, and a violation
-      means something went wrong.
+      Archyne makes no network requests on its own account: everything it
+      needs — the icon packs, mermaid's renderers — is bundled, and nothing
+      here calls home.
+
+      `connect-src` names five hosts because of one feature: importing an icon
+      from a pasted link. Vendors publish their sets as loose files, and the
+      alternative to fetching one is that the only way to get an icon in is to
+      have it on the disk in front of you. The list is closed on purpose —
+      four raw-file hosts that serve with permissive CORS, plus Iconify's API,
+      which is how ~200 000 icons are reachable without the build carrying
+      them — and it is kept in step with `ICON_HOSTS` in
+      src/model/iconUrl.ts, which a test checks.
+      It must never become `*` or bare `https:`: a request only ever goes out
+      because somebody pasted a link and pressed a button.
 
       Notes on the loosenings:
         style-src 'unsafe-inline'  mermaid injects a <style> per render, and
                                    the splash below is inline on purpose
         img-src data: blob:        exports are produced as data URLs, and the
-                                   preview rasterizes SVG through blobs
+                                   preview rasterizes SVG through blobs; the
+                                   same five hosts as `connect-src`, because
+                                   mermaid's image shape draws a node from a
+                                   URL and that URL is the point of it
         font-src data:             html-to-image inlines fonts as data URLs
 
       `frame-ancestors` is deliberately absent: it is ignored in a meta tag,
@@ -27,9 +40,9 @@
         default-src 'self';
         script-src 'self';
         style-src 'self' 'unsafe-inline';
-        img-src 'self' data: blob:;
+        img-src 'self' data: blob: https://raw.githubusercontent.com https://gist.githubusercontent.com https://cdn.jsdelivr.net https://unpkg.com https://api.iconify.design;
         font-src 'self' data:;
-        connect-src 'self';
+        connect-src 'self' https://raw.githubusercontent.com https://gist.githubusercontent.com https://cdn.jsdelivr.net https://unpkg.com https://api.iconify.design;
         worker-src 'self' blob:;
         object-src 'none';
         base-uri 'none';

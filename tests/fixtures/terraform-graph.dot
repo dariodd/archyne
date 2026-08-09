@@ -1,0 +1,11 @@
+digraph G {
+  rankdir = "RL";
+  node [shape = rect, fontname = "sans-serif"];
+  "terraform_data.api" [label="terraform_data.api"];
+  "terraform_data.database" [label="terraform_data.database"];
+  "terraform_data.network" [label="terraform_data.network"];
+  "terraform_data.worker" [label="terraform_data.worker"];
+  "terraform_data.api" -> "terraform_data.database";
+  "terraform_data.database" -> "terraform_data.network";
+  "terraform_data.worker" -> "terraform_data.database";
+}

@@ -42,6 +42,14 @@ export default tseslint.config(
       "jsx-a11y/no-static-element-interactions": "error",
       "jsx-a11y/click-events-have-key-events": "error",
       "jsx-a11y/no-autofocus": "error",
+      // A scrolling pane has to be a tabstop or a keyboard user cannot read
+      // past the fold — WCAG 2.1.1, and what axe reports as
+      // `scrollable-region-focusable`. The rule's default allows that only on
+      // a `tabpanel`; a named `group` or `region` is the same case.
+      "jsx-a11y/no-noninteractive-tabindex": [
+        "error",
+        { tags: [], roles: ["tabpanel", "group", "region"], allowExpressionValues: true },
+      ],
       // The codebase leans on `_`-prefixed throwaways in destructuring and
       // event handlers; keep that idiom lint-clean.
       "@typescript-eslint/no-unused-vars": [

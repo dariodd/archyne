@@ -1,0 +1,38 @@
+/* A service dependency graph, of the shape a build tool emits.
+   Exercises clusters, defaults, shapes, colours and edge attributes. */
+strict digraph services {
+  rankdir = LR
+  node [shape = box, style = filled, fillcolor = "#dae8fc"]
+  edge [color = "#666666"]
+
+  subgraph cluster_edge {
+    label = "Edge"
+    cdn   [label = "CDN", shape = ellipse]
+    lb    [label = "Load balancer"]
+  }
+
+  subgraph cluster_core {
+    label = "Core services"
+
+    subgraph cluster_api {
+      label = "API"
+      gateway [label = "Gateway", shape = hexagon]
+      auth    [label = "Auth", fillcolor = "#d5e8d4"]
+    }
+
+    worker [label = "Worker", shape = component]
+  }
+
+  db    [label = "Postgres", shape = cylinder, fillcolor = "#f8cecc"]
+  queue [label = "Queue", shape = cylinder, fillcolor = "#fff2cc"]
+  title [label = "Deployment v4", shape = plaintext]
+
+  cdn -> lb
+  lb -> gateway [label = "https"]
+  gateway -> auth
+  gateway -> { db queue }
+  worker -> queue [dir = both]
+  worker -> db [style = dashed, label = "read only"]
+  auth -> db
+  auth -> db
+}

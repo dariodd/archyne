@@ -5,8 +5,12 @@ dist
 release
 sbom.json
 
-# Output of the browser-driven e2e scripts (tests/e2e-*.mts)
-export-e2e.png
+# Output of the browser-driven e2e scripts (tests/e2e-*.mts). They write their
+# renders beside the project so a failure can be looked at; none of it belongs
+# in history.
+export-e2e*.png
+export-e2e*.pdf
+import-e2e*.png
 e2e-out
 *-server.log
 

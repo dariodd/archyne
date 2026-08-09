@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { withMermaid } from "../model/fromMermaid";
+import { renderWithMermaid } from "../model/fromMermaid";
 import { t } from "../i18n";
 
 /**
@@ -18,7 +18,7 @@ export function MermaidPreview({ code, className = "" }: { code: string; classNa
     if (!host) return;
     // Renders are async and racy; only the newest one may write to the DOM.
     const seq = ++seqRef.current;
-    withMermaid((mermaid) => mermaid.render(`preview-${seq}`, code))
+    renderWithMermaid(`preview-${seq}`, code)
       .then(({ svg }) => {
         if (seq === seqRef.current && ref.current) ref.current.innerHTML = svg;
       })

@@ -20,9 +20,222 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [Unreleased]
+## [0.2.0-alpha.1] — 2026-08-09
+
+A minor bump rather than a patch: this adds a whole import subsystem — six
+foreign formats, each previewed before it lands — a PDF export path, and a
+multi-diagram workspace, which the 0.1.0-alpha.1 notes listed under "what is
+not done". Still alpha, and the caveats in that section still stand except
+where this release names them fixed.
 
 ### Added
+
+- **Line breaks in a label are drawn as line breaks.** A Mermaid label holds
+  more than one line as `<br>`, and Mermaid's own parser hands `&` back as
+  `&amp;` once a label contains any markup — and the canvas was drawing both
+  as characters. A node that should have read "Route53 / Cloudflare / DNS &
+  Protezione DDoS" over two lines instead _said_
+  `Route53 / Cloudflare<br>DNS &amp; Protezione DDoS` on one. It affected
+  hand-written diagrams too, but an import produces such labels by the dozen,
+  so every imported diagram looked broken.
+
+  Deliberately not `dangerouslySetInnerHTML`: diagram text is untrusted — it
+  comes from files, from imports, and from agents over MCP — so the string is
+  split into lines and the handful of named entities decoded, and everything
+  else stays literal text.
+
+- **The import preview lets you overrule the family it chose.** Detection is a
+  guess: a PlantUML file could be a sequence, class or state diagram, and a
+  DOT file could be a graph or a class model. Where a source can be read more
+  than one way the preview offers **Read as** and converts again, so the
+  choice is made by whoever knows, and seen before it lands.
+
+- **A cloud import keeps the arrangement it was drawn in.**
+  `architecture-beta` has no coordinates, so the converter was throwing the
+  geometry away and leaving the whole drawing to a layout engine — a wide
+  diagram of subnets came back as a tall column with its connections crossing
+  it. But Archyne's own `%% graph:positions` comment is read for _every_
+  diagram family, not just flowcharts, so the places are kept there and the
+  import opens looking like the file it came from. Groups keep their size too;
+  a service keeps only its position, because it sizes itself around its own
+  name and the box it happened to occupy in draw.io cropped that off.
+
+- **Both preview panes are the same instrument.** The canvas is React Flow,
+  which brings wheel-zoom, drag-to-pan and a fit button; the Mermaid rendering
+  was one fixed picture in a scroll box with a pair of percentage buttons
+  bolted beside it. Switching between the two meant switching how you look at
+  things, which is a poor thing to ask of somebody comparing them. The
+  rendering now pans and zooms with the same gestures — the wheel zooms about
+  the pointer rather than about a corner — and its controls sit where React
+  Flow's do and do the same three things.
+
+- **The canvas components no longer reach for the open document.** The
+  editor's edge components read `useGraphStore` directly to route a
+  connection, which quietly meant _the_ open diagram. That was invisible until
+  something else wanted to draw a canvas — the import preview shows a diagram
+  that has deliberately not been loaded, so every connection came out missing.
+  The graph now arrives through a context: the editor provides none and the
+  store is used exactly as before, while a preview provides a static one and
+  is read-only by construction, since a static graph has nowhere to put an
+  edit. The preview draws with the editor's own router as a result — the same
+  orthogonal paths, the same fan-out where several connections share a pair,
+  the same hand-routed corners — instead of the stand-in that curved lines
+  across the diagram.
+
+- **A cloud drawing is imported as an architecture diagram.** A VPC with
+  subnets and a database is not a flowchart, and reading it as one threw away
+  the part that makes it legible: the icons. A draw.io file drawn with AWS,
+  Azure, GCP or Kubernetes stencils now becomes `architecture-beta`, with the
+  stencil turned into one of the 16 600 vendor icons already in the build,
+  containers as groups, and each connection anchored on the side the other
+  end actually lies — the only layout information that format can hold.
+
+  Two things the grammar insists on, found by looking at the preview rather
+  than by reading a specification: `architecture-beta` ids must be lower case,
+  and a label takes letters, digits, spaces and underscores and nothing else,
+  so `Amazon VPC (10.0.0.0/16)` would otherwise fail the whole document. The
+  bracketed detail is dropped and the rest cleaned.
+
+- **The preview shows the canvas, the render and the code.** It opens on a
+  read-only Archyne canvas built from the same node components the editor
+  draws with — so it is not an approximation of what you will get, it is what
+  you will get — with React Flow's own zoom and pan for judging a large
+  drawing. Two buttons switch to Mermaid's own rendering and to the generated
+  source. The **Read as** control is always shown rather than only when there
+  is a choice, because what it decided is worth stating even when it is the
+  only option.
+
+- **Every import is previewed before it lands.** A conversion is lossy by
+  construction, and it was landing on the canvas before anyone could judge it
+  — replacing what was on screen, with the caveats going by in a stack of
+  toasts. The importer now runs first and puts its result up: the diagram
+  drawn by Mermaid's own renderer, what family it became, the counts, and each
+  caveat that applies — pages skipped, elements with no equivalent, a drawing
+  that looked like a different sort of diagram. A button flips the pane to the
+  generated Mermaid. Cancel costs nothing, because nothing has been placed.
+
+  It covers every route in: the Import action, the fallback file input, and a
+  file the desktop shell hands over. A `.mmd` is placed straight away — there
+  is no conversion to check, so a dialog would only be in the way.
+
+- **Import is its own action, and the diagram family is read off the file.**
+  Converting a `.drawio` was hiding behind **Open**, which was the wrong word
+  for it: opening a file means editing it and saving it back, and an import is
+  never written back. **Import…** now sits in the overflow menu with its own
+  file filters, and Open offers only what Save writes. Content still decides
+  what a file is, so Open on a foreign file keeps working rather than
+  reporting that it is not valid Mermaid.
+
+  Each importer also chose one target family and stayed there, so a PlantUML
+  class diagram was refused and a DOT class model came across as boxes full of
+  pipe characters. The three _text_ formats say what they are, so now the
+  family is read off the file:
+
+  - **PlantUML class diagrams** become Mermaid class diagrams — classes with
+    their fields and methods, `<<interface>>`/`<<abstract>>`/`<<enumeration>>`
+    annotations, generics, packages as namespaces, and the extension,
+    composition, aggregation and dependency relations with their cardinalities.
+  - **PlantUML state diagrams** become `stateDiagram-v2` — states,
+    transitions with labels, `[*]` at both ends, `<<choice>>` pseudostates and
+    composite states as nested blocks. A composite named by a transition
+    before it is opened now _becomes_ that state rather than appearing twice.
+  - **Graphviz record labels** become a class diagram. A pipe-separated
+    `record` label is how doxygen draws UML, and `dir=back` — its idiom for
+    inheritance — is honoured so the arrow does not gain a second head.
+
+  The three _drawing_ formats do not say what they are: draw.io, Visio and
+  Excalidraw put every kind of diagram on one canvas. Those still import as
+  flowcharts, but a draw.io file is checked for the tell-tale styles and one
+  that looks like a sequence, ER or class diagram says so on import instead of
+  leaving you to work out why it arrived as boxes.
+
+- **Four more formats can be opened: SQL DDL, PlantUML, Visio and
+  Excalidraw.** With draw.io and Graphviz that makes six, all through one
+  sniff-and-dispatch point, all producing an ordinary Mermaid document, and
+  none of them ever written back to.
+
+  - **SQL DDL** (`.sql`, `.ddl`) becomes an **ER diagram** — the one import
+    that is not a flowchart. Tables are entities and columns are typed
+    attributes, and a foreign key's cardinality is read off the constraints
+    rather than guessed: many at the child end unless the column is unique,
+    optional at the parent end when it is nullable, and identifying only when
+    the key is part of the child's own primary key. Dialect-agnostic, and
+    shallow on purpose — views, triggers, grants and indexes are stepped over,
+    so a whole `pg_dump` opens rather than a hand-trimmed excerpt. Constraints
+    added afterwards by `ALTER TABLE`, which is how a dump always writes them,
+    count the same as inline ones.
+  - **PlantUML** (`.puml`, `.plantuml`, `.iuml`, `.wsd`) becomes a **sequence
+    diagram**, and only that. PlantUML is a dozen languages behind one pair of
+    markers; a class, state or component diagram is refused _by name_ instead
+    of being half-converted into something that has to be checked line by
+    line. Participants, messages and arrow styles, activation, notes and the
+    `alt`/`opt`/`loop`/`par` blocks all come across.
+  - **Visio** (`.vsdx`) is read out of its package: shapes and their text, the
+    shape each master suggests, literal colours, the `<Connects>` table as
+    edges, and the geometry — centres in inches measured up from the bottom of
+    the sheet, turned into corners in pixels measured down from the top. This
+    is the first format that is not text, so a binary file now travels from
+    the picker to the importer as bytes rather than as UTF-8 that has already
+    destroyed it.
+  - **Excalidraw** (`.excalidraw`) gives up its boxes, ellipses and diamonds
+    with the text bound to them, the arrows its bindings name — not the ones
+    that merely look attached — frames as containers, and the positions.
+
+- **Graphviz DOT files can be opened.** `.dot` and `.gv`, directed or not,
+  `strict` or not. Unlike draw.io there is almost nothing to lose in the
+  crossing — DOT describes a graph rather than a drawing, exactly as Mermaid
+  does — so nodes, edges, shapes, colours, `rankdir`, edge labels, line styles
+  and `cluster_*` containers all come across, while plain subgraphs stay
+  invisible as they are in Graphviz. A graph with no coordinates is laid out
+  with ELK; one that has been through `dot -Tdot` keeps the positions it
+  already has.
+
+  The point is the DOT nobody writes by hand: `terraform graph`,
+  `go mod graph`, doxygen, dbt and most build tools emit it, and until now it
+  was something you squinted at in whichever viewer was nearest. The grammar
+  is small enough to parse properly, so there is a tokeniser and a
+  recursive-descent parser rather than regular expressions, which come apart
+  on the first quoted brace — and a generated file is full of quoted braces.
+
+- **draw.io files can be opened.** Archyne could read exactly one format,
+  which is a hard thing to ask of somebody with a folder of `.drawio` files
+  and no way in. `Open` now takes them — both the plain and the compressed
+  form, and the `.xml` older versions write — and converts them to a Mermaid
+  flowchart: boxes, labels, shapes, colours, connections with their labels and
+  line styles, swimlanes and containers as subgraphs, and the geometry, which
+  goes into `%% graph:positions` so an imported diagram opens where it was
+  drawn instead of being re-laid-out. Hand-routed corners come across too.
+
+  It is a migration and not a mirror, and says so: a file with several pages
+  converts the first and tells you, anything with no Mermaid equivalent is
+  counted rather than dropped in silence, and the fourteen vertex shapes are
+  matched as closely as draw.io's thousands allow. Two details worth their
+  own line: node ids are named after the labels, because generated source
+  nobody can read defeats the point of importing into Mermaid at all; and a
+  pale draw.io fill is given dark text, because those palettes are drawn for
+  black-on-white and the labels were otherwise invisible on Archyne's canvas.
+
+  **The file it came from is never written to.** An import arrives unbound —
+  no path, no handle — so Save is Save-as into a new `.mmd`, and a `.drawio`
+  cannot be replaced by Mermaid its own editor could not open.
+
+- **PDF export, and export straight to the clipboard.** PNG and SVG covered
+  the web and the design tool; the formats a diagram is actually filed in —
+  a report, a slide deck, something printed — were left to the user to
+  convert. Export now offers PDF as a third format: one page, either cut to
+  the diagram or centred on A4 or Letter, turned landscape when the diagram
+  is wider than it is tall, and never enlarged to fill a sheet it does not
+  need. Alongside it, **Copy image** puts the diagram on the clipboard ready
+  to paste, and copies the markup instead when the format is SVG.
+
+  The page holds the diagram as a losslessly compressed image at the chosen
+  quality, not as vector paths: vector would mean translating the canvas to
+  PDF drawing operators and embedding a font subset for every label, and the
+  two libraries that do it are together larger than the whole initial bundle.
+  3× is 288 dpi and prints cleanly; SVG stays the answer where the artwork
+  has to scale without limit. The writer is Archyne's own — no dependency was
+  added, and it is fetched only when someone exports a PDF, so the initial
+  bundle is unchanged.
 
 - **A multi-diagram workspace.** There was one `graph:code` key in
   localStorage, so opening a second diagram replaced the first and working on

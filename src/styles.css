@@ -21,6 +21,18 @@
   /* Alignment guides are deliberately not the accent: the accent means
      "selected", and a guide is a hint about where something will land. */
   --guide: #e08cc0;
+  /* The selection outline on the box-shaped families. Their resting border
+     is already the accent, so selection cannot also be the accent — it is
+     the maximum-contrast neutral against the canvas instead. This was a
+     hard-coded white, which in the light theme drew a white outline on a
+     white node: the selected node was the one you could see *least*. */
+  --selected: #ffffff;
+
+  /* The parts of a control the browser draws itself — the option list a
+     <select> pops up, scrollbars, focus rings on native widgets — take no
+     notice of our variables. Without this they stayed light under the dark
+     theme: opening a select showed a white list with our light text on it. */
+  color-scheme: dark;
 
   /* One radius for controls, one for surfaces that float. Mixing four
      values was a large part of what made this look generic. */
@@ -31,6 +43,7 @@
 }
 
 :root[data-theme="light"] {
+  color-scheme: light;
   --bg: #f6f6f9;
   --panel: #ffffff;
   --panel-2: #eff0f5;
@@ -45,6 +58,7 @@
   --checker-a: #e6e7ee;
   --checker-b: #f3f4f8;
   --guide: #c2418a;
+  --selected: #161827;
   --shadow: 0 12px 28px -14px rgba(20, 22, 40, 0.35);
 }
 
@@ -92,6 +106,11 @@ body,
   display: flex;
   align-items: center;
   gap: 4px;
+  /* The bar wraps, but a group that cannot wrap inside itself defeats that:
+     on a 390px phone the document/export run measured 417px, so it widened
+     the whole page and pushed Export off the right-hand edge — the one
+     control that has to be reachable. */
+  flex-wrap: wrap;
 }
 
 .tb-group + .tb-group::before {
@@ -112,7 +131,8 @@ body,
    drawer left open on a tablet drops a stray button into the row once the
    window grows past the breakpoint. */
 .drawer-toggle,
-.drawer-backdrop {
+.drawer-backdrop,
+.drawer-close {
   display: none;
 }
 
@@ -388,6 +408,12 @@ body,
 }
 .toolbar select {
   border-color: var(--border);
+  /* Opaque on purpose, unlike the buttons beside it. Chromium builds the
+     option list's background out of the select's own: left transparent, the
+     list came out white, and the dark theme's near-white option text landed
+     on it. This is the colour of the bar behind it, so the control looks
+     exactly as it did. */
+  background: var(--panel);
 }
 
 /* Exactly one emphasised action, so the eye has somewhere to land. */
@@ -438,10 +464,44 @@ body,
 }
 
 /* Handles for routing an edge by hand. Only drawn on a selected edge, so
-   they never compete with the diagram itself for attention. */
-.edge-handle {
-  cursor: grab;
+   they never compete with the diagram itself for attention.
+
+   The dot you see and the disc that catches the pointer are two different
+   circles. A 12px dot sitting on a line is about as much as the diagram can
+   spare, and about half of what a drag target needs to be — so the target
+   is the invisible one, at 24px across. */
+.edge-hit {
+  fill: transparent;
   pointer-events: all;
+  cursor: grab;
+}
+
+/* The line itself, as a drag target: wide enough to grab without aiming,
+   invisible, and only where the stroke is — a bent edge must not catch
+   pointers inside the bend. */
+.edge-grab {
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: grab;
+}
+
+.edge-grab:active,
+.edge-hit:active {
+  cursor: grabbing;
+}
+
+/* A corner reached by Tab has to say so. The ring goes on the invisible disc
+   that takes the focus, which is wider than the dot — which is the point,
+   since it is also what the pointer aims at. */
+.edge-hit:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 50%;
+}
+
+.edge-handle {
+  pointer-events: none;
   stroke: var(--accent);
   stroke-width: 1.5;
 }
@@ -450,13 +510,26 @@ body,
   fill: var(--accent);
 }
 
+/* A run of an orthogonal route, as a bar lying along it: the shape says
+   which way the thing beneath travels, and the cursor which way it moves. */
+.edge-handle.run {
+  fill: var(--panel);
+}
+.edge-hit.ns {
+  cursor: ns-resize;
+}
+.edge-hit.ew {
+  cursor: ew-resize;
+}
+
 /* Hollow, because it is not a corner yet — dragging it makes one. */
 .edge-handle.add {
   fill: var(--panel);
   opacity: 0.75;
 }
 
-.edge-handle.add:hover {
+/* Hover belongs to the target, but the dot is what shows it. */
+.edge-hit:hover + .edge-handle.add {
   opacity: 1;
 }
 
@@ -571,7 +644,7 @@ body,
 }
 
 .shape-node.selected .shape-fill {
-  stroke: #fff;
+  stroke: var(--selected);
   stroke-width: 2;
 }
 
@@ -583,6 +656,30 @@ body,
   pointer-events: none;
   max-width: 100%;
   overflow-wrap: break-word;
+}
+
+/* A node drawn with a picture: mermaid's image shape. The label sits above
+   or below it, as `pos` says, and the picture is loaded from its URL — which
+   is the whole point of the shape, since that URL is what lets another tool
+   draw the same icon. */
+.shape-label.with-image {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.shape-label.with-image.pos-t {
+  flex-direction: column-reverse;
+}
+
+.shape-image {
+  object-fit: contain;
+  /* A picture that fails to load must not leave a broken-image glyph in the
+     middle of the diagram; the label alone reads as "this one is missing". */
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .shape-label-input {
@@ -609,7 +706,7 @@ body,
 }
 
 .state-node.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .choice-state {
@@ -621,7 +718,7 @@ body,
 }
 
 .choice-state.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .forkjoin-state {
@@ -683,7 +780,7 @@ body,
 }
 
 .table-node.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .table-title {
@@ -764,7 +861,7 @@ body,
 }
 
 .group-node.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .group-title {
@@ -783,6 +880,25 @@ body,
 .react-flow__node:hover .react-flow__handle {
   width: 12px;
   height: 12px;
+}
+
+/* React Flow's resizer ships a 5px Google-blue square with a white border:
+   another product's colour, and a target small enough that grabbing it is
+   a matter of luck. Same palette and footprint as the connection handles
+   above, kept square so the two remain tellable apart at a glance. */
+.react-flow__resize-control.handle {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--bg);
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* The sides between the corners. A hint that the box is grabbable, not a
+   second border competing with the node's own. */
+.react-flow__resize-control.line {
+  border-color: var(--accent);
+  opacity: 0.45;
 }
 
 /* the in-progress connection line while dragging */
@@ -931,7 +1047,7 @@ body,
 }
 
 .service-node.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .arch-icon {
@@ -1199,6 +1315,8 @@ body,
   justify-content: center;
   padding: 24px;
   overflow: auto;
+  /* As `.preview`: a white plate for mermaid's artwork, scrollbar included. */
+  color-scheme: light;
   background: #fff;
 }
 
@@ -1319,10 +1437,66 @@ body,
     padding: 0;
     background: rgba(0, 0, 0, 0.45);
   }
+
+  /* Above the drawer it closes, not merely on it. Physical edges rather than
+     logical ones: which side a drawer slides from is a fact about the
+     layout, and in RTL the two swap over together (below). */
+  .drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 6px;
+    z-index: 25;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+  }
+  .drawer-close.at-end {
+    right: 6px;
+  }
+  .drawer-close.at-start {
+    left: 6px;
+  }
+  [dir="rtl"] .drawer-close.at-end {
+    right: auto;
+    left: 6px;
+  }
+  [dir="rtl"] .drawer-close.at-start {
+    left: auto;
+    right: 6px;
+  }
+
+  /* Room for it, so it never sits on top of the last tab. */
+  .side .tabs {
+    padding-inline-end: 40px;
+  }
+
+  /* A map of a canvas this small is a nineteenth of the canvas, sitting on
+     top of it. Panning is the navigation here. */
+  .react-flow__minimap {
+    display: none;
+  }
+
+  /* On one line the spacer pushes the two halves of the bar apart, which is
+     its whole job. On a wrapping bar it takes a line to itself and pushes
+     what follows onto the next one — four rows deep on a phone. */
+  .toolbar-spacer {
+    display: none;
+  }
 }
 
-/* Phone-sized: the toolbar needs to give up its less-used controls. */
-@media (max-width: 640px) {
+/* Phone-sized: the toolbar needs to give up its less-used controls. The
+   controls themselves move into the overflow menu from `useNarrow`, which
+   matches on these same two measurements — width for a phone upright, height
+   for the same phone on its side. What is left here is the chrome. */
+@media (max-width: 640px), (max-height: 420px) {
   .toolbar {
     padding: 6px 10px;
     gap: 6px;
@@ -1330,6 +1504,24 @@ body,
   .kind-badge,
   .toolbar-field {
     display: none;
+  }
+  /* The mark alone still says whose editor this is, and the word costs a
+     row of a screen that has few to spare. */
+  .brand {
+    display: none;
+  }
+}
+
+/* A finger is wider than the line it lands on, and on a touchscreen the same
+   one-finger drag is how the canvas is panned. So bending starts only once
+   the edge has been selected — a swipe that happens to cross an edge pans,
+   as it should. */
+@media (pointer: coarse) {
+  .edge-grab {
+    pointer-events: none;
+  }
+  .react-flow__edge.selected .edge-grab {
+    pointer-events: stroke;
   }
 }
 
@@ -1526,7 +1718,7 @@ body,
 }
 
 .c4-node.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .c4-head {
@@ -1793,7 +1985,7 @@ body,
 }
 
 .participant-head.selected {
-  border-color: #fff;
+  border-color: var(--selected);
 }
 
 .actor-icon {
@@ -1857,6 +2049,10 @@ body,
      sideways as it lands. Reserving the gutter means nothing moves. */
   scrollbar-gutter: stable;
   padding: 12px;
+  /* mermaid renders its own dark-on-white artwork, so this plate stays white
+     in both themes — and says so, or the dark theme's scrollbar would be
+     drawn on it. */
+  color-scheme: light;
   background: #fff;
 }
 
@@ -1870,6 +2066,21 @@ body,
   padding-bottom: 12px;
   max-height: 40%;
   overflow-y: auto;
+}
+
+/* Below the drawer breakpoint the code panel and the inspector share one
+   overlay instead of a tall column, and 40% of that is 245px: tapping an
+   element gave you its properties cut off below the fold, under an editor
+   holding three lines and a great deal of nothing.
+
+   Still a cap rather than a share — it only bites when the inspector has
+   something to show, so with nothing selected the editor keeps the room.
+   The rule sits here rather than with the other drawer styles because it
+   has to come after the 40% it overrides. */
+@media (max-width: 900px) {
+  .inspector {
+    max-height: 65%;
+  }
 }
 
 .inspector label {
@@ -2381,13 +2592,60 @@ body,
 }
 
 /* Two numeric fields side by side, for group width and height. */
+/* The row owns the inset and its labels give theirs up — the same
+   arrangement as `.color-row`. With the padding left on the labels, anything
+   in the row that is *not* a label (the remove button) sat outside it, hard
+   against the edge of the panel while every control above it was indented. */
 .size-row {
   display: flex;
+  align-items: flex-end;
   gap: 8px;
+  padding: 6px 12px 0;
 }
 .size-row label {
   flex: 1;
   min-width: 0;
+  padding: 0;
+}
+
+/* The small buttons in the inspector. They had no rules at all, so they took
+   the toolbar's sizing and spilled out of the panel.
+
+   Two shapes share the class, and they must not share a size: one is a word
+   ("Add corner", and in Italian "Aggiungi angolo", which is half again as
+   long), the other a single ×. Sizing them alike squashed the word into a
+   30px box and printed it over the button beside it. */
+.mini {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+
+/* The one that removes the row it sits in: square, and only as wide as the
+   glyph, so the fields beside it keep the width. */
+.mini.glyph {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.mini:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 /* Align and distribute, for a multi-selection. Three across matches the
@@ -2409,4 +2667,437 @@ body,
   font-size: 11px;
   color: var(--text-dim);
   margin-bottom: 4px;
+}
+
+/* The patch that takes a drag on an edge's label. Invisible: the label under
+   it is React Flow's own, and this only has to catch the pointer. */
+.edge-label-grab {
+  fill: transparent;
+  /* Explicit: React Flow gives an edge's group `pointer-events: visibleStroke`,
+     and a rectangle with only a transparent fill has no stroke to be hit on. */
+  pointer-events: all;
+  cursor: grab;
+}
+.edge-label-grab:active {
+  cursor: grabbing;
+}
+
+/* A service showing its icon alone, with the name beneath it — the stencil
+   look of Visio and draw.io, where the shape *is* the icon and no frame is
+   drawn round it. The footprint is unchanged, so connections still meet it
+   where they did and nothing on the canvas shifts when the look is changed. */
+.service-node.bare {
+  background: none;
+  border-color: transparent;
+}
+
+.service-node.bare.selected {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+
+/* A container's header: its icon, then its name. Laid out as a row so the
+   two sit together whichever is present, and pinned to the top-left corner
+   where a container's identity belongs — the same place draw.io puts it on
+   an Azure or AWS boundary. */
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.group-title svg,
+.group-title img {
+  flex: 0 0 auto;
+}
+
+/* A container drawn as a solid frame: what an Azure or AWS boundary looks
+   like in draw.io, where the outer ring is definite and the inner ones are
+   not. The header keeps its tint so the name still reads as a caption. */
+.group-node.solid {
+  border-style: solid;
+  background: rgba(91, 141, 239, 0.08);
+}
+
+/* And a hairline, for a grouping that is real but should recede: the fill
+   goes entirely and the border states itself once. */
+.group-node.plain {
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--border);
+  background: none;
+}
+
+/* "Close all", at the end of the tab strip. Quiet by default: it is the most
+   destructive thing on the bar and should not draw the eye that a new-tab
+   button does. */
+.doc-tab-close-all {
+  margin-inline-start: 8px;
+  padding: 3px 8px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.doc-tab-close-all:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* The diagrams a close would lose, named rather than counted. */
+.doc-unsaved-list {
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* The import control in the palette, above the icon grid. */
+.icon-import {
+  padding: 0 12px 8px;
+}
+
+/* A dialog that is a form rather than a workbench. The body is a row by
+   default, which is what the export dialog wants — options beside a preview —
+   and exactly wrong for a label above a field: it put the hint alongside the
+   input and left the two touching. */
+.modal-body.stacked {
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* `.field` and `.field-hint` were used in the dialogs and styled nowhere, so
+   the label ran into its input and the input kept the browser's own look
+   while every other field in the application had the app's. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.field input,
+.field textarea {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 6px 8px;
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.field-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* The icon picker. Its own scroll, so the search box and the buttons stay
+   put while seven hundred imported icons move under them. */
+.icon-picker-scroll {
+  overflow-y: auto;
+  max-height: min(52vh, 420px);
+  padding-inline-end: 4px;
+}
+
+.icon-picker-scroll .panel-title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+
+/* Icons that add a container rather than a node, marked so the difference is
+   visible before you click rather than after: a dashed frame, which is how a
+   group is drawn on the canvas. */
+.icon-add.container {
+  border: 1px dashed var(--border);
+}
+
+.icon-add.container:hover {
+  border-color: var(--accent);
+}
+
+/* The icon already on the node, so the picker opens showing where you are. */
+.icon-add.current {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+
+.icon-choose {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-choose-preview {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pushes what follows to the far end of the dialog's button row. */
+.modal-actions .spacer {
+  flex: 1;
+}
+
+/* A list of pasted links. Monospaced because that is what a URL is, and
+   `pre-wrap` rather than the default so a long one wraps where it is instead
+   of scrolling the field sideways while it is being checked. */
+.link-list {
+  min-height: 96px;
+  resize: vertical;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* A dialog that asks one question. The default width suits the export
+   dialog, which has a preview to show; a name field in the same frame is
+   mostly empty space with the field lost in the middle of it. */
+.modal.narrow {
+  width: min(440px, 92vw);
+}
+
+/* The family badge on a document tab.
+   A hue each, so the strip can be read at a glance without reading, and the
+   letters underneath for when two hues are close or the eye is not. Muted on
+   purpose: a tab is named by its name, and this only qualifies it. */
+.doc-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  margin-inline-end: 6px;
+  padding: 1px 3px;
+  border-radius: 2px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  /* Fixed, not `--bg`: the hues below are mid-tone, and the light theme's
+     near-white on them measured 2.9:1 — the audit was right to refuse it.
+     Near-black clears 4.5:1 against every one of them, in both themes. */
+  color: #101018;
+  background: var(--text-dim);
+}
+
+.doc-kind.k-flowchart {
+  background: #7e8bdd;
+}
+.doc-kind.k-state {
+  background: #6fb4c9;
+}
+.doc-kind.k-er {
+  background: #8ec07c;
+}
+.doc-kind.k-class {
+  background: #d8a657;
+}
+.doc-kind.k-sequence {
+  background: #d38b8b;
+}
+.doc-kind.k-architecture {
+  background: #b48ead;
+}
+.doc-kind.k-c4 {
+  background: #9aa5b1;
+}
+
+/* The import preview: the same two-column body as the export dialog, with
+   the summary on the left and the converted diagram on the right. */
+.import-summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.import-preview {
+  padding: 12px;
+  background: var(--panel-2);
+}
+
+/* Block rather than flex: a centred flex item that overflows its container
+   cannot be scrolled back to, so zooming in walked the picture off the edge.
+   An auto margin centres it while it fits and collapses once it does not. */
+/* Mermaid renders with its own light theme and, for some families, draws no
+   background at all — so on the dark panel its labels came out grey on grey.
+   The pane provides the page that rendering expects. */
+.import-render {
+  position: relative;
+  background: #fbfbfd;
+  width: 100%;
+  height: 66vh;
+  min-height: 340px;
+  overflow: hidden;
+}
+
+/* Pan and zoom, matching the canvas: the picture moves under a fixed frame
+   rather than the frame scrolling over it. */
+.panzoom {
+  position: relative;
+  /* A drag is a pan, not a text selection — without this, moving the picture
+     highlighted every label it passed over. */
+  user-select: none;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.panzoom:active {
+  cursor: grabbing;
+}
+
+.panzoom-viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.panzoom-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  /* Shrink-to-fit, so the natural size can be measured for the fit. */
+  width: max-content;
+}
+
+.panzoom-content svg {
+  display: block;
+  max-width: none;
+}
+
+/* Where React Flow puts its own, doing the same three things. */
+.panzoom-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--panel-2);
+}
+
+.panzoom-controls button {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.panzoom-controls button + button {
+  border-top: 1px solid var(--border);
+}
+
+.panzoom-controls button:hover {
+  background: var(--panel);
+}
+
+.import-source {
+  width: 100%;
+  max-height: 60vh;
+  margin: 0;
+  overflow: auto;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  white-space: pre;
+}
+
+/* The import preview's three views. */
+.import-views {
+  display: flex;
+  gap: 0;
+}
+
+.import-views button {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: var(--panel-2);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.import-views button:first-child {
+  border-radius: var(--r) 0 0 var(--r);
+}
+
+.import-views button:last-child {
+  border-radius: 0 var(--r) var(--r) 0;
+}
+
+.import-views button + button {
+  border-left: none;
+}
+
+.import-views button[aria-pressed="true"] {
+  background: var(--accent-strong);
+  color: #fff;
+  border-color: var(--accent-strong);
+}
+
+/* React Flow needs a sized box; it brings its own zoom and pan. */
+/* Diagrams are wider than they are tall, and the preview was a portrait
+   box — so a landscape drawing was shrunk to fit the narrow side with empty
+   space above and below it. The import dialog gets the width instead. */
+.modal.import-modal {
+  width: min(1240px, 94vw);
+  max-width: none;
+}
+
+.import-canvas {
+  width: 100%;
+  height: 66vh;
+  min-height: 340px;
+}
+
+/* The preview is read-only, so the connection points are noise in it — but
+   they are hidden rather than removed: React Flow measures a handle to work
+   out where an edge should start, and `display: none` takes it out of layout,
+   which leaves every connection with nowhere to attach and nothing drawn. */
+.import-canvas .react-flow__handle,
+.import-canvas .react-flow__resize-control {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Sits over the rendering, not in the flow, so the picture keeps the pane. */
+.import-render-note {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 6px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #444;
+  background: #eef0f4;
+  border-bottom: 1px solid #d8dbe2;
 }

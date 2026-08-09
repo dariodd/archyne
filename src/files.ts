@@ -19,11 +19,21 @@ import { useGraphStore } from "./store";
  * original file.
  */
 
+/**
+ * A file from the shell. `base64` is present instead of `content` when the
+ * file is binary — a `.vsdx` is a zip, and UTF-8 would destroy it.
+ */
+export interface DesktopFile {
+  path: string;
+  content: string;
+  base64?: string;
+}
+
 /** Shape of the bridge exposed by `desktop/preload.cjs`. */
 interface DesktopBridge {
-  openedFile(): Promise<{ path: string; content: string } | null>;
-  onOpenFile(cb: (file: { path: string; content: string }) => void): void;
-  showOpen(): Promise<{ path: string; content: string } | null>;
+  openedFile(): Promise<DesktopFile | null>;
+  onOpenFile(cb: (file: DesktopFile) => void): void;
+  showOpen(mode?: PickMode): Promise<DesktopFile | null>;
   showSave(defaultPath: string, content: string): Promise<string | null>;
   writeFile(path: string, content: string): Promise<void>;
   /**
@@ -33,6 +43,22 @@ interface DesktopBridge {
    */
   statFile?(path: string): Promise<{ mtimeMs: number } | null>;
   readFile?(path: string): Promise<string | null>;
+  /**
+   * Hand the resolved theme to the shell, which passes it to Chromium so the
+   * widgets it draws itself match the app. Optional for the same reason as
+   * the two above: an older desktop build will not have it.
+   */
+  setTheme?(theme: "dark" | "light"): void;
+  /**
+   * Download icons from links — the one call that reaches the network, and
+   * the only reason it lives in the shell is that the shell is not bound by
+   * CORS and can therefore take a vendor's `.zip`. Optional: without it the
+   * renderer falls back to fetching single SVGs itself.
+   */
+  fetchIcons?(urls: string[]): Promise<{
+    icons: Array<{ name: string; svg: string }>;
+    failed: string[];
+  }>;
 }
 
 function desktop(): DesktopBridge | null {
@@ -52,12 +78,71 @@ const MMD_TYPES = [
   { description: "Mermaid diagram", accept: { "text/plain": [".mmd", ".mermaid", ".txt"] } },
 ];
 
+/**
+ * What **Import** accepts. Open deliberately does not: opening a file means
+ * editing it and saving it back, and none of these is ever written back —
+ * Archyne writes Mermaid. Keeping them apart is what stops "Open" from
+ * quietly meaning two different things.
+ */
+const IMPORT_TYPES = [
+  {
+    description: "Diagram",
+    accept: {
+      "text/plain": [
+        ".mmd",
+        ".mermaid",
+        ".txt",
+        ".dot",
+        ".gv",
+        ".sql",
+        ".ddl",
+        ".excalidraw",
+        ".puml",
+        ".plantuml",
+        ".iuml",
+        ".wsd",
+      ],
+      "application/xml": [".drawio", ".xml"],
+      "application/vnd.ms-visio.drawing": [".vsdx"],
+    },
+  },
+];
+
+/** Open edits a Mermaid file; Import converts something else into one. */
+export type PickMode = "open" | "import";
+
 /** A file the user chose, before anything has been done with it. */
 export interface PickedFile {
   name: string;
   content: string;
   path: string | null;
   handle: FileSystemFileHandle | null;
+  /**
+   * The raw bytes, for a format that is not text. A Visio drawing is a zip,
+   * and decoding one as UTF-8 destroys it — so a binary file arrives with
+   * `content` empty and the bytes here instead.
+   */
+  bytes?: Uint8Array;
+}
+
+/** The zip signature, which is how every binary format Archyne reads opens. */
+function isZip(bytes: Uint8Array): boolean {
+  return bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+}
+
+/** Read a chosen file as text, or as bytes when it is not text. */
+export async function readPicked(file: File): Promise<{ content: string; bytes?: Uint8Array }> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (isZip(bytes)) return { content: "", bytes };
+  return { content: new TextDecoder().decode(bytes) };
+}
+
+/** Bytes back out of the base64 the desktop shell sends for a binary file. */
+export function decodeBase64(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 /**
@@ -69,23 +154,31 @@ export interface PickedFile {
  * picking from here and does the placing itself. Keeping the two apart is
  * also what stops the import cycle: this module knows nothing of documents.
  */
-export async function pickFile(): Promise<PickedFile | null> {
+export async function pickFile(mode: PickMode = "open"): Promise<PickedFile | null> {
   const bridge = desktop();
   if (bridge) {
-    const file = await bridge.showOpen();
+    const file = await bridge.showOpen(mode);
     if (!file) return null;
-    return { name: basename(file.path), content: file.content, path: file.path, handle: null };
+    return {
+      name: basename(file.path),
+      content: file.content,
+      path: file.path,
+      handle: null,
+      ...(file.base64 ? { bytes: decodeBase64(file.base64) } : {}),
+    };
   }
 
   if (supportsFsAccess()) {
     let handle: FileSystemFileHandle;
     try {
-      [handle] = await globalThis.showOpenFilePicker({ types: MMD_TYPES });
+      [handle] = await globalThis.showOpenFilePicker({
+        types: mode === "import" ? IMPORT_TYPES : MMD_TYPES,
+      });
     } catch {
       return null; // user cancelled
     }
-    const content = await (await handle.getFile()).text();
-    return { name: handle.name, content, path: null, handle };
+    const read = await readPicked(await handle.getFile());
+    return { name: handle.name, path: null, handle, ...read };
   }
 
   // No picker API: the caller falls back to a hidden <input type=file>.

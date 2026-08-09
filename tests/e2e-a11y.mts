@@ -8,6 +8,7 @@
  *
  * Run:  npm run dev, then npx tsx tests/e2e-a11y.mts
  */
+import { fileURLToPath } from "node:url";
 import { chromium, type Page } from "playwright";
 import { createRequire } from "node:module";
 import { CHANNEL, codeUrl } from "./env.mts";
@@ -102,15 +103,16 @@ const SURFACES: Array<{
   { label: "shortcuts sheet", key: "Shift+Slash", appears: ".modal" },
   // The two document dialogs: rename from the overflow menu, delete from a
   // tab's close button.
-  // Selecting an edge fills the inspector with its routing controls and puts
-  // the corner handles on the canvas.
+  // Selecting an edge fills the inspector with its label and line controls
+  // and puts the routing handles on the canvas. The handles are the signal:
+  // the corner list that used to be in the panel moved to the context menu.
   {
     label: "edge inspector",
     click: ".react-flow__edge-path",
     // A straight vertical edge is a zero-width box, which Playwright reads
     // as invisible. It is on screen; the click just has to be told so.
     force: true,
-    appears: ".corner-list",
+    appears: ".edge-handle",
     dismiss: ".react-flow__pane",
   },
   // Selecting a node fills the inspector and puts resize handles on the
@@ -137,7 +139,37 @@ const SURFACES: Array<{
 /** Long enough for the open/close transition, short enough to stay cheap. */
 const TRANSITION_MS = 350;
 
+/**
+ * The icon palette belongs to architecture diagrams, so the flowchart above
+ * cannot reach it — and with it goes the dialog that imports icons from a
+ * link, which is a form and therefore worth auditing.
+ */
+const ARCH_CODE = `architecture-beta
+  service web(server)[Web]
+`;
+
 let failed = false;
+
+/** Print one surface's result, and remember a failure for the exit code. */
+function report(tag: string, violations: Violation[]): void {
+  if (violations.length === 0) {
+    console.log(`✓ ${tag}`);
+    return;
+  }
+  failed = true;
+  console.error(`✗ ${tag} — ${violations.length} violation(s)`);
+  for (const v of violations) {
+    console.error(`    [${v.impact}] ${v.id}: ${v.help}`);
+    for (const n of v.nodes) {
+      console.error(`        ${n.target.join(" ")}`);
+      if (n.failureSummary) {
+        console.error(
+          `          ${n.failureSummary.replace(/\n/g, "\n          ").slice(0, 400)}`,
+        );
+      }
+    }
+  }
+}
 
 for (const theme of ["dark", "light"] as const) {
   const page = await context.newPage();
@@ -176,25 +208,7 @@ for (const theme of ["dark", "light"] as const) {
       await page.waitForTimeout(TRANSITION_MS);
     }
 
-    const violations = await audit(page);
-    const tag = `${theme} / ${label}`;
-    if (violations.length === 0) {
-      console.log(`✓ ${tag}`);
-    } else {
-      failed = true;
-      console.error(`✗ ${tag} — ${violations.length} violation(s)`);
-      for (const v of violations) {
-        console.error(`    [${v.impact}] ${v.id}: ${v.help}`);
-        for (const n of v.nodes) {
-          console.error(`        ${n.target.join(" ")}`);
-          if (n.failureSummary) {
-            console.error(
-              `          ${n.failureSummary.replace(/\n/g, "\n          ").slice(0, 400)}`,
-            );
-          }
-        }
-      }
-    }
+    report(`${theme} / ${label}`, await audit(page));
 
     if (open || key || click) {
       if (dismiss) await page.locator(dismiss).click({ position: { x: 5, y: 5 } });
@@ -205,6 +219,48 @@ for (const theme of ["dark", "light"] as const) {
       await page.waitForTimeout(TRANSITION_MS);
     }
   }
+
+  // A second document, for the surfaces only an architecture diagram has.
+  // The theme is remembered in storage, so it survives the navigation.
+  await page.goto(codeUrl(ARCH_CODE));
+  await page.waitForFunction(
+    () => (window as unknown as { __graphTest?: { ready(): boolean } }).__graphTest?.ready(),
+    undefined,
+    { timeout: 30000 },
+  );
+  await page.waitForFunction((t) => document.documentElement.dataset.theme === t, theme, {
+    timeout: 15000,
+  });
+  await page.getByRole("button", { name: "From a link…" }).first().click();
+  await page.locator(".link-list").waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(TRANSITION_MS);
+  report(`${theme} / icon link dialog`, await audit(page));
+  await page.keyboard.press("Escape");
+  await page.locator(".link-list").waitFor({ state: "hidden", timeout: 15000 });
+
+  // The icon picker, which needs a node selected to have something to put an
+  // icon on. A grid of several hundred small buttons is exactly where target
+  // size and contrast are worth measuring.
+  await page.locator(".react-flow__node").first().click();
+  await page.getByRole("button", { name: "Choose icon…" }).click();
+  await page.locator(".icon-picker-scroll").waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(TRANSITION_MS);
+  report(`${theme} / icon picker`, await audit(page));
+  await page.keyboard.press("Escape");
+
+  // The import preview, which only exists once a foreign file has been
+  // converted — so it needs a real file rather than a button to reach.
+  await page.setInputFiles(
+    'input[type="file"]',
+    fileURLToPath(new URL("fixtures/order-flow.drawio", import.meta.url)),
+  );
+  await page
+    .locator(".import-canvas .react-flow__node")
+    .first()
+    .waitFor({ state: "visible", timeout: 30000 });
+  await page.waitForTimeout(TRANSITION_MS);
+  report(`${theme} / import preview`, await audit(page));
+
   await page.close();
 }
 

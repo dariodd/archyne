@@ -1,7 +1,9 @@
 import { create } from "zustand";
 import { useGraphStore, SAMPLE, NEW_DIAGRAM } from "./store";
-import { pickFile, useFileStore, type PickedFile } from "./files";
+import { decodeBase64, pickFile, useFileStore, type DesktopFile, type PickMode } from "./files";
+import { openAsMermaid, type ImportSummary, type OpenedFile } from "./importFile";
 import { forgetWatched, readIfChanged } from "./diskWatch";
+import { toast } from "./toast";
 
 import type { DiagramKind } from "./model/types";
 import {
@@ -235,23 +237,63 @@ export function documentMenuActions() {
  * not on top of it. A pristine scratch document is the exception — landing
  * in it is what "open a file" means when nothing has been started.
  */
-async function placeFile(file: PickedFile): Promise<void> {
+/**
+ * Put an already-converted file where it belongs.
+ *
+ * Split from `placeFile` so a conversion can be shown and confirmed before
+ * anything lands: the preview dialog holds one of these and calls this when
+ * the user accepts it.
+ */
+export async function placeOpened({ file, imported }: OpenedFile): Promise<void> {
   if (shouldOpenInNewDoc()) await createDoc();
+
+  // An imported diagram has never been written anywhere. Leaving `savedCode`
+  // null is what marks it as work to be saved rather than a clean copy of a
+  // file on disk — otherwise closing the tab would take it without a word.
+  const savedCode = imported ? null : file.content;
 
   await useGraphStore.getState().applyCode(file.content, { record: true });
   useFileStore.setState({
     name: file.name,
     path: file.path,
     handle: file.handle,
-    savedCode: file.content,
+    savedCode,
   });
   // The tab takes the file's name, not "Untitled".
   patchDoc(useWorkspace.getState().activeId, {
     name: file.name,
     path: file.path,
     handle: file.handle,
-    savedCode: file.content,
+    savedCode,
   });
+  if (imported) announceImport(imported);
+}
+
+/**
+ * Say what came across, and what did not.
+ *
+ * An import is lossy by construction and the user is owed the count rather
+ * than left to spot the missing pages themselves.
+ */
+function announceImport(imported: ImportSummary): void {
+  // Product names rather than message keys: none of them is translated.
+  const SOURCE = {
+    dot: "Graphviz",
+    drawio: "draw.io",
+    sql: "SQL",
+    excalidraw: "Excalidraw",
+    plantuml: "PlantUML",
+    vsdx: "Visio",
+  } as const;
+  const source = SOURCE[imported.format];
+  toast("toast.imported", "info", {
+    source,
+    nodes: String(imported.nodes),
+    edges: String(imported.edges),
+  });
+  // The caveats — skipped pages, a family that could not be matched, cells
+  // with no equivalent — are on the preview the user just accepted. Repeating
+  // them in a stack of toasts would be noise.
 }
 
 /**
@@ -263,15 +305,45 @@ async function placeFile(file: PickedFile): Promise<void> {
  * placement as everything else. It did not, and on Firefox and Safari
  * opening a file still replaced whatever was on screen.
  */
-export async function openContentHere(name: string, content: string): Promise<void> {
-  await placeFile({ name, content, path: null, handle: null });
+export async function openContentHere(
+  name: string,
+  read: { content: string; bytes?: Uint8Array },
+): Promise<void> {
+  await offerOpened(await openAsMermaid({ name, path: null, handle: null, ...read }));
 }
 
-/** Show the picker, then place the result. Throws `no-picker` as before. */
-export async function openFileHere(): Promise<void> {
-  const picked = await pickFile();
-  if (picked) await placeFile(picked);
+/**
+ * Show the picker and read the file. Throws `no-picker` as before.
+ *
+ * A Mermaid file is placed straight away — there is nothing to check. A file
+ * that had to be *converted* is handed back instead, for the preview to show
+ * before it lands: an import is lossy by construction, and the moment to find
+ * that out is before it has replaced what you were looking at.
+ */
+export async function openFileHere(mode: PickMode = "open"): Promise<void> {
+  const picked = await pickFile(mode);
+  if (picked) await offerOpened(await openAsMermaid(picked));
 }
+
+/** Place it if nothing was converted; otherwise put it up for confirmation. */
+export async function offerOpened(opened: OpenedFile): Promise<void> {
+  if (!opened.imported) {
+    await placeOpened(opened);
+    return;
+  }
+  usePendingImport.setState({ pending: opened });
+}
+
+/**
+ * The conversion waiting to be accepted, if any.
+ *
+ * A store rather than component state because a file can arrive from three
+ * places — the toolbar, the fallback input, and the desktop shell handing
+ * over a double-clicked file — and all three must reach the one dialog.
+ */
+export const usePendingImport = create<{ pending: OpenedFile | null }>(() => ({
+  pending: null,
+}));
 
 /**
  * A file handed over by the desktop shell, placed the same way.
@@ -280,10 +352,18 @@ export async function openFileHere(): Promise<void> {
  * wait for, but anything sequencing edits — tests, above all — needs a way
  * to know the file has actually been parsed.
  */
-export function adoptFileHere(file: { path: string; content: string }): Promise<void> {
+export async function adoptFileHere(file: DesktopFile): Promise<void> {
   // Either separator: the desktop shell hands over Windows paths too.
   const name = file.path.split(/[\\/]/).pop() || file.path;
-  return placeFile({ name, content: file.content, path: file.path, handle: null });
+  return offerOpened(
+    await openAsMermaid({
+      name,
+      content: file.content,
+      path: file.path,
+      handle: null,
+      ...(file.base64 ? { bytes: decodeBase64(file.base64) } : {}),
+    }),
+  );
 }
 
 /**
@@ -299,6 +379,24 @@ export function adoptFileHere(file: { path: string; content: string }): Promise<
  * scratch diagram, autosaved to localStorage, and warning about it would be
  * noise — which is the same rule `isDirty()` already used.
  */
+/**
+ * Close every document and start again with one empty diagram.
+ *
+ * Not a loop over `deleteDoc`: that one keeps the workspace whole after each
+ * removal — choosing the next document to show, creating a replacement when
+ * the last goes — and doing it a dozen times over would switch documents a
+ * dozen times on the way to switching to none of them.
+ */
+export async function closeAllDocs(): Promise<void> {
+  const { docs } = useWorkspace.getState();
+  for (const doc of docs) {
+    removeDocCode(doc.id);
+    forgetWatched(doc.id);
+  }
+  useWorkspace.setState({ docs: [], activeId: "" });
+  await createDoc();
+}
+
 export function unsavedDocuments(): DocMeta[] {
   const { docs, activeId } = useWorkspace.getState();
   const active = useFileStore.getState();

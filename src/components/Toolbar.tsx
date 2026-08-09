@@ -2,8 +2,9 @@ import { useRef, useState } from "react";
 import { useGraphStore } from "../store";
 import { useThemeStore, type ThemeChoice } from "../theme";
 import { usePrefs } from "../prefs";
+import { useNarrow } from "./useMediaQuery";
 import { useLayoutStore } from "../layoutStore";
-import { useFileStore } from "../files";
+import { readPicked, useFileStore, type PickMode } from "../files";
 import {
   createDoc,
   documentMenuActions,
@@ -16,8 +17,14 @@ import { LOCALES, useI18n, useT, type Locale } from "../i18n";
 import { ExportDialog } from "./ExportDialog";
 import { AboutDialog } from "./AboutDialog";
 import { TemplateDialog } from "./TemplateDialog";
+import { PendingImport } from "./ImportDialog";
 import { MenuButton, MenuItem } from "./MenuButton";
 import type { DiagramKind, Direction } from "../model/types";
+
+/** What the fallback `<input type=file>` offers, per action. */
+const MERMAID_ACCEPT = ".mmd,.mermaid,.txt,.md";
+const IMPORT_ACCEPT =
+  ".drawio,.xml,.vsdx,.dot,.gv,.sql,.ddl,.excalidraw,.puml,.plantuml,.iuml,.wsd";
 
 /** Diagram kinds in menu order; labels come from the catalogue. */
 const KINDS: DiagramKind[] = [
@@ -45,6 +52,7 @@ export function Toolbar() {
   const [showExport, setShowExport] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [pickMode, setPickMode] = useState<PickMode>("open");
   const paletteOpen = useLayoutStore((s) => s.paletteOpen);
   const sideOpen = useLayoutStore((s) => s.sideOpen);
   const togglePalette = useLayoutStore((s) => s.togglePalette);
@@ -62,18 +70,24 @@ export function Toolbar() {
   const docActions = documentMenuActions();
   const locale = useI18n((s) => s.locale);
   const setLocale = useI18n((s) => s.setLocale);
+  const narrow = useNarrow();
 
   /**
    * Prefer a real picker so Save writes back to the file the user opened.
    * `open()` throws "no-picker" on browsers without one, which is the signal
    * to fall back to the hidden <input type=file>.
    */
-  const open = async () => {
+  const open = (mode: PickMode) => async () => {
     try {
-      await openFileHere();
+      await openFileHere(mode);
     } catch (err) {
       if (err instanceof Error && err.message === "no-picker") {
-        fileRef.current?.click();
+        // The fallback input has to be told which list to accept before it
+        // opens, so the mode is set first and read by the `accept` below.
+        setPickMode(mode);
+        // A state change does not reach the DOM before this returns, so the
+        // click waits a tick for the new `accept` to be on the element.
+        setTimeout(() => fileRef.current?.click(), 0);
         return;
       }
       toastError("toast.openFailed", err);
@@ -99,6 +113,50 @@ export function Toolbar() {
     toast("toast.copied");
     setTimeout(() => setCopied(false), 1200);
   };
+
+  /* Controls that live in the bar when there is room for them and in the
+     overflow menu when there is not, defined once so the two placements
+     cannot drift apart. */
+  const directionSelect =
+    !unsupported && kind !== "sequence" && kind !== "architecture" && kind !== "c4" ? (
+      <select
+        className="tb-compact"
+        value={direction === "TD" ? "TB" : direction}
+        title={t("toolbar.direction")}
+        aria-label={t("toolbar.direction")}
+        onChange={(e) => setDirection(e.target.value as Direction)}
+      >
+        <option value="TB">{t("toolbar.dirTB")}</option>
+        <option value="LR">{t("toolbar.dirLR")}</option>
+        <option value="BT">{t("toolbar.dirBT")}</option>
+        <option value="RL">{t("toolbar.dirRL")}</option>
+      </select>
+    ) : null;
+
+  const autoLayoutButton = !unsupported ? (
+    <button onClick={() => void runAutoLayout()}>{t("toolbar.autoLayout")}</button>
+  ) : null;
+
+  const newDiagramSelect = (
+    <select
+      className="tb-compact"
+      value=""
+      aria-label={t("toolbar.newDiagram")}
+      onChange={(e) => {
+        if (e.target.value) void createDoc(e.target.value as DiagramKind);
+        e.target.value = "";
+      }}
+    >
+      <option value="" disabled>
+        {t("toolbar.new")}
+      </option>
+      {KINDS.map((k) => (
+        <option key={k} value={k}>
+          {t(`kind.${k}`)}
+        </option>
+      ))}
+    </select>
+  );
 
   return (
     <header className="toolbar">
@@ -160,48 +218,22 @@ export function Toolbar() {
         >
           <span aria-hidden="true">↷</span>
         </button>
-        {!unsupported && kind !== "sequence" && kind !== "architecture" && kind !== "c4" && (
-          <select
-            className="tb-compact"
-            value={direction === "TD" ? "TB" : direction}
-            title={t("toolbar.direction")}
-            aria-label={t("toolbar.direction")}
-            onChange={(e) => setDirection(e.target.value as Direction)}
-          >
-            <option value="TB">{t("toolbar.dirTB")}</option>
-            <option value="LR">{t("toolbar.dirLR")}</option>
-            <option value="BT">{t("toolbar.dirBT")}</option>
-            <option value="RL">{t("toolbar.dirRL")}</option>
-          </select>
-        )}
-        {!unsupported && (
-          <button onClick={() => void runAutoLayout()}>{t("toolbar.autoLayout")}</button>
-        )}
+        {!narrow && directionSelect}
+        {!narrow && autoLayoutButton}
       </div>
 
       {/* The document itself. */}
       <div className="tb-group">
-        <select
-          className="tb-compact"
-          value=""
-          aria-label={t("toolbar.newDiagram")}
-          onChange={(e) => {
-            if (e.target.value) void createDoc(e.target.value as DiagramKind);
-            e.target.value = "";
-          }}
-        >
-          <option value="" disabled>
-            {t("toolbar.new")}
-          </option>
-          {KINDS.map((k) => (
-            <option key={k} value={k}>
-              {t(`kind.${k}`)}
-            </option>
-          ))}
-        </select>
-        <button onClick={() => setShowTemplates(true)}>{t("tpl.open")}</button>
-        <button onClick={() => void open()}>{t("toolbar.open")}</button>
-        <button onClick={runSave(saveFile)}>{t("toolbar.save")}</button>
+        {!narrow && newDiagramSelect}
+        {!narrow && (
+          <>
+            <button onClick={() => setShowTemplates(true)}>{t("tpl.open")}</button>
+            <button onClick={() => void open("open")()}>{t("toolbar.open")}</button>
+            <button onClick={runSave(saveFile)}>{t("toolbar.save")}</button>
+          </>
+        )}
+        {/* Export stays whatever the width. It is the one thing the bar must
+            never make you go looking for. */}
         <button className="primary" onClick={() => setShowExport(true)}>
           {t("toolbar.export")}
         </button>
@@ -211,6 +243,36 @@ export function Toolbar() {
           what lets the bar stay one row instead of wrapping to three. */}
       <MenuButton className="overflow-menu" label={t("toolbar.more")}>
         <>
+          {/* On a phone the bar cannot hold these without wrapping to four
+              rows and eating a third of the screen, so they come here — which
+              is what this menu is for. */}
+          {narrow && (
+            <>
+              <MenuItem onSelect={() => setShowTemplates(true)}>{t("tpl.open")}</MenuItem>
+              <MenuItem onSelect={() => void open("open")()}>{t("toolbar.open")}</MenuItem>
+              <MenuItem onSelect={() => void open("import")()}>{t("toolbar.import")}</MenuItem>
+              <MenuItem onSelect={runSave(saveFile)}>{t("toolbar.save")}</MenuItem>
+              {autoLayoutButton && (
+                <MenuItem onSelect={() => void runAutoLayout()}>
+                  {t("toolbar.autoLayout")}
+                </MenuItem>
+              )}
+              <label className="menu-field">
+                {t("toolbar.newDiagram")}
+                {newDiagramSelect}
+              </label>
+              {directionSelect && (
+                <label className="menu-field">
+                  {t("toolbar.direction")}
+                  {directionSelect}
+                </label>
+              )}
+              <div className="menu-separator" />
+            </>
+          )}
+          {!narrow && (
+            <MenuItem onSelect={() => void open("import")()}>{t("toolbar.import")}</MenuItem>
+          )}
           <MenuItem onSelect={runSave(saveAsFile)}>{t("toolbar.saveAs")}</MenuItem>
           {/* Only offered when there is a file behind the document. It is
               also the way out of a conflict: the watcher will not overwrite
@@ -267,15 +329,18 @@ export function Toolbar() {
       {showExport && <ExportDialog onClose={() => setShowExport(false)} />}
       {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
       {showTemplates && <TemplateDialog onClose={() => setShowTemplates(false)} />}
+      <PendingImport />
       <input
         ref={fileRef}
         type="file"
-        accept=".mmd,.txt,.md"
+        accept={pickMode === "import" ? IMPORT_ACCEPT : MERMAID_ACCEPT}
         hidden
         onChange={async (e) => {
           const file = e.target.files?.[0];
           // Same placement as the picker: beside your work, not on top of it.
-          if (file) await openContentHere(file.name, await file.text());
+          // Read through `readPicked` so a binary drawing arrives as bytes
+          // rather than as UTF-8 that has destroyed it.
+          if (file) await openContentHere(file.name, await readPicked(file));
           e.target.value = "";
         }}
       />

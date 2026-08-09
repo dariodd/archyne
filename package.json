@@ -1,6 +1,6 @@
 {
   "name": "archyne",
-  "version": "0.1.0-alpha.1",
+  "version": "0.2.0-alpha.1",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -10,6 +10,7 @@
     "bin",
     "dist",
     "LICENSE",
+    "NOTICE",
     "README.md",
     "THIRD-PARTY-NOTICES.md"
   ],
@@ -49,6 +50,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "size": "node scripts/check-bundle-size.mjs",
+    "icons:azure": "node scripts/build-azure-icons.mjs",
     "icons:index": "node scripts/build-icon-index.mjs",
     "audit": "node scripts/audit-gate.mjs",
     "sbom": "node scripts/sbom.mjs",
@@ -65,6 +67,7 @@
     "test:e2e:waypoints": "tsx tests/e2e-waypoints.mts",
     "test:e2e:resize": "tsx tests/e2e-resize.mts",
     "test:e2e:watch": "tsx tests/e2e-watch.mts",
+    "test:e2e:import": "tsx tests/e2e-import.mts",
     "start": "node bin/archyne.mjs",
     "prepublishOnly": "npm run build",
     "desktop": "electron .",
@@ -83,6 +86,7 @@
     "codemirror": "^6.0.2",
     "codemirror-lang-mermaid": "^0.5.0",
     "elkjs": "^0.12.0",
+    "fflate": "^0.8.3",
     "html-to-image": "^1.11.13",
     "mermaid": "^11.9.0",
     "react": "^19.1.0",

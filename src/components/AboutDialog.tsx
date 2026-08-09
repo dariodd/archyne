@@ -26,7 +26,8 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
             Mermaid
           </a>{" "}
           file — portable, versionable, and readable by humans and AI agents alike. Everything
-          runs locally: nothing ever leaves your machine.
+          runs locally: your diagrams never leave your machine, and the only request Archyne
+          ever makes is fetching an icon from a link you paste.
         </p>
         <p>
           Archyne is free software, released under the <strong>MIT License</strong> — you may
@@ -37,6 +38,22 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           <em>THIRD-PARTY-NOTICES.md</em> alongside the source code. Icon collections are openly
           licensed (CC0, MIT, Apache-2.0), though the vendor logos they depict remain trademarks
           of their respective owners.
+        </p>
+        <p>
+          {/* Stated here and not only in a file, because the licence in the
+              repository is what people read, and it does not cover this. */}
+          One exception, and it is deliberate: the <strong>Azure architecture icons</strong> are
+          Microsoft&rsquo;s, bundled under{" "}
+          <a
+            href="https://learn.microsoft.com/azure/architecture/icons/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            their own terms
+          </a>
+          , which permit use in architectural diagrams, training materials and documentation.
+          The MIT licence above does not extend to them. <em>NOTICE</em>, beside the source,
+          states those terms in full — read it before redistributing a build.
         </p>
         <p className="about-trademark">{t("about.trademark")}</p>
         <p className="about-version">{t("about.version", { version: "0.1.0" })}</p>

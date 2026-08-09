@@ -6,6 +6,10 @@ import {
   type AlignEdge,
 } from "../store";
 import { useT } from "../i18n";
+import { ImportIcon } from "./ImportIcon";
+import { IconField } from "./IconPicker";
+import type { RouteStyle } from "../model/edgeStyle";
+import type { NodeLook } from "../model/nodeStyle";
 import { useIconPrefs } from "../iconPrefs";
 import {
   C4_SHAPES,
@@ -62,6 +66,7 @@ function styleValue(styles: string[] | undefined, key: string, fallback: string)
 function NodeFields({ node }: { node: AnyNode }) {
   const t = useT();
   const updateNodeData = useGraphStore((s) => s.updateNodeData);
+  const setNodeStyle = useGraphStore((s) => s.setNodeStyle);
   switch (node.type) {
     case "shape":
       return (
@@ -141,6 +146,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <NodeImage node={node} />
           <NodeSize node={node} />
         </>
       );
@@ -202,8 +208,12 @@ function NodeFields({ node }: { node: AnyNode }) {
             />
           </label>
           <label>
-            Icon — built-in (server, database, cloud…), "logos:aws-s3", or empty
+            {t("insp.icon")}
             <input
+              // Re-mounted when the icon changes, so a pick from the picker
+              // shows here too: the field is uncontrolled on purpose, to
+              // leave half-typed references alone until the blur.
+              key={`ni-${node.id}-${node.data.icon ?? ""}`}
               defaultValue={node.data.icon}
               onBlur={(e) => {
                 const icon = e.target.value.trim();
@@ -211,6 +221,21 @@ function NodeFields({ node }: { node: AnyNode }) {
                 updateNodeData(node.id, { icon });
               }}
             />
+          </label>
+          <IconField
+            value={node.data.icon}
+            onChange={(icon) => updateNodeData(node.id, { icon })}
+          />
+          <ImportIcon nodeId={node.id} />
+          <label>
+            {t("insp.look")}
+            <select
+              value={node.data.style?.look ?? "boxed"}
+              onChange={(e) => setNodeStyle(node.id, { look: e.target.value as NodeLook })}
+            >
+              <option value="boxed">{t("insp.lookBoxed")}</option>
+              <option value="icon">{t("insp.lookIcon")}</option>
+            </select>
           </label>
           <NodeSize node={node} />
         </>
@@ -376,6 +401,37 @@ function NodeFields({ node }: { node: AnyNode }) {
               onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
             />
           </label>
+          {/* A container may carry an icon exactly as a service does — it is
+              in mermaid's syntax already — and the field was simply missing
+              here, so the only way to set one was to type it in the source. */}
+          <label>
+            {t("insp.icon")}
+            <input
+              key={`gi-${node.id}-${node.data.icon ?? ""}`}
+              defaultValue={node.data.icon ?? ""}
+              onBlur={(e) => {
+                const icon = e.target.value.trim();
+                if (icon) useIconPrefs.getState().recordRecent(icon);
+                updateNodeData(node.id, { icon });
+              }}
+            />
+          </label>
+          <IconField
+            value={node.data.icon}
+            onChange={(icon) => updateNodeData(node.id, { icon })}
+          />
+          <ImportIcon nodeId={node.id} />
+          <label>
+            {t("insp.look")}
+            <select
+              value={node.data.style?.look ?? "boxed"}
+              onChange={(e) => setNodeStyle(node.id, { look: e.target.value as NodeLook })}
+            >
+              <option value="boxed">{t("insp.lookDashed")}</option>
+              <option value="solid">{t("insp.lookSolid")}</option>
+              <option value="plain">{t("insp.lookPlain")}</option>
+            </select>
+          </label>
           <NodeSize node={node} />
         </>
       );
@@ -386,6 +442,75 @@ function NodeFields({ node }: { node: AnyNode }) {
       // reading fields that may not exist.
       return null;
   }
+}
+
+/**
+ * A picture on a flowchart node, as a URL.
+ *
+ * This is the one icon form that survives leaving Archyne: every other kind
+ * names a pack the reader must already have, and the official Mermaid Live
+ * Editor registers none — so `logos:aws` draws a "?" there while this draws
+ * the logo. Hence the picker writes a URL here rather than a name, and the
+ * hint says what the trade is.
+ */
+function NodeImage({ node }: { node: AnyNode & { type: "shape" } }) {
+  const t = useT();
+  const updateNodeData = useGraphStore((s) => s.updateNodeData);
+  const { img, imgPos, imgWidth } = node.data;
+
+  return (
+    <>
+      <label>
+        {t("insp.image")}
+        <input
+          key={`img-${node.id}-${img ?? ""}`}
+          defaultValue={img ?? ""}
+          placeholder="https://api.iconify.design/logos/aws.svg"
+          onBlur={(e) => updateNodeData(node.id, { img: e.target.value.trim() || undefined })}
+        />
+      </label>
+      <div className="size-row">
+        <IconField
+          value={undefined}
+          asImage
+          onChange={(url) => updateNodeData(node.id, { img: url || undefined })}
+        />
+        {img && (
+          <>
+            <label>
+              {t("insp.imagePos")}
+              <select
+                value={imgPos ?? "b"}
+                onChange={(e) =>
+                  updateNodeData(node.id, { imgPos: e.target.value as "t" | "b" })
+                }
+              >
+                <option value="b">{t("insp.imagePosBelow")}</option>
+                <option value="t">{t("insp.imagePosAbove")}</option>
+              </select>
+            </label>
+            <label>
+              {t("insp.imageSize")}
+              <input
+                type="number"
+                min={8}
+                max={400}
+                value={imgWidth ?? 60}
+                onChange={(e) => {
+                  const size = Number(e.target.value);
+                  if (!Number.isFinite(size) || size <= 0) return;
+                  // One number: an icon is square in every set worth using,
+                  // and two fields to keep in step is two chances to skew it.
+                  updateNodeData(node.id, { imgWidth: size, imgHeight: size });
+                }}
+              />
+            </label>
+          </>
+        )}
+      </div>
+      {img && <p className="field-hint">{t("insp.imageHint")}</p>}
+    </>
+  );
 }
 
 /**
@@ -437,6 +562,7 @@ function NodeSize({ node }: { node: AnyNode }) {
 function EdgeFields({ edge }: { edge: FlowEdge }) {
   const t = useT();
   const updateEdgeData = useGraphStore((s) => s.updateEdgeData);
+  const setEdgeStyle = useGraphStore((s) => s.setEdgeStyle);
   const moveMessage = useGraphStore((s) => s.moveMessage);
   const d = edge.data;
   if (!d) return null;
@@ -491,6 +617,17 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
               <option value="normal">{t("insp.lineSolid")}</option>
               <option value="dotted">{t("insp.lineDotted")}</option>
               <option value="thick">{t("insp.lineThick")}</option>
+            </select>
+          </label>
+          <label>
+            {t("insp.routing")}
+            <select
+              value={edge.data?.style?.route ?? "orthogonal"}
+              onChange={(e) => setEdgeStyle(edge.id, { route: e.target.value as RouteStyle })}
+            >
+              <option value="orthogonal">{t("insp.routeOrthogonal")}</option>
+              <option value="straight">{t("insp.routeStraight")}</option>
+              <option value="curved">{t("insp.routeCurved")}</option>
             </select>
           </label>
           <label>
@@ -735,72 +872,7 @@ function EdgeFields({ edge }: { edge: FlowEdge }) {
           </label>
         </>
       )}
-      {!d.seq && <EdgeCorners edge={edge} />}
     </>
-  );
-}
-
-/**
- * The corners of a routed edge, as numbers.
- *
- * The canvas gesture is a drag, and WCAG 2.5.7 asks for the same
- * functionality without one. It is also the only way to put two corners at
- * exactly the same x, which is what makes a bent edge look deliberate rather
- * than approximate.
- *
- * Sequence messages are excluded: the overlay owns their geometry.
- */
-function EdgeCorners({ edge }: { edge: FlowEdge }) {
-  const t = useT();
-  const appendWaypoint = useGraphStore((s) => s.appendWaypoint);
-  const moveWaypoint = useGraphStore((s) => s.moveWaypoint);
-  const removeWaypoint = useGraphStore((s) => s.removeWaypoint);
-  const clearWaypoints = useGraphStore((s) => s.clearWaypoints);
-  const points = edge.data?.points ?? [];
-
-  return (
-    <div className="corner-list">
-      <span className="field-label">{t("insp.corners")}</span>
-      {points.map((p, i) => (
-        <div className="size-row" key={i}>
-          <label>
-            x
-            <input
-              type="number"
-              step={10}
-              value={Math.round(p.x)}
-              onChange={(e) => moveWaypoint(edge.id, i, { x: Number(e.target.value), y: p.y })}
-            />
-          </label>
-          <label>
-            y
-            <input
-              type="number"
-              step={10}
-              value={Math.round(p.y)}
-              onChange={(e) => moveWaypoint(edge.id, i, { x: p.x, y: Number(e.target.value) })}
-            />
-          </label>
-          <button
-            className="mini"
-            aria-label={`${t("insp.removeCorner")} ${i + 1}`}
-            onClick={() => removeWaypoint(edge.id, i)}
-          >
-            {t("insp.removeCorner")}
-          </button>
-        </div>
-      ))}
-      <div className="size-row">
-        <button className="mini" onClick={() => appendWaypoint(edge.id)}>
-          {t("insp.addCorner")}
-        </button>
-        {points.length > 0 && (
-          <button className="mini" onClick={() => clearWaypoints(edge.id)}>
-            {t("insp.straighten")}
-          </button>
-        )}
-      </div>
-    </div>
   );
 }
 

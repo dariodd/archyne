@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { useGraphStore } from "../store";
+import { ImportIcon } from "./ImportIcon";
 import { useIconPrefs } from "../iconPrefs";
 import { SHAPES, type NodeSeed, type Shape } from "../model/types";
 import { BUILTIN_ICON_NAMES, ICON_COLLECTIONS, iconsByPrefix, searchIcons } from "../icons";
 import { useAddNodeAtCenter } from "../placement";
+import { COMMON_ICONS } from "../iconSuggestions";
+import { useIconPack } from "../iconPack";
+import { iconRole, plainName, VENDORS, VENDOR_LABELS } from "../model/iconRole";
 import { useT, type MessageKey } from "../i18n";
 import { IconView } from "./ArchView";
 
@@ -14,7 +18,13 @@ function IconCell({ name }: { name: string }) {
   const addAtCenter = useAddNodeAtCenter();
   const t = useT();
   const fav = favorites.includes(name);
-  const seed = { type: "service", icon: name } satisfies NodeSeed;
+  // A virtual network is a thing you put things inside; a function app is a
+  // thing you put in one. Adding both as the same box made the containers
+  // useless — you cannot draw a topology if the VNet cannot hold the subnet.
+  const container = iconRole(plainName(name)) === "group";
+  const seed: NodeSeed = container
+    ? { type: "group", icon: name }
+    : { type: "service", icon: name };
   return (
     // The cell stays a plain container so the icon and the favourite toggle
     // can each be their own button — nesting them would be invalid.
@@ -27,8 +37,8 @@ function IconCell({ name }: { name: string }) {
     >
       <button
         type="button"
-        className="icon-add"
-        title={t("palette.add", { name })}
+        className={`icon-add${container ? " container" : ""}`}
+        title={container ? t("palette.addGroup", { name }) : t("palette.add", { name })}
         onClick={() => addAtCenter(seed)}
       >
         <IconView name={name} size={26} />
@@ -234,8 +244,10 @@ const ICON_CATEGORIES: IconCategory[] = [
   { label: "Google", prefixes: ["google", "gcp", "firebase"] },
   {
     label: "Azure",
-    prefixes: ["azure", "microsoft"],
-    collections: ["logos", "devicon", "simple-icons"],
+    // Microsoft's own set first — it is the one that has a VNet in it — with
+    // the brand logos behind it for anything it does not cover.
+    prefixes: ["", "azure", "microsoft"],
+    collections: ["azure", "logos", "devicon", "simple-icons"],
   },
   {
     label: "Generic",
@@ -305,27 +317,6 @@ const ICON_CATEGORIES: IconCategory[] = [
   },
 ];
 
-const COMMON_ICONS = [
-  "logos:aws",
-  "logos:aws-lambda",
-  "logos:aws-s3",
-  "logos:aws-rds",
-  "logos:aws-ec2",
-  "logos:aws-dynamodb",
-  "logos:aws-sqs",
-  "logos:aws-api-gateway",
-  "logos:microsoft-azure",
-  "logos:google-cloud",
-  "logos:kubernetes",
-  "logos:docker-icon",
-  "logos:postgresql",
-  "logos:mysql",
-  "logos:redis",
-  "logos:kafka-icon",
-  "logos:nginx",
-  "logos:rabbitmq-icon",
-];
-
 function ArchPalette() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
@@ -365,7 +356,19 @@ function ArchPalette() {
   const icons = query.trim() || category ? results : COMMON_ICONS;
   const favorites = useIconPrefs((s) => s.favorites);
   const recents = useIconPrefs((s) => s.recents);
+  const carried = Object.keys(useGraphStore((s) => s.iconLibrary))
+    .sort()
+    .map((n) => `custom:${n}`);
   const pinned = [...favorites, ...recents.filter((r) => !favorites.includes(r))];
+  const vendorOf = useIconPack((s) => s.vendors);
+
+  // Six hundred imported icons in one strip is a wall, and Azure's next to
+  // Amazon's is a wall you cannot read. Filed by whoever published them, in
+  // the order the vendors are listed, with anything unattributed last.
+  const byVendor = VENDORS.map((vendor) => ({
+    vendor,
+    icons: carried.filter((ref) => (vendorOf[plainName(ref)] ?? "other") === vendor),
+  })).filter((section) => section.icons.length > 0);
 
   return (
     <aside className="palette palette-arch" aria-label={t("palette.architecture")}>
@@ -408,6 +411,21 @@ function ArchPalette() {
         </div>
         <PaletteItem item={GROUP_ITEM} />
       </div>
+      {/* Imported icons. They are in no bundled collection, so without a
+          place of their own the only way back to one was to remember its
+          name — and filed by vendor, because a pack is hundreds of them. */}
+      {byVendor.map(({ vendor, icons }) => (
+        <div key={vendor}>
+          <div className="panel-title">
+            {VENDOR_LABELS[vendor] || t("palette.sectionCarried")}
+          </div>
+          <div className="icon-grid pinned">
+            {icons.map((name) => (
+              <IconCell key={name} name={name} />
+            ))}
+          </div>
+        </div>
+      ))}
       {pinned.length > 0 && (
         <>
           <div className="panel-title">{t("palette.sectionPinned")}</div>
@@ -419,6 +437,11 @@ function ArchPalette() {
         </>
       )}
       <div className="panel-title">{t("palette.sectionVendor")}</div>
+      {/* Beside the search, because this is where you are when you want an
+          icon the bundled sets do not have. */}
+      <div className="icon-import">
+        <ImportIcon />
+      </div>
       <input
         className="icon-search"
         placeholder={t("palette.searchIcons")}

@@ -1,7 +1,8 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import type { NoteNode } from "../model/types";
 import { NodeResize } from "./NodeResize";
 import { useSized } from "./useSized";
+import { SideHandles } from "./SideHandles";
 
 /** Sticky-note node (class diagram notes). */
 export function NoteNodeView({ id, data, selected }: NodeProps<NoteNode>) {
@@ -14,7 +15,7 @@ export function NoteNodeView({ id, data, selected }: NodeProps<NoteNode>) {
       <NodeResize id={id} visible={selected} />
       {data.text}
       {data.target && <div className="note-target">→ {data.target}</div>}
-      <Handle type="source" position={Position.Bottom} />
+      <SideHandles />
     </div>
   );
 }

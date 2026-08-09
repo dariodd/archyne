@@ -1,4 +1,6 @@
 import type { Node, Edge } from "@xyflow/react";
+import type { EdgeStyle } from "./edgeStyle";
+import type { NodeStyle } from "./nodeStyle";
 
 /** Diagram families the editor supports on the shared canvas. */
 export type DiagramKind =
@@ -91,6 +93,30 @@ export interface ShapeNodeData extends Record<string, unknown> {
   classes?: string[];
   /** Inline styles from a `style <id> ...` statement, e.g. "fill:#f9f". */
   styles?: string[];
+  /**
+   * A picture drawn on the node, as a URL — mermaid's image shape:
+   *
+   *   A@{ img: "https://…/aws.svg", label: "AWS", pos: "t", w: 60, h: 60 }
+   *
+   * The one form of icon that survives leaving Archyne. Every other kind is
+   * a *name* that the tool doing the drawing must already have a pack for,
+   * and the official Mermaid Live Editor registers none — so `logos:aws`
+   * renders there as a "?" box while this renders as the logo.
+   */
+  img?: string;
+  /** Which side of the picture the label sits on. Mermaid's default is "b". */
+  imgPos?: "t" | "b";
+  /** The size mermaid draws the picture at, in pixels. */
+  imgWidth?: number;
+  imgHeight?: number;
+  /** Mermaid's `constraint: "on"`, which fixes the aspect ratio. */
+  imgConstrained?: boolean;
+  /**
+   * Mermaid's `icon:` form, kept only so that re-serialising a file written
+   * elsewhere does not throw it away. Archyne does not offer it: it names an
+   * icon pack the reader may not have, which is the problem `img` solves.
+   */
+  icon?: string;
 }
 
 /** classDef name → style declarations ("fill:#f9f", "stroke:#333", …). */
@@ -164,6 +190,8 @@ export interface GroupNodeData extends Record<string, unknown> {
   icon?: string;
   /** C4 boundary type: ENTERPRISE, SYSTEM, CONTAINER. */
   boundaryType?: string;
+  /** How the container is drawn: dashed by default, solid, or a hairline. */
+  style?: NodeStyle;
 }
 
 /** C4 element node, typed as mermaid's typeC4Shape names them. */
@@ -207,6 +235,8 @@ export interface C4EdgeInfo {
 /** Architecture-beta service node. */
 export interface ServiceNodeData extends Record<string, unknown> {
   label: string;
+  /** How it is drawn: a box with the icon inside, or the icon alone. */
+  style?: NodeStyle;
   /** Built-in name (cloud, database, disk, internet, server) or iconify "logos:aws-s3". */
   icon: string;
   direction: Direction;
@@ -288,6 +318,8 @@ export interface FlowEdgeData extends Record<string, unknown> {
   par?: { i: number; n: number; s?: 1 | -1 };
   /** Corners the edge is routed through, in absolute canvas coordinates. */
   points?: Array<{ x: number; y: number }>;
+  /** How it is presented: where its label sits, how it is routed. */
+  style?: EdgeStyle;
 }
 
 export type FlowEdge = Edge<FlowEdgeData>;
@@ -302,7 +334,10 @@ export type NodeSeed =
   | { type: "service"; icon: string }
   | { type: "junction" }
   | { type: "c4"; c4Shape: C4Shape }
-  | { type: "group" }
+  // An icon on a group is how a VNet, a VPC or a subscription is drawn:
+  // a container that says what it is. Optional, since most groups are just
+  // groups.
+  | { type: "group"; icon?: string }
   | { type: "note" }
   | { type: "seqnote" }
   | { type: "seqblock"; op: "loop" | "alt" | "opt" };

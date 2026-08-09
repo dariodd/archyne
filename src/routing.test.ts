@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { roundedPolyline, segmentMidpoints, type Point } from "./routing";
+import { nearestSegment, roundedPolyline, segmentMidpoints, type Point } from "./routing";
 
 const p = (x: number, y: number): Point => ({ x, y });
 
@@ -62,5 +62,70 @@ describe("where a new corner can go", () => {
 
   it("offers nothing for a route with no segments", () => {
     expect(segmentMidpoints([p(0, 0)])).toEqual([]);
+  });
+});
+
+describe("which segment the line was grabbed by", () => {
+  // An L: across the top, then down the right.
+  const L = [p(0, 0), p(100, 0), p(100, 100)];
+
+  it("picks the segment the point sits on", () => {
+    expect(nearestSegment(L, p(50, 2))).toBe(0);
+    expect(nearestSegment(L, p(98, 50))).toBe(1);
+  });
+
+  it("measures to the segment, not to its middle", () => {
+    // Nearer the *midpoint* of the second segment, but sitting on the first.
+    expect(nearestSegment(L, p(90, 0))).toBe(0);
+  });
+
+  it("measures to the segment, not to the endless line through it", () => {
+    // 40 below the top segment's line but 200 past where that segment stops.
+    // Extended forever the top one looks nearest; as a segment it is not.
+    expect(nearestSegment(L, p(300, 40))).toBe(1);
+  });
+
+  it("agrees with the handle drawn on that segment", () => {
+    for (const m of segmentMidpoints(L)) {
+      expect(nearestSegment(L, m)).toBe(m.index);
+    }
+  });
+
+  it("has nowhere to put a corner on a route of one point", () => {
+    expect(nearestSegment([p(0, 0)], p(50, 50))).toBe(0);
+  });
+});
+
+describe("hopping over what crosses the line", () => {
+  it("draws a plain line when nothing crosses it", () => {
+    expect(roundedPolyline([p(0, 0), p(100, 0)], 10, [])).toBe("M 0,0 L 100,0");
+  });
+
+  it("breaks the run and arcs over the crossing", () => {
+    const d = roundedPolyline([p(0, 0), p(100, 0)], 10, [p(50, 0)]);
+    expect(d).toContain("L 45,0");
+    expect(d).toContain("A 5 5 0 0 0 55,0");
+    expect(d).toContain("L 100,0");
+  });
+
+  it("turns the arc over when the line runs the other way", () => {
+    const d = roundedPolyline([p(100, 0), p(0, 0)], 10, [p(50, 0)]);
+    // Same bulge on the page, so the sweep flag flips with the direction.
+    expect(d).toContain("A 5 5 0 0 1 45,0");
+  });
+
+  it("leaves a crossing on another line alone", () => {
+    expect(roundedPolyline([p(0, 0), p(100, 0)], 10, [p(50, 80)])).toBe("M 0,0 L 100,0");
+  });
+
+  it("hops more than once along a run", () => {
+    const d = roundedPolyline([p(0, 0), p(200, 0)], 10, [p(50, 0), p(150, 0)]);
+    expect(d.match(/A /g)).toHaveLength(2);
+  });
+
+  it("still rounds its corners while hopping", () => {
+    const d = roundedPolyline([p(0, 0), p(100, 0), p(100, 80)], 10, [p(50, 0)]);
+    expect(d).toContain("Q 100,0");
+    expect(d.match(/A /g)).toHaveLength(1);
   });
 });
