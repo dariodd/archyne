@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { EditorView, basicSetup } from "codemirror";
 import { Annotation, EditorState, Prec } from "@codemirror/state";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 import { mermaid } from "codemirror-lang-mermaid";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { useThemeStore } from "../theme";
@@ -10,6 +12,26 @@ import { t } from "../i18n";
 
 /** Dialects codemirror-lang-mermaid actually highlights. */
 const LIB_KINDS = new Set(["flowchart", "sequence"]);
+
+/**
+ * The one light-theme token that does not clear WCAG AA.
+ *
+ * CodeMirror's default highlight style paints `typeName` and `namespace` —
+ * in a Mermaid document, the keyword naming the diagram — `#008855`. That
+ * measures 4.05:1 on the active line and 4.18:1 on the editor background,
+ * both under the 4.5:1 floor for body text. `#00704a` is the same hue two
+ * steps down and reaches 5.52:1 and 5.70:1. Every other token in the light
+ * theme already runs between 6.96:1 and 12.11:1, so one colour is the whole
+ * failure and the rest of the default palette is left alone.
+ *
+ * `Prec.highest` because `basicSetup` installs the default style, and the
+ * first highlighter that has something to say about a tag wins.
+ */
+const lightContrastFix = Prec.highest(
+  syntaxHighlighting(
+    HighlightStyle.define([{ tag: [tags.typeName, tags.namespace], color: "#00704a" }]),
+  ),
+);
 
 /**
  * Marks the edits this component makes to catch up with the store, so they
@@ -54,7 +76,7 @@ export function CodeEditor({
         extensions: [
           basicSetup,
           useLib ? mermaid() : mermaidFallback,
-          ...(resolved === "dark" ? [oneDark] : []),
+          ...(resolved === "dark" ? [oneDark] : [lightContrastFix]),
           EditorView.lineWrapping,
           // The editor is a `role="textbox"`; without a name a screen reader
           // announces it as an unlabelled edit field.
