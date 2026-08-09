@@ -20,7 +20,7 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [0.2.0-alpha.1] — 2026-08-09
+## [0.2.0-alpha.1] — 2026-08-10
 
 A minor bump rather than a patch: this adds a whole import subsystem — six
 foreign formats, each previewed before it lands — a PDF export path, and a
@@ -318,6 +318,27 @@ where this release names them fixed.
   rewrites the positions comment, which schedules a re-parse; the rebuilt
   nodes came back unselected. Moving a node with the arrow keys therefore
   deselected it a moment later and the next press did nothing.
+- **The keyword naming the diagram now meets AA in the light theme.**
+  CodeMirror's default colour for it, `#008855`, measured 4.05:1 on the
+  active line and 4.18:1 on the editor background, against a 4.5:1 floor —
+  so the first line of every document failed. It is `#00704a` now, 5.52:1
+  and 5.70:1. It had been that way since the light theme existed;
+  `axe-core` 4.13.0 is simply the first version to report it.
+
+### Security
+
+- **Every dependency advisory is closed.** `ip-address` 10.4.0 clears
+  GHSA-mwp4-54f8-5fhr, a high reaching the tree through the MCP SDK's
+  `express-rate-limit`, which the advisory gate had been failing on;
+  `hono` 4.13.1 closes twenty-eight; `dompurify` 3.4.13 the detached-subtree
+  XSS; and `mermaid` 11.16.1 five against the renderer — prototype pollution
+  through the configuration APIs and architecture diagrams, CSS injection
+  into siblings of the diagram, and the XY-chart and radar loops. The gate
+  reports no advisories at all, in any severity.
+- These are lockfile changes: the ranges in `package.json` already admitted
+  every one of them, so an install of this package from the registry
+  resolved the fixed versions regardless. What the lockfile governs, and
+  what this therefore does change, is the desktop installers and CI.
 
 ## [0.1.0-alpha.1] — 2026-08-01
 
