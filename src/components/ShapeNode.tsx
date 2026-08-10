@@ -147,6 +147,8 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
   // Feeding it back in would make the element its own input, and one stray
   // pixel of rounding would then compound on every render.
   const style = useInternalNode(id)?.style;
+  // A picture does not enlarge the box: it is fitted into whatever size the
+  // node has, default or chosen. See `.shape-image` in the stylesheet.
   const fallback = defaultSize(data.shape);
   const w = Number(style?.width ?? fallback.width);
   const h = Number(style?.height ?? fallback.height);

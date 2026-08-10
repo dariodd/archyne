@@ -88,6 +88,7 @@ export const messages: Messages = {
   "palette.add": "Aggiungi {name}",
   "palette.addGroup": "Aggiungi {name} come contenitore",
   "iconPicker.otherVendor": "Importate",
+  "iconPicker.currentIs": "su questo nodo:",
 
   "shape.square": "Processo",
   "shape.round": "Arrotondato",
@@ -436,6 +437,18 @@ export const messages: Messages = {
   "tpl.contextDesc": "Persone e sistemi attorno a un prodotto, in stile C4.",
 
   "toolbar.more": "Altro",
+
+  "panel.resize": "Ridimensiona il pannello laterale",
+  "panel.resizeHint": "Trascina per ridimensionare, doppio clic per ripristinare",
+  "editor.format": "Formatta",
+  "editor.formatHint": "Sistema il rientro (Shift+Alt+F)",
+  "editor.formatCommand": "Formatta il codice Mermaid",
+  "editor.fontSize": "Dimensione del testo",
+  "editor.fontSmaller": "Testo più piccolo",
+  "editor.fontLarger": "Testo più grande",
+  "editor.fontReset": "Ripristina la dimensione del testo",
+  "editor.metaFolded": "Dati di disposizione che Archyne scrive nel file. Clic per aprire.",
+  "shortcuts.editor": "Editor del codice",
 
   "error.title": "Qualcosa è andato storto",
   "error.reload": "Ricarica",

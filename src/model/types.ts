@@ -356,6 +356,17 @@ export function defaultSize(shape: Shape): { width: number; height: number } {
   }
 }
 
+/**
+ * A picture does not change the box.
+ *
+ * Mermaid's image shape carries a `w`/`h` for the picture, and the obvious
+ * reading is that the node grows around it — but a diagram is a set of boxes
+ * whose sizes are the author's, and having one silently become two thirds
+ * taller because of the file it points at is not a size anybody chose. The
+ * picture is fitted into the shape instead (`.shape-image` in the
+ * stylesheet), and a node that should be bigger is resized like any other.
+ */
+
 /** Size estimate for layout when the node hasn't been measured yet. */
 export function estimateSize(n: AnyNode): { width: number; height: number } {
   switch (n.type) {

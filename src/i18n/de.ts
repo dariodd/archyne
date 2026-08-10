@@ -87,6 +87,7 @@ export const messages: Messages = {
   "palette.add": "{name} hinzufügen",
   "palette.addGroup": "{name} als Container einfügen",
   "iconPicker.otherVendor": "Importiert",
+  "iconPicker.currentIs": "auf diesem Knoten:",
 
   "shape.square": "Prozess",
   "shape.round": "Abgerundet",
@@ -438,6 +439,18 @@ export const messages: Messages = {
   "tpl.contextDesc": "Menschen und Systeme rund um ein Produkt, im C4-Stil.",
 
   "toolbar.more": "Mehr",
+
+  "panel.resize": "Breite der Seitenleiste ändern",
+  "panel.resizeHint": "Zum Ändern ziehen, Doppelklick setzt zurück",
+  "editor.format": "Formatieren",
+  "editor.formatHint": "Einrückung aufräumen (Umschalt+Alt+F)",
+  "editor.formatCommand": "Mermaid-Code formatieren",
+  "editor.fontSize": "Schriftgröße",
+  "editor.fontSmaller": "Kleinerer Text",
+  "editor.fontLarger": "Größerer Text",
+  "editor.fontReset": "Schriftgröße zurücksetzen",
+  "editor.metaFolded": "Layout-Daten, die Archyne in die Datei schreibt. Zum Öffnen klicken.",
+  "shortcuts.editor": "Code-Editor",
 
   "error.title": "Etwas ist schiefgelaufen",
   "error.reload": "Neu laden",

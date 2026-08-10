@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseDiagram, serializeDiagram } from "./diagram";
-import type { ShapeNode } from "./types";
+import { defaultSize, estimateSize, type ShapeNode } from "./types";
 
 const WITH_IMAGE = `flowchart LR
   a@{ img: "https://api.iconify.design/logos/aws.svg", label: "AWS", pos: "t", w: 60, h: 60 }
@@ -49,6 +49,16 @@ describe("a node drawn with a picture", () => {
     const out = serializeDiagram(await parseDiagram(WITH_IMAGE));
     expect(out).not.toContain("constraint");
     expect(out.match(/@\{/g)).toHaveLength(1);
+  });
+
+  it("does not change the size of the box it is drawn in", async () => {
+    // The picture is fitted into the shape; the shape is not grown around
+    // the picture. A node's size is the author's, and a 60px picture must
+    // not silently make its node two thirds taller than its neighbours.
+    const a = await shapeNode(WITH_IMAGE, "a");
+    const b = await shapeNode(WITH_IMAGE, "b");
+    expect(estimateSize(a)).toEqual(estimateSize(b));
+    expect(estimateSize(a)).toEqual(defaultSize(a.data.shape));
   });
 
   it("hands back an `icon:` node unchanged rather than dropping it", async () => {

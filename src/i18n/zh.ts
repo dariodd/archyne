@@ -86,6 +86,7 @@ export const messages: Messages = {
   "palette.add": "添加 {name}",
   "palette.addGroup": "将 {name} 添加为容器",
   "iconPicker.otherVendor": "已导入",
+  "iconPicker.currentIs": "当前节点：",
 
   "shape.square": "处理",
   "shape.round": "圆角",
@@ -424,6 +425,18 @@ export const messages: Messages = {
   "tpl.contextDesc": "围绕单个产品的人员与系统，C4 风格。",
 
   "toolbar.more": "更多",
+
+  "panel.resize": "调整侧边栏宽度",
+  "panel.resizeHint": "拖动可调整宽度，双击可恢复默认",
+  "editor.format": "格式化",
+  "editor.formatHint": "整理缩进（Shift+Alt+F）",
+  "editor.formatCommand": "格式化 Mermaid 代码",
+  "editor.fontSize": "文字大小",
+  "editor.fontSmaller": "缩小文字",
+  "editor.fontLarger": "放大文字",
+  "editor.fontReset": "恢复默认文字大小",
+  "editor.metaFolded": "Archyne 写入文件的布局数据。点击展开。",
+  "shortcuts.editor": "代码编辑器",
 
   "error.title": "出了点问题",
   "error.reload": "重新加载",

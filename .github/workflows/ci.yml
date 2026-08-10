@@ -123,6 +123,16 @@ jobs:
         env:
           ARCHYNE_URL: http://localhost:5173
 
+      - name: Side panel and editor
+        run: npm run test:e2e:panel
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      - name: Icon picking
+        run: npm run test:e2e:icons
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Disk watching
         run: npm run test:e2e:watch
         env:

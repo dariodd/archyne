@@ -37,6 +37,16 @@ const GROUPS: Array<{ title: MessageKey; rows: Array<[string, MessageKey]> }> = 
     ],
   },
   {
+    // These fire while the Mermaid editor has focus, which is why they are
+    // their own group rather than filed under Edit.
+    title: "shortcuts.editor",
+    rows: [
+      ["Shift+Alt+F", "editor.formatCommand"],
+      ["Ctrl+= / Ctrl+-", "editor.fontSize"],
+      ["Ctrl+0", "editor.fontReset"],
+    ],
+  },
+  {
     title: "shortcuts.view",
     rows: [
       ["Ctrl+K", "shortcuts.commandPalette"],

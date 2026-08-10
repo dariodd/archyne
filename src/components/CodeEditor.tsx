@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { EditorView, basicSetup } from "codemirror";
-import { Annotation, EditorState, Prec } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, Prec } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
 import { mermaid } from "codemirror-lang-mermaid";
@@ -8,6 +9,9 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { useThemeStore } from "../theme";
 import { useGraphStore } from "../store";
 import { mermaidFallback } from "./mermaidStream";
+import { formatDocument, registerEditorView } from "./editorCommands";
+import { applyMetaFold, metaFold } from "./metaFold";
+import { usePrefs } from "../prefs";
 import { t } from "../i18n";
 
 /** Dialects codemirror-lang-mermaid actually highlights. */
@@ -46,6 +50,52 @@ const lightContrastFix = Prec.highest(
  */
 const fromStore = Annotation.define<boolean>();
 
+/**
+ * Type size lives in a compartment so changing it reconfigures the running
+ * editor. Rebuilding the view instead would throw away the undo history and
+ * the cursor every time somebody pressed Ctrl+=.
+ */
+const fontSize = new Compartment();
+
+function fontTheme(px: number) {
+  return EditorView.theme({
+    "&": { fontSize: `${px}px` },
+    // The gutter reads as chrome rather than as code, so it stays a step
+    // behind — but it has to grow with the text, or the line numbers stop
+    // lining up with the lines they number.
+    ".cm-gutters": { fontSize: `${Math.max(px - 1.5, 8)}px` },
+  });
+}
+
+/** Ctrl+= / Ctrl+- / Ctrl+0, as every editor binds them. */
+const zoomKeymap = [
+  ...["Mod-=", "Mod-+", "Mod-Shift-="].map((key) => ({
+    // Three spellings of the same press: which one the browser reports
+    // depends on the keyboard layout — on an Italian one `+` is a shifted
+    // key and `=` is not where a US layout puts it.
+    key,
+    run: () => {
+      usePrefs.getState().nudgeEditorFontSize(1);
+      return true;
+    },
+  })),
+  {
+    key: "Mod--",
+    run: () => {
+      usePrefs.getState().nudgeEditorFontSize(-1);
+      return true;
+    },
+  },
+  {
+    key: "Mod-0",
+    run: () => {
+      usePrefs.getState().resetEditorFontSize();
+      return true;
+    },
+  },
+  { key: "Shift-Alt-f", run: formatDocument },
+];
+
 /** CodeMirror-based mermaid editor with syntax highlighting. */
 export function CodeEditor({
   value,
@@ -66,6 +116,7 @@ export function CodeEditor({
   const resolved = useThemeStore((s) => s.resolved);
   const kind = useGraphStore((s) => s.kind);
   const useLib = LIB_KINDS.has(kind);
+  const editorFontSize = usePrefs((s) => s.editorFontSize);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -75,6 +126,7 @@ export function CodeEditor({
         doc: value,
         extensions: [
           basicSetup,
+          metaFold(),
           useLib ? mermaid() : mermaidFallback,
           ...(resolved === "dark" ? [oneDark] : [lightContrastFix]),
           EditorView.lineWrapping,
@@ -86,16 +138,30 @@ export function CodeEditor({
           // 4.38:1 — under the 4.5:1 floor. On the app background the same
           // token reaches 5.76:1, so overriding one colour fixes every
           // token at once rather than patching the palette.
-          Prec.highest(
+          Prec.highest([
             EditorView.theme({
-              "&": { height: "100%", fontSize: "12.5px", backgroundColor: "transparent" },
+              "&": { height: "100%", backgroundColor: "transparent" },
               ".cm-scroller": {
                 fontFamily: '"Cascadia Code", Consolas, monospace',
                 lineHeight: "1.55",
               },
               "&.cm-focused": { outline: "none" },
             }),
-          ),
+            // Same precedence as the theme above and declared after it, so the
+            // chosen size wins over the default one either would otherwise set.
+            fontSize.of(fontTheme(usePrefs.getState().editorFontSize)),
+            keymap.of(zoomKeymap),
+          ]),
+          // Ctrl+wheel, the other half of the convention. Only with the
+          // modifier: a bare wheel over code scrolls it.
+          EditorView.domEventHandlers({
+            wheel(event) {
+              if (!event.ctrlKey && !event.metaKey) return false;
+              event.preventDefault();
+              usePrefs.getState().nudgeEditorFontSize(event.deltaY < 0 ? 1 : -1);
+              return true;
+            },
+          }),
           EditorView.updateListener.of((update) => {
             if (!update.docChanged) return;
             if (update.transactions.some((tr) => tr.annotation(fromStore))) return;
@@ -105,13 +171,22 @@ export function CodeEditor({
       }),
     });
     viewRef.current = view;
+    registerEditorView(view);
+    applyMetaFold(view);
     return () => {
       view.destroy();
       viewRef.current = null;
+      registerEditorView(null);
     };
     // Recreated when the theme or language flips; `value` is synced below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolved, useLib]);
+
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: fontSize.reconfigure(fontTheme(editorFontSize)),
+    });
+  }, [editorFontSize]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -122,6 +197,10 @@ export function CodeEditor({
         changes: { from: 0, to: current.length, insert: value },
         annotations: fromStore.of(true),
       });
+      // Replacing the document drops its folds, and the edit that brought us
+      // here was very often a drag rewriting `graph:positions` — so the
+      // metadata section would unfold itself every time a node moved.
+      applyMetaFold(view);
     }
   }, [value]);
 

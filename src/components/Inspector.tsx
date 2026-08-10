@@ -222,11 +222,13 @@ function NodeFields({ node }: { node: AnyNode }) {
               }}
             />
           </label>
-          <IconField
-            value={node.data.icon}
-            onChange={(icon) => updateNodeData(node.id, { icon })}
-          />
-          <ImportIcon nodeId={node.id} />
+          <div className="icon-actions">
+            <IconField
+              value={node.data.icon}
+              onChange={(icon) => updateNodeData(node.id, { icon })}
+            />
+            <ImportIcon nodeId={node.id} />
+          </div>
           <label>
             {t("insp.look")}
             <select
@@ -416,11 +418,13 @@ function NodeFields({ node }: { node: AnyNode }) {
               }}
             />
           </label>
-          <IconField
-            value={node.data.icon}
-            onChange={(icon) => updateNodeData(node.id, { icon })}
-          />
-          <ImportIcon nodeId={node.id} />
+          <div className="icon-actions">
+            <IconField
+              value={node.data.icon}
+              onChange={(icon) => updateNodeData(node.id, { icon })}
+            />
+            <ImportIcon nodeId={node.id} />
+          </div>
           <label>
             {t("insp.look")}
             <select
@@ -471,7 +475,7 @@ function NodeImage({ node }: { node: AnyNode & { type: "shape" } }) {
       </label>
       <div className="size-row">
         <IconField
-          value={undefined}
+          value={img}
           asImage
           onChange={(url) => updateNodeData(node.id, { img: url || undefined })}
         />

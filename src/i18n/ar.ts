@@ -90,6 +90,7 @@ export const messages: Messages = {
   "palette.add": "إضافة {name}",
   "palette.addGroup": "أضف {name} كحاوية",
   "iconPicker.otherVendor": "المستوردة",
+  "iconPicker.currentIs": "على هذه العقدة:",
 
   "shape.square": "عملية",
   "shape.round": "مستدير",
@@ -433,6 +434,18 @@ export const messages: Messages = {
   "tpl.contextDesc": "الأشخاص والأنظمة حول منتج واحد، بأسلوب C4.",
 
   "toolbar.more": "المزيد",
+
+  "panel.resize": "تغيير عرض اللوحة الجانبية",
+  "panel.resizeHint": "اسحب لتغيير العرض، وانقر نقرًا مزدوجًا لإعادة الضبط",
+  "editor.format": "تنسيق",
+  "editor.formatHint": "ترتيب المسافات البادئة (Shift+Alt+F)",
+  "editor.formatCommand": "تنسيق كود Mermaid",
+  "editor.fontSize": "حجم النص",
+  "editor.fontSmaller": "نص أصغر",
+  "editor.fontLarger": "نص أكبر",
+  "editor.fontReset": "إعادة ضبط حجم النص",
+  "editor.metaFolded": "بيانات التخطيط التي يكتبها Archyne في الملف. انقر للفتح.",
+  "shortcuts.editor": "محرر الكود",
 
   "error.title": "حدث خطأ ما",
   "error.reload": "إعادة التحميل",

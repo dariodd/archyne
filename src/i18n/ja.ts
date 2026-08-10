@@ -87,6 +87,7 @@ export const messages: Messages = {
   "palette.add": "{name} を追加",
   "palette.addGroup": "{name} をコンテナとして追加",
   "iconPicker.otherVendor": "読み込み済み",
+  "iconPicker.currentIs": "このノード:",
 
   "shape.square": "処理",
   "shape.round": "角丸",
@@ -429,6 +430,18 @@ export const messages: Messages = {
   "tpl.contextDesc": "1 つの製品を取り巻く人とシステム（C4 スタイル）。",
 
   "toolbar.more": "その他",
+
+  "panel.resize": "サイドパネルの幅を変更",
+  "panel.resizeHint": "ドラッグで幅を変更、ダブルクリックで既定に戻す",
+  "editor.format": "整形",
+  "editor.formatHint": "インデントを整える（Shift+Alt+F）",
+  "editor.formatCommand": "Mermaid コードを整形",
+  "editor.fontSize": "文字サイズ",
+  "editor.fontSmaller": "文字を小さく",
+  "editor.fontLarger": "文字を大きく",
+  "editor.fontReset": "文字サイズを既定に戻す",
+  "editor.metaFolded": "Archyne がファイルに書き込むレイアウト情報。クリックで開きます。",
+  "shortcuts.editor": "コードエディター",
 
   "error.title": "問題が発生しました",
   "error.reload": "再読み込み",

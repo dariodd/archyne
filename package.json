@@ -1,6 +1,6 @@
 {
   "name": "archyne",
-  "version": "0.2.0-alpha.1",
+  "version": "0.2.1",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -67,6 +67,8 @@
     "test:e2e:waypoints": "tsx tests/e2e-waypoints.mts",
     "test:e2e:resize": "tsx tests/e2e-resize.mts",
     "test:e2e:watch": "tsx tests/e2e-watch.mts",
+    "test:e2e:panel": "tsx tests/e2e-panel.mts",
+    "test:e2e:icons": "tsx tests/e2e-icons.mts",
     "test:e2e:import": "tsx tests/e2e-import.mts",
     "start": "node bin/archyne.mjs",
     "prepublishOnly": "npm run build",

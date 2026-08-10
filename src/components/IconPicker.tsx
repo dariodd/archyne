@@ -48,6 +48,8 @@ export function IconPicker({
   const t = useT();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<string[]>([]);
+  /** The name under the pointer, or under the keyboard focus. */
+  const [hovered, setHovered] = useState<string | null>(null);
   const favorites = useIconPrefs((s) => s.favorites);
   const recents = useIconPrefs((s) => s.recents);
   const library = useGraphStore((s) => s.iconLibrary);
@@ -95,6 +97,11 @@ export function IconPicker({
   /** In image mode, only what has a public URL is worth showing. */
   const offer = (names: string[]) => (asImage ? names.filter((n) => iconifyUrl(n)) : names);
 
+  // What the node already carries is a URL in image mode, so comparing it to
+  // a name would never match and the picker would open marking nothing.
+  const isCurrent = (name: string) =>
+    asImage ? iconifyUrl(name) === current : name === current;
+
   const searching = query.trim().length > 0;
   const sections: Array<{ title: string; icons: string[] }> = searching
     ? [{ title: t("iconPicker.results"), icons: offer(results) }]
@@ -130,11 +137,15 @@ export function IconPicker({
                     <button
                       key={name}
                       type="button"
-                      className={`icon-add${name === current ? " current" : ""}`}
+                      className={`icon-add${isCurrent(name) ? " current" : ""}`}
                       title={name}
                       aria-label={name}
-                      aria-current={name === current}
+                      aria-current={isCurrent(name)}
                       onClick={() => choose(name)}
+                      onMouseEnter={() => setHovered(name)}
+                      onMouseLeave={() => setHovered((n) => (n === name ? null : n))}
+                      onFocus={() => setHovered(name)}
+                      onBlur={() => setHovered((n) => (n === name ? null : n))}
                     >
                       <IconView name={name} size={26} />
                     </button>
@@ -145,6 +156,13 @@ export function IconPicker({
           {searching && results.length === 0 && (
             <p className="field-hint">{t("iconPicker.nothing")}</p>
           )}
+        </div>
+        {/* The name of whatever is under the pointer, and the icon already on
+            the node when nothing is. Both were only in a `title` attribute,
+            which means a second of hovering and nothing at all for the
+            keyboard. */}
+        <div className="icon-readout" aria-live="polite">
+          {hovered ?? (current ? `${t("iconPicker.currentIs")} ${current}` : "")}
         </div>
       </div>
       <div className="modal-actions">
@@ -176,9 +194,18 @@ export function IconField({
 
   return (
     <>
-      <button type="button" className="icon-choose" onClick={() => setPicking(true)}>
+      <button type="button" className="mini icon-choose" onClick={() => setPicking(true)}>
         <span className="icon-choose-preview" aria-hidden="true">
-          {value ? <IconView name={value} size={20} /> : null}
+          {/* In image mode the value is a URL, not a name the icon
+              collections know — so it is drawn as the picture it is, rather
+              than looked up and silently coming back blank. */}
+          {value ? (
+            asImage ? (
+              <img className="icon-choose-img" src={value} alt="" width={14} height={14} />
+            ) : (
+              <IconView name={value} size={14} />
+            )
+          ) : null}
         </span>
         {t("iconPicker.choose")}
       </button>

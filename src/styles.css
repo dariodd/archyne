@@ -545,12 +545,60 @@ body,
   z-index: 5;
 }
 
+/* `--side-w` is set on `.main` only once the divider has been dragged; the
+   fallback in each breakpoint is the width the layout picks on its own.
+
+   The clamp is what fits a chosen width to the window, rather than the store
+   rewriting it on every resize: a panel dragged wide on an external monitor
+   narrows to fit the laptop and is itself again when the monitor comes back.
+   `clamp()` resolves to its minimum when the two ends cross, which is the
+   behaviour wanted on a very narrow window — the panel keeps its floor.
+   Both floors are duplicated in layoutStore.ts, which clamps the drag. */
 .side {
-  width: 380px;
+  width: clamp(260px, var(--side-w, 380px), max(260px, calc(100vw - 520px)));
+  flex: none;
   display: flex;
   flex-direction: column;
   border-left: 1px solid var(--border);
   background: var(--panel);
+}
+
+/* The drag handle. Three pixels of hairline that grow into a visible seam
+   under the pointer — a divider you can hit without one you have to look at.
+   The hit area is padded out sideways: 3px is a fair target with a mouse and
+   a poor one with a trackpad. */
+.side-resizer {
+  flex: none;
+  width: 3px;
+  margin-inline: -3px 0;
+  padding-inline: 3px;
+  box-sizing: content-box;
+  cursor: col-resize;
+  background-clip: content-box;
+  background-color: transparent;
+  z-index: 5;
+  transition: background-color 120ms ease;
+  /* A drag that starts here must not also select the code behind it. */
+  touch-action: none;
+  user-select: none;
+}
+
+.side-resizer:hover,
+.side-resizer.dragging,
+.side-resizer:focus-visible {
+  background-color: var(--accent);
+}
+
+.side-resizer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* While dragging, the pointer owns the whole window: without this, crossing
+   the canvas mid-drag leaves a text cursor and a half-selected editor. */
+body.resizing-side {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .panel-title {
@@ -561,7 +609,12 @@ body,
   padding: 12px 12px 6px;
 }
 
-/* ---------- palette ---------- */
+/* ---------- palette ----------
+
+   One width for every diagram family. The architecture palette used to be
+   its own 200px, so picking "Architecture" out of the kind menu widened the
+   left column and shoved the canvas sideways mid-edit — the columns have to
+   hold still across a change that is about the diagram, not the window. */
 .palette {
   width: 170px;
   background: var(--panel);
@@ -662,10 +715,19 @@ body,
    or below it, as `pos` says, and the picture is loaded from its URL — which
    is the whole point of the shape, since that URL is what lets another tool
    draw the same icon. */
+/* Fills the node rather than sitting in the middle of it at whatever height
+   its contents come to. Two reasons: the picture then has a box with a
+   definite height to be `max-height: 100%` *of* — without one the percentage
+   resolves against nothing and the picture kept its full size — and a node
+   resized smaller than its picture now shrinks the picture instead of
+   letting it hang out of the shape. */
 .shape-label.with-image {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 6px 8px;
 }
@@ -680,6 +742,9 @@ body,
      middle of the diagram; the label alone reads as "this one is missing". */
   max-width: 100%;
   max-height: 100%;
+  /* A flex item's floor is its content, which for an image is its own size:
+     without this it refuses to shrink and spills out of the shape. */
+  min-height: 0;
 }
 
 .shape-label-input {
@@ -1016,6 +1081,56 @@ body,
   min-height: 0;
 }
 
+/* The editor's own strip: format on one side, type size on the other. */
+.editor-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.editor-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.editor-action {
+  background: none;
+  border: none;
+  border-radius: var(--r);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.editor-action:hover:not(:disabled) {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.editor-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Tabular so the strip does not twitch sideways as the number changes. */
+.editor-zoom-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 46px;
+  text-align: center;
+}
+
+.editor-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .code-editor-cm {
   flex: 1;
   min-height: 0;
@@ -1025,6 +1140,20 @@ body,
 
 .code-editor-cm .cm-editor {
   height: 100%;
+}
+
+/* The folded `%% graph:…` block. Styled as a comment rather than as a control
+   so it reads as part of the document — which it is — while the dotted rule
+   says there is something behind it. */
+.code-editor-cm .cm-metaFold {
+  color: var(--text-dim);
+  border-bottom: 1px dotted var(--text-dim);
+  cursor: pointer;
+  font-style: italic;
+}
+
+.code-editor-cm .cm-metaFold:hover {
+  color: var(--text);
 }
 
 .code-editor-cm .cm-gutters {
@@ -1096,8 +1225,8 @@ body,
   background: var(--text-dim);
 }
 
+/* Only the inner layout: the width comes from `.palette`, deliberately. */
 .palette-arch {
-  width: 200px;
   display: flex;
   flex-direction: column;
 }
@@ -1387,7 +1516,7 @@ body,
     width: 148px;
   }
   .side {
-    width: 320px;
+    width: clamp(260px, var(--side-w, 320px), max(260px, calc(100vw - 520px)));
   }
 }
 
@@ -1420,8 +1549,14 @@ body,
   }
   .side {
     right: 0;
-    width: min(440px, 88vw);
+    width: min(var(--side-w, 440px), 88vw);
     transform: translateX(100%);
+  }
+
+  /* A drawer has no edge to drag: it is an overlay, and the toggle that
+     opened it is how it goes away. */
+  .side-resizer {
+    display: none;
   }
   .main.palette-open .palette,
   .main.side-open .side {
@@ -2811,11 +2946,59 @@ body,
   padding-inline-end: 4px;
 }
 
+/* Four columns is right in a 170px palette and absurd in an 800px dialog,
+   where it made each icon a quarter of the width. Here the cells are a fixed
+   size and the dialog fits as many as it can. */
+.icon-picker-scroll .icon-grid {
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 2px;
+  padding: 0 0 12px;
+}
+
+/* What the pointer is over, spelled out: a search for "postgres" answers with
+   the same logo from four collections, and they are only told apart by name.
+   Reserves its line so the grid does not jump when the readout appears. */
+.icon-readout {
+  min-height: 18px;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .icon-picker-scroll .panel-title {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--panel);
+}
+
+/* An icon in a grid, as a control.
+ *
+ * This had no rules of its own: the only ones were `.icon-cell .icon-add`,
+ * which is the palette, so everywhere else — the picker's grid, and every
+ * cell in it — fell through to the browser's default button. In a dark
+ * interface that is a grey slab with a white outset border, stretched to the
+ * full width of its grid column: 197px of system chrome around a 26px icon.
+ */
+.icon-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 6px;
+  background: none;
+  color: inherit;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  cursor: pointer;
+}
+
+.icon-add:hover {
+  background: var(--panel-2);
+  border-color: var(--border);
 }
 
 /* Icons that add a container rather than a node, marked so the difference is
@@ -2835,18 +3018,47 @@ body,
   background: var(--panel-2);
 }
 
+/* Same chrome as the Import buttons beside it. It is the *primary* way to
+   set an icon and was the only one of the three drawn as a system button,
+   which read as the odd one out — or as something broken. */
 .icon-choose {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
+/* The three icon controls as one row that wraps, rather than three buttons
+   left to land wherever the column puts them.
+
+   The padding is the inspector's field rhythm — `.inspector label` and the
+   other rows in the panel all carry the same `6px 12px 0` — and it has to be
+   repeated here because the inset lives on each field rather than on the
+   panel. Without it this row started 12px to the left of every input above
+   and below it, and sat flush against the field it belongs to. */
+.icon-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px 0;
+}
+
+/* Sized to the line box of the text beside it (12px × 1.2), so the preview
+   does not make this button two pixels taller than the two next to it —
+   which, in a row of three, reads as one of them being misaligned. */
 .icon-choose-preview {
   display: inline-flex;
-  width: 20px;
-  height: 20px;
+  width: 14px;
+  height: 14px;
   align-items: center;
   justify-content: center;
+}
+
+/* The picture form of the same preview: a URL, which may be any shape. */
+.icon-choose-img {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
 }
 
 /* Pushes what follows to the far end of the dialog's button row. */

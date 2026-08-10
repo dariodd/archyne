@@ -92,6 +92,7 @@ export const en = {
   "palette.add": "Add {name}",
   "palette.addGroup": "Add {name} as a container",
   "iconPicker.otherVendor": "Imported",
+  "iconPicker.currentIs": "on this node:",
 
   "shape.square": "Process",
   "shape.round": "Rounded",
@@ -439,6 +440,18 @@ export const en = {
   "tpl.contextDesc": "People and systems around one product, C4 style.",
 
   "toolbar.more": "More",
+
+  "panel.resize": "Resize the side panel",
+  "panel.resizeHint": "Drag to resize, double-click to reset",
+  "editor.format": "Format",
+  "editor.formatHint": "Tidy the indentation (Shift+Alt+F)",
+  "editor.formatCommand": "Format the Mermaid code",
+  "editor.fontSize": "Text size",
+  "editor.fontSmaller": "Smaller text",
+  "editor.fontLarger": "Larger text",
+  "editor.fontReset": "Reset the text size",
+  "editor.metaFolded": "Layout data Archyne writes into the file. Click to open.",
+  "shortcuts.editor": "Code editor",
 
   "error.title": "Something went wrong",
   "error.reload": "Reload",

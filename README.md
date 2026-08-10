@@ -350,6 +350,15 @@ edge to rename it, drag-and-drop, direction switch, ELK auto-layout,
 straight to the clipboard to paste into a document — copy code, localStorage
 autosave, live Mermaid preview tab.
 
+The source panel behaves like an editor: **drag its edge** to give the code
+more room (or the canvas more, and the width is remembered), **Ctrl+=** and
+**Ctrl+-** set the type size — Ctrl+wheel and the A−/A+ buttons do the same,
+and Ctrl+0 goes back — and **Shift+Alt+F** formats the document, which
+re-indents blocks and tidies blank lines without touching what any line says.
+The `%% graph:…` comments the app writes for itself start **folded** into a
+single line naming what they hold; they are still in the file, and one click
+opens them.
+
 The PDF is a single page, either cut to the diagram or centred on A4 or
 Letter, turned landscape when the diagram is wider than it is tall. It
 carries the diagram as a losslessly compressed image at the chosen quality

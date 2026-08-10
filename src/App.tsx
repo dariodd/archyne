@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { Toolbar } from "./components/Toolbar";
 import { DocumentTabs } from "./components/DocumentTabs";
 import { Palette } from "./components/Palette";
 import { CanvasView } from "./components/CanvasView";
 import { CodePanel } from "./components/CodePanel";
+import { SideResizer } from "./components/SideResizer";
 import { Inspector } from "./components/Inspector";
 import { StatusAnnouncer } from "./components/StatusAnnouncer";
 import { loadInitialCode, useGraphStore } from "./store";
@@ -192,7 +193,9 @@ export default function App() {
   const booted = useGraphStore((s) => s.booted);
   const paletteOpen = useLayoutStore((s) => s.paletteOpen);
   const sideOpen = useLayoutStore((s) => s.sideOpen);
+  const sideWidth = useLayoutStore((s) => s.sideWidth);
   const closeDrawers = useLayoutStore((s) => s.closeDrawers);
+  const sideRef = useRef<HTMLElement>(null);
   const t = useT();
 
   return (
@@ -208,6 +211,11 @@ export default function App() {
         <Toolbar />
         <div
           className={`main${paletteOpen ? " palette-open" : ""}${sideOpen ? " side-open" : ""}`}
+          // Unset until the divider is dragged, so the stylesheet's own
+          // responsive widths stay in charge for anyone who never drags it.
+          style={
+            sideWidth === null ? undefined : ({ "--side-w": `${sideWidth}px` } as CSSProperties)
+          }
         >
           <Palette />
           {/* The tab strip belongs to the diagram, not to the window, so it
@@ -216,7 +224,8 @@ export default function App() {
             <CanvasView />
             <DocumentTabs />
           </div>
-          <aside className="side" aria-label={t("panel.sourceAndInspector")}>
+          <SideResizer targetRef={sideRef} />
+          <aside ref={sideRef} className="side" aria-label={t("panel.sourceAndInspector")}>
             <CodePanel />
             <Inspector />
           </aside>

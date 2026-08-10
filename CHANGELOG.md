@@ -20,6 +20,112 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [0.2.1] — 2026-08-10
+
+Work on the editing surface itself: the source panel becomes an editor you
+can size and read, and three defects in how icons behave are fixed — one of
+which meant that clicking an icon sometimes did nothing at all.
+
+There is no 0.2.0 release: that version number was taken on npm by a
+publishing rehearsal in the days before the repository was recreated, so the
+0.2 line continues here. This is also the first release published under
+npm's `latest` tag rather than `next`; it is still pre-1.0, and the caveats
+listed under "What is not done" in the 0.1.0-alpha.1 notes still stand
+except where a release since has named them fixed.
+
+### Added
+
+- **The side panel can be resized.** 380px is a reasonable guess and it is
+  only ever a guess: a wide diagram wants the canvas, and reading somebody
+  else's Mermaid wants the code. The divider between them is draggable, and
+  a real `role="separator"` with a value rather than a bare div with a mouse
+  handler — arrow keys move it, Home or End put it back, and so does a
+  double-click. The width is remembered.
+
+  Fitting that width to the window is left to the stylesheet's `clamp()`
+  rather than done by rewriting the stored number on every resize, so a
+  panel dragged wide on an external monitor narrows to fit the laptop and is
+  itself again when the monitor comes back.
+
+- **The code has a type size, as in any editor.** `Ctrl+=` and `Ctrl+-`,
+  `Ctrl+wheel`, or the `A−`/`A+` buttons above the editor; `Ctrl+0` returns
+  to the default. It is stored rather than left to the browser's zoom
+  because zooming the page also zooms the canvas, and the point is to read
+  the code without shrinking the diagram. Three spellings of the same press
+  are bound, since on an Italian keyboard `+` is a shifted key and `=` is
+  not where a US layout puts it.
+
+- **Formatting, on `Shift+Alt+F` or the Format button.** Deliberately
+  whitespace only: indentation per block depth, trailing spaces dropped,
+  runs of blank lines collapsed. Mermaid does not care about indentation, so
+  a formatter that only touches it cannot change what a diagram draws, while
+  one that rewrites statements could — and a formatter that occasionally
+  changes your diagram is one nobody dares press twice.
+
+  Block keywords are scoped to the family that defines them: `opt` opens a
+  block in a sequence diagram and is a perfectly good node id in a
+  flowchart. The output matches what the app's own serializers emit, so
+  formatting a file and then dragging a node in it do not produce rival
+  diffs, and running it twice changes nothing the second time.
+
+- **The `%% graph:…` sections are folded away by default.** They are how a
+  diagram keeps its arrangement in a file that has to stay valid Mermaid:
+  written by the app, never edited by hand, and occasionally enormous — a
+  single `graph:icons` line can carry a whole imported SVG. Folded rather
+  than hidden, into one line that names what it holds, because the file is
+  the source of truth and a section you can open is a section you can check.
+  Opening it is remembered.
+
+  Every edit made on the canvas replaces the whole document in the editor,
+  which discards its folds — and the edit that does so is very often a drag
+  rewriting `graph:positions`. The fold is re-applied after each of those,
+  so the section does not spring open the first time a node moves.
+
+- **The icon picker says which icon is under the pointer.** A search for
+  "postgres" answers with the same logo from four collections, told apart
+  only by name, and the name was in a `title` attribute — a second of
+  hovering, and nothing at all for the keyboard.
+
+### Fixed
+
+- **Picking an icon sometimes did nothing.** `IconView` draws its SVG
+  through `innerHTML`, so every re-render replaced the icon's `<svg>` node —
+  and a browser only fires a `click` when the press and the release land on
+  a node that is still in the document. Any re-render between mousedown and
+  mouseup therefore ate the click: the icon you clicked was not applied, in
+  the picker and in the shapes palette both, with no error anywhere. The
+  component is memoised and its markup kept stable, and the case is now
+  covered by a browser test that clicks the ordinary, fast way — hovering
+  first and then clicking quietly avoids the bug and proves nothing.
+
+- **The picker's icons were browser default buttons.** The only rules for
+  them were the palette's, so everywhere else they fell through to the
+  system button: in a dark interface, a grey slab with a white outset border
+  stretched to the full width of its grid column, 197px of chrome around a
+  26px icon. The grid is now sized for the dialog it is in rather than
+  inheriting a 170px palette's four columns, and "Choose icon…" is drawn
+  like the two import buttons beside it instead of being the odd one out.
+
+- **A picture on a flowchart node hung out of its shape.** Mermaid's image
+  shape puts a 60px picture and a label inside a box 54px tall, and the
+  block holding them had no height to be measured against, so the picture
+  spilled 13px out of the top and the label 19px out of the bottom. The
+  picture is now fitted into the shape — the shape is not grown around the
+  picture, since a node's size is the author's — and a node resized smaller
+  than its picture shrinks the picture rather than letting it escape again.
+  The button that changes that picture also shows it, which it never did.
+
+- **The shapes palette no longer changes width with the diagram type.** The
+  architecture palette gave itself 200px against everyone else's 170, so
+  choosing "Architecture" from the kind menu widened the left column and
+  shoved the canvas sideways mid-edit. The columns hold still across a
+  change that is about the diagram rather than about the window.
+
+- **The icon controls line up with the fields around them.** The inspector
+  puts its 12px inset on each field rather than on the panel, and the row of
+  icon buttons did not carry it — so it started 12px to the left of every
+  input above and below it, and sat flush against the field it belongs to.
+
 ## [0.2.0-alpha.1] — 2026-08-10
 
 A minor bump rather than a patch: this adds a whole import subsystem — six

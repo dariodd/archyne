@@ -1,11 +1,23 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { JunctionNode, ServiceNode } from "../model/types";
 import { getIconHtml } from "../icons";
 import { NodeResize } from "./NodeResize";
 import { useSized } from "./useSized";
 
-export function IconView({ name, size }: { name: string; size: number }) {
+/**
+ * An icon, as markup the collections hand us.
+ *
+ * `memo`, and the markup object kept stable, for a reason that is not about
+ * speed. Re-rendering this rewrote the `<div>`'s `innerHTML`, which throws
+ * away the `<svg>` inside it and builds a new one — so any re-render of a
+ * grid of icons replaced every icon node in it. A pointer press that spanned
+ * one of those re-renders was then never a click at all: the browser only
+ * fires `click` when mousedown and mouseup land on a node that is still in
+ * the document, and the node the press started on had been discarded. That
+ * is what made picking an icon miss, in the picker and in the palette both.
+ */
+export const IconView = memo(function IconView({ name, size }: { name: string; size: number }) {
   const [html, setHtml] = useState("");
   useEffect(() => {
     let alive = true;
@@ -16,14 +28,15 @@ export function IconView({ name, size }: { name: string; size: number }) {
       alive = false;
     };
   }, [name]);
+  const markup = useMemo(() => ({ __html: html }), [html]);
   return (
     <div
       className="arch-icon"
       style={{ width: size, height: size }}
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={markup}
     />
   );
-}
+});
 
 /**
  * One handle per side, ids matching mermaid's L/R/T/B. The canvas runs in

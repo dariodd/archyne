@@ -1,9 +1,71 @@
 import { useState } from "react";
 import { useGraphStore } from "../store";
 import { CodeEditor } from "./CodeEditor";
+import { formatActiveEditor } from "./editorCommands";
 import { MermaidPreview } from "./MermaidPreview";
 import { GraphOutline } from "./GraphOutline";
+import { MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE, usePrefs } from "../prefs";
 import { useT } from "../i18n";
+
+/**
+ * The editor's own strip: what an IDE puts under the tab bar.
+ *
+ * Formatting and type size are both here rather than in the application
+ * toolbar because they act on the code and on nothing else — and because
+ * the keyboard bindings for them (Shift+Alt+F, Ctrl+=) only fire while the
+ * editor has focus, so this is where you look for them.
+ */
+function EditorBar() {
+  const fontSize = usePrefs((s) => s.editorFontSize);
+  const nudge = usePrefs((s) => s.nudgeEditorFontSize);
+  const reset = usePrefs((s) => s.resetEditorFontSize);
+  const t = useT();
+
+  return (
+    <div className="editor-bar">
+      <button
+        type="button"
+        className="editor-action"
+        title={t("editor.formatHint")}
+        onClick={() => formatActiveEditor()}
+      >
+        {t("editor.format")}
+      </button>
+      <div className="editor-zoom" role="group" aria-label={t("editor.fontSize")}>
+        <button
+          type="button"
+          className="editor-action"
+          title={t("editor.fontSmaller")}
+          aria-label={t("editor.fontSmaller")}
+          disabled={fontSize <= MIN_EDITOR_FONT_SIZE}
+          onClick={() => nudge(-1)}
+        >
+          <span aria-hidden="true">A−</span>
+        </button>
+        {/* Clicking the number puts it back, the way a zoom readout does. */}
+        <button
+          type="button"
+          className="editor-action editor-zoom-value"
+          title={t("editor.fontReset")}
+          aria-label={t("editor.fontReset")}
+          onClick={() => reset()}
+        >
+          {fontSize}px
+        </button>
+        <button
+          type="button"
+          className="editor-action"
+          title={t("editor.fontLarger")}
+          aria-label={t("editor.fontLarger")}
+          disabled={fontSize >= MAX_EDITOR_FONT_SIZE}
+          onClick={() => nudge(1)}
+        >
+          <span aria-hidden="true">A+</span>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function CodePanel() {
   const code = useGraphStore((s) => s.code);
@@ -49,6 +111,7 @@ export function CodePanel() {
       </div>
       {tab === "code" ? (
         <div id="panel-code" role="tabpanel" aria-labelledby="tab-code" className="tabpanel">
+          <EditorBar />
           <CodeEditor value={code} onChange={setCodeFromEditor} />
           {/* Not a live region: these are only rendered on the code tab, so
               announcing from here would go silent whenever the user is on

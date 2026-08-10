@@ -5,6 +5,7 @@ import { createDoc, documentList, openFileHere, switchTo } from "../documents";
 import { useThemeStore } from "../theme";
 import { toast, toastError } from "../toast";
 import { useI18n, useT, type MessageKey, type Translate } from "../i18n";
+import { formatActiveEditor } from "./editorCommands";
 import type { AnyNode, DiagramKind } from "../model/types";
 
 interface Command {
@@ -102,6 +103,14 @@ function buildCommands(t: Translate, nodes: AnyNode[], close: () => void): Comma
       run: wrap(() => graph().selectAll()),
     },
   ];
+
+  commands.push({
+    id: "format",
+    group: "palette.groupCommands",
+    label: t("editor.formatCommand"),
+    hint: "Shift+Alt+F",
+    run: wrap(() => void formatActiveEditor()),
+  });
 
   // Layout only means anything when there is a graph behind the canvas.
   if (!useGraphStore.getState().unsupported) {
