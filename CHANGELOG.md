@@ -20,7 +20,35 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [Unreleased]
+## [0.3.0-alpha.1] — 2026-08-10
+
+A minor bump rather than a patch, for a reason that outlives the feature
+list: what Archyne _writes_ changed. Every picture now carries its size and
+`constraint: "on"`, a new icon carries `fill:none,stroke:none`, and states,
+classes and entities keep the `style` statement they were quietly losing on
+save. A file written here is still ordinary Mermaid and still opens in the
+version before this one — but it is not byte-for-byte the same file, and a
+patch would say nothing had happened.
+
+The work itself is about the two views agreeing. An icon that looked right
+on the canvas arrived in the Mermaid Live Editor as a 200×16 smear; a type
+size was stored and never drawn; a colour was read, ignored and then written
+back out as nothing. Each of those was the canvas and the file telling
+different stories, which is the one thing a local-first editor cannot do.
+
+Alongside it, the families were levelled up to each other: every node is
+renamed by double-clicking it, labels hold a second line where mermaid
+allows one, and the same row of colour controls serves four diagram kinds
+instead of one. Where a family genuinely cannot follow —
+`architecture-beta` accepts neither `<br>` nor `style` — it is left out and
+said so, rather than given something that would write a file it could not
+reopen.
+
+Still alpha, and deliberately: the caveats under "What is not done" in the
+0.1.0-alpha.1 notes — unsigned desktop builds, a self-assessed accessibility
+report, unreviewed translations, no independent security review — are all
+still true. This publishes under `next`, as every release since 0.2.0-alpha.1
+has.
 
 ### Added
 
