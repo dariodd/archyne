@@ -9,7 +9,7 @@ import type {
   Shape,
   ShapeNode,
 } from "../types";
-import { SHAPES, isGroup } from "../types";
+import { IMG_SIZE, SHAPES, isGroup } from "../types";
 import { entriesOf, normalizeDirection, quote } from "./shared";
 
 function normalizeShape(type: unknown): Shape {
@@ -149,12 +149,35 @@ function pictureDecl(data: ShapeNode["data"]): string | null {
     data.img ? `img: ${quote(data.img)}` : `icon: ${quote(data.icon ?? "")}`,
     `label: ${quote(data.label)}`,
   ];
-  // Only what was asked for: mermaid has its own defaults, and writing them
-  // back out would fill the file with values nobody chose.
   if (data.imgPos) parts.push(`pos: "${data.imgPos}"`);
-  if (data.imgWidth) parts.push(`w: ${Math.round(data.imgWidth)}`);
-  if (data.imgHeight) parts.push(`h: ${Math.round(data.imgHeight)}`);
-  if (data.imgConstrained) parts.push(`constraint: "on"`);
+
+  if (data.img) {
+    // The size is written even when nobody chose one, because mermaid's
+    // default is not Archyne's and the difference is not subtle. Mermaid
+    // draws the picture at its *intrinsic* size — for an icon set that is
+    // the `width: 1.25em` in the SVG, so about 20×16 — then, whenever the
+    // node has a label, widens it to the flowchart wrapping width (200px)
+    // and stretches it to fit with `preserveAspectRatio="none"`. An icon
+    // that looks right on the canvas therefore arrives in the Live Editor
+    // as a 200×16 smear.
+    //
+    // `constraint: "on"` is the only way out: it is what makes mermaid
+    // derive the width from the height and the picture's own ratio instead
+    // of from the wrapping width. That is also what the canvas does, with
+    // `object-fit: contain`, which is why it is written for every picture
+    // and not only for the ones that arrived with it.
+    parts.push(
+      `w: ${Math.round(data.imgWidth ?? IMG_SIZE)}`,
+      `h: ${Math.round(data.imgHeight ?? IMG_SIZE)}`,
+      `constraint: "on"`,
+    );
+  } else {
+    // An `icon:` node is somebody else's, down to its sizing: hand back
+    // what was there and invent nothing.
+    if (data.imgWidth) parts.push(`w: ${Math.round(data.imgWidth)}`);
+    if (data.imgHeight) parts.push(`h: ${Math.round(data.imgHeight)}`);
+    if (data.imgConstrained) parts.push(`constraint: "on"`);
+  }
   return `@{ ${parts.join(", ")} }`;
 }
 

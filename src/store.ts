@@ -907,6 +907,21 @@ export const useGraphStore = create<GraphState>((set, get) => {
         });
         return;
       }
+      // A connection from a node to itself, in the two families whose own
+      // mermaid renderer makes a mess of one. Both accept it — it parses and
+      // it renders — but what comes out is an arrowhead and a label at the
+      // corner of the box rather than a loop. The file is right and Archyne
+      // draws the loop, so this is not a refusal: refusing valid mermaid is
+      // not ours to do, and it is the silent disagreement that is worth
+      // saying out loud.
+      //
+      // Said when one is made, not when a file carrying one is opened: an
+      // edge you did not just draw is not a decision waiting on you.
+      const loop =
+        conn.source === conn.target && (kind === "c4" || kind === "architecture")
+          ? `mermaid's ${kind === "c4" ? "C4" : "architecture"} renderer draws a connection from ${conn.source} to itself as a stub at the corner of the node rather than as a loop — the file is valid, and Archyne draws the loop.`
+          : null;
+
       const data = defaultEdgeData(kind);
       if (kind === "architecture" && data.arch) {
         data.arch.lhsDir = (conn.sourceHandle as ArchDir) || "R";
@@ -926,7 +941,11 @@ export const useGraphStore = create<GraphState>((set, get) => {
         ...(kind === "sequence"
           ? { seqItems: [...get().seqItems, { kind: "message" as const, edgeId: edge.id }] }
           : {}),
+        ...(loop ? { warning: loop } : {}),
       });
+      // `regenerate` rewrites the code and clears `parseError`; it leaves
+      // `warning` alone, which is what lets the note above survive the save
+      // it triggers.
       regenerate();
     },
 

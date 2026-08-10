@@ -1,5 +1,6 @@
 import type { AnyNode, Direction, FlowEdge, GroupNode, StateNode, StateType } from "../types";
 import { isGroup } from "../types";
+import { entriesOf, styleLines, stylesOf } from "./shared";
 
 interface DocState {
   stmt: "state";
@@ -27,6 +28,13 @@ export function parseState(db: Record<string, (...a: unknown[]) => unknown>): {
   edges: FlowEdge[];
 } {
   const root = db.getRootDocV2?.() as { doc?: DocStmt[] } | undefined;
+  // The recursive document carries the states; their styles live beside it,
+  // in the map the `style` statement writes into.
+  const styleOf = new Map<string, string[]>();
+  for (const [id, v] of entriesOf(db.getStates?.())) {
+    const found = stylesOf(v).styles;
+    if (found) styleOf.set(id, found);
+  }
   const nodes: AnyNode[] = [];
   const edges: FlowEdge[] = [];
   const byId = new Map<string, AnyNode>();
@@ -84,6 +92,7 @@ export function parseState(db: Record<string, (...a: unknown[]) => unknown>): {
             label: s.description || s.id,
             stateType: stateTypeOf(s),
             direction: "TB",
+            ...(styleOf.has(s.id) ? { styles: styleOf.get(s.id)! } : {}),
           },
           ...(parent ? { parentId: parent } : {}),
         } as StateNode);
@@ -175,5 +184,8 @@ export function serializeState(
     }
   };
   emitScope(undefined, "  ");
+  // After the states, and never indented into a composite: `style` is a
+  // root-scope statement wherever the state it names happens to live.
+  lines.push(...styleLines(nodes.filter((n) => n.type === "state")));
   return lines.join("\n") + "\n";
 }

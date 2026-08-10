@@ -36,3 +36,27 @@ export function decodeLabel(text: string): string {
 export function labelLines(text: string): string[] {
   return decodeLabel(text).split(/<br\s*\/?>/i);
 }
+
+/**
+ * A label as it is edited, and back.
+ *
+ * `<br>` is how Mermaid holds a second line, and it is the right thing to
+ * have in the file — every other tool reading it draws two lines too. It is
+ * the wrong thing to have in a text field, where it is markup standing where
+ * a line break should be, so the editors turn it into a real line on the way
+ * in and back into `<br>` on the way out.
+ *
+ * Deliberately not `labelLines`: that also decodes `&amp;` and the rest, and
+ * a field that decodes without re-encoding would quietly rewrite the label
+ * every time it was opened and closed.
+ */
+export function labelToText(label: string): string {
+  return label.split(/<br\s*\/?>/i).join("\n");
+}
+
+export function textToLabel(text: string): string {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .join("<br>");
+}

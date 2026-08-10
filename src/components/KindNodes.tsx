@@ -5,6 +5,8 @@ import { NodeResize } from "./NodeResize";
 import { useSized } from "./useSized";
 import { useThemeStore } from "../theme";
 import { SideHandles } from "./SideHandles";
+import { useRename } from "./useRename";
+import { boxStyleOf, labelStyleOf, styleProps } from "../model/nodeStyle";
 
 export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
   if (data.stateType === "choice") {
@@ -31,9 +33,32 @@ export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
   }
   // Only ordinary states resize. A choice diamond, a fork bar and the start
   // and end markers are notation with a fixed meaning, not boxes.
+  return <NormalState id={id} data={data} selected={selected} />;
+}
+
+/** An ordinary state: a box with a name, and the name can be typed into. */
+function NormalState({
+  id,
+  data,
+  selected,
+}: {
+  id: string;
+  data: StateNode["data"];
+  selected: boolean;
+}) {
+  const rename = useRename(id, data.label, {
+    multiline: true,
+    style: labelStyleOf(styleProps(data.styles ?? [])),
+  });
   return (
-    <SizedBox id={id} className="state-node" selected={selected}>
-      <Label text={data.label} />
+    <SizedBox
+      id={id}
+      className="state-node"
+      selected={selected}
+      styles={data.styles}
+      onDoubleClick={rename.begin}
+    >
+      {rename.editing ? rename.field : <Label text={data.label} />}
       <SideHandles />
     </SizedBox>
   );
@@ -49,15 +74,24 @@ function SizedBox({
   className,
   selected,
   children,
+  onDoubleClick,
+  styles,
 }: {
   id: string;
   className: string;
   selected: boolean;
   children: React.ReactNode;
+  onDoubleClick?: (e: React.MouseEvent) => void;
+  /** The node's own `style` declarations, as far as they can be drawn. */
+  styles?: string[];
 }) {
   const sized = useSized(id);
   return (
-    <div className={`${className}${selected ? " selected" : ""}${sized ? " sized" : ""}`}>
+    <div
+      className={`${className}${selected ? " selected" : ""}${sized ? " sized" : ""}`}
+      style={boxStyleOf(styleProps(styles ?? []))}
+      onDoubleClick={onDoubleClick}
+    >
       <NodeResize id={id} visible={selected} />
       {children}
     </div>
@@ -65,10 +99,13 @@ function SizedBox({
 }
 
 export function EntityNodeView({ id, data, selected }: NodeProps<EntityNode>) {
+  // The title only: the rows below it are attributes with a syntax of their
+  // own, and the inspector is where those are edited.
+  const rename = useRename(id, data.label, { multiline: true });
   return (
-    <SizedBox id={id} className="table-node" selected={selected}>
-      <div className="table-title">
-        <Label text={data.label} />
+    <SizedBox id={id} className="table-node" selected={selected} styles={data.styles}>
+      <div className="table-title" onDoubleClick={rename.begin}>
+        {rename.editing ? rename.field : <Label text={data.label} />}
       </div>
       {data.attributes.length > 0 && (
         <div className="table-rows">
@@ -87,15 +124,18 @@ export function EntityNodeView({ id, data, selected }: NodeProps<EntityNode>) {
 }
 
 export function ClassNodeView({ id, data, selected }: NodeProps<ClassNode>) {
+  // The class name, not the members and methods beneath it — those have a
+  // syntax the inspector's textarea already takes.
+  const rename = useRename(id, data.label, { multiline: true });
   return (
-    <SizedBox id={id} className="table-node" selected={selected}>
-      <div className="table-title">
+    <SizedBox id={id} className="table-node" selected={selected} styles={data.styles}>
+      <div className="table-title" onDoubleClick={rename.begin}>
         {(data.annotations ?? []).map((a) => (
           <div key={a} className="class-annotation">
             «{a}»
           </div>
         ))}
-        <Label text={data.label} />
+        {rename.editing ? rename.field : <Label text={data.label} />}
         {data.generic ? `<${data.generic}>` : ""}
       </div>
       {data.members.length > 0 && (

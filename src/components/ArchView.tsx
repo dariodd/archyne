@@ -1,8 +1,10 @@
 import { memo, useEffect, useMemo, useState } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { type NodeProps } from "@xyflow/react";
 import type { JunctionNode, ServiceNode } from "../model/types";
 import { getIconHtml } from "../icons";
 import { NodeResize } from "./NodeResize";
+import { SideHandles } from "./SideHandles";
+import { useRename } from "./useRename";
 import { useSized } from "./useSized";
 
 /**
@@ -38,35 +40,22 @@ export const IconView = memo(function IconView({ name, size }: { name: string; s
   );
 });
 
-/**
- * One handle per side, ids matching mermaid's L/R/T/B. The canvas runs in
- * loose connection mode, so a single handle both starts and receives
- * connections — duplicate source/target ids would make React Flow drop the
- * edge entirely.
- */
-function SideHandles() {
-  return (
-    <>
-      <Handle type="source" position={Position.Left} id="L" />
-      <Handle type="source" position={Position.Right} id="R" />
-      <Handle type="source" position={Position.Top} id="T" />
-      <Handle type="source" position={Position.Bottom} id="B" />
-    </>
-  );
-}
-
 export function ServiceNodeView({ id, data, selected }: NodeProps<ServiceNode>) {
   const sized = useSized(id);
+  // One line: mermaid's architecture parser rejects `<br>` outright, so a
+  // service name that held one would be a file that no longer opens.
+  const rename = useRename(id, data.label, { className: "service-rename" });
   return (
     <div
       className={
         `service-node${selected ? " selected" : ""}${sized ? " sized" : ""}` +
         (data.style?.look === "icon" ? " bare" : "")
       }
+      onDoubleClick={rename.begin}
     >
       <NodeResize id={id} visible={selected} />
       {data.icon && <IconView name={data.icon} size={44} />}
-      <div className="service-label">{data.label || id}</div>
+      {rename.editing ? rename.field : <div className="service-label">{data.label || id}</div>}
       <SideHandles />
     </div>
   );
@@ -101,14 +90,18 @@ export function C4NodeView({ id, data, selected }: NodeProps<import("../model/ty
   const external = data.c4Shape.startsWith("external_");
   const person = data.c4Shape.includes("person");
   const sized = useSized(id);
+  // The name, not the description under it — that has its own field in the
+  // inspector, and one double-click cannot mean two things.
+  const rename = useRename(id, data.label, { multiline: true, className: "c4-rename" });
   return (
     <div
       className={`c4-node${external ? " external" : ""}${person ? " person" : ""}${selected ? " selected" : ""}${sized ? " sized" : ""}`}
+      onDoubleClick={rename.begin}
     >
       <NodeResize id={id} visible={selected} />
       {person && <div className="c4-head" />}
       <div className="c4-tag">«{C4_TAGS[data.c4Shape] ?? data.c4Shape}»</div>
-      <div className="c4-label">{data.label}</div>
+      {rename.editing ? rename.field : <div className="c4-label">{data.label}</div>}
       {data.descr && <div className="c4-descr">{data.descr}</div>}
       <SideHandles />
     </div>

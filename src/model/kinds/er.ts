@@ -1,6 +1,6 @@
 import type { AnyNode, Direction, EntityAttr, EntityNode, ErCard, FlowEdge } from "../types";
 import { ER_CARDS } from "../types";
-import { entriesOf } from "./shared";
+import { entriesOf, styleLines, stylesOf } from "./shared";
 
 /**
  * Cardinality marker adjacent to the LEFT entity in the syntax. Note:
@@ -47,7 +47,12 @@ export function parseEr(db: Record<string, (...a: unknown[]) => unknown>): {
       id: name,
       type: "entity",
       position: { x: 0, y: 0 },
-      data: { label: alias || String(v.label ?? name), attributes, direction: "TB" },
+      data: {
+        label: alias || String(v.label ?? name),
+        attributes,
+        direction: "TB",
+        ...stylesOf(v),
+      },
     };
     return node;
   });
@@ -95,6 +100,8 @@ export function serializeEr(direction: Direction, nodes: AnyNode[], edges: FlowE
     }
     lines.push("  }");
   }
+
+  lines.push(...styleLines(nodes.filter((n): n is EntityNode => n.type === "entity")));
 
   if (edges.length > 0) lines.push("");
   for (const e of edges) {

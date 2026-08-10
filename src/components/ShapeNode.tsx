@@ -1,8 +1,9 @@
-import { useState } from "react";
 import { Label } from "./Label";
+import { useRename } from "./useRename";
+import { labelStyleOf, styleProps } from "../model/nodeStyle";
 import { NodeResizer, useInternalNode, type NodeProps } from "@xyflow/react";
 import type { Shape, ShapeNode as ShapeNodeType } from "../model/types";
-import { defaultSize } from "../model/types";
+import { IMG_SIZE, defaultSize } from "../model/types";
 import { GROUP_MIN, useGraphStore } from "../store";
 import { NodeResize } from "./NodeResize";
 import { IconView } from "./ArchView";
@@ -111,34 +112,8 @@ function shapeSvg(shape: Shape, w: number, h: number) {
   }
 }
 
-/** Extract SVG-applicable props from mermaid style declarations. */
-function styleProps(decls: string[]): {
-  fill?: string;
-  stroke?: string;
-  color?: string;
-  strokeWidth?: string;
-  strokeDasharray?: string;
-} {
-  const out: Record<string, string> = {};
-  for (const d of decls) {
-    const idx = d.indexOf(":");
-    if (idx < 0) continue;
-    const key = d.slice(0, idx).trim();
-    const value = d.slice(idx + 1).trim();
-    if (key === "fill") out.fill = value;
-    else if (key === "stroke") out.stroke = value;
-    else if (key === "color") out.color = value;
-    else if (key === "stroke-width") out.strokeWidth = value;
-    else if (key === "stroke-dasharray") out.strokeDasharray = value;
-  }
-  return out;
-}
-
 export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) {
-  const updateNodeData = useGraphStore((s) => s.updateNodeData);
   const classDefs = useGraphStore((s) => s.classDefs);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
   // The shape is drawn from real numbers rather than stretched, so a resized
   // diamond keeps its points sharp instead of scaling its strokes with it.
   //
@@ -156,56 +131,65 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
     ...(data.classes ?? []).flatMap((c) => classDefs[c] ?? []),
     ...(data.styles ?? []),
   ]);
+  // A picture with its frame switched off has no box to be fitted into, so
+  // the node is the size of what it shows rather than a 160×54 rectangle
+  // standing 50px clear of a 60px logo — which is also where the selection
+  // outline and the arriving edges would otherwise stop. A size actually
+  // chosen for the node still wins; dragging a handle chooses one.
+  const bare = Boolean(data.img) && custom.fill === "none" && custom.stroke === "none";
+  const fitted = bare && style?.width == null;
+  // What the label is drawn with — and the rename field too, since it stands
+  // in for the label and a field two sizes off the text it replaces is a
+  // node that changes shape the moment you double-click it.
+  const labelStyle = labelStyleOf(custom);
 
-  const commit = () => {
-    setEditing(false);
-    const label = draft.trim();
-    if (label && label !== data.label) updateNodeData(id, { label });
-  };
+  // Renaming, shared with every other family. A flowchart label may hold a
+  // second line, and mermaid spells one `<br>`.
+  const rename = useRename(id, data.label, {
+    multiline: true,
+    className: "shape-label-input",
+    style: labelStyle,
+  });
 
   return (
     <div
-      className={`shape-node${selected ? " selected" : ""}`}
-      style={{ width: w, height: h }}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        setDraft(data.label);
-        setEditing(true);
-      }}
+      className={`shape-node${selected ? " selected" : ""}${bare ? " bare" : ""}`}
+      style={fitted ? undefined : { width: w, height: h }}
+      onDoubleClick={rename.begin}
     >
       <NodeResize id={id} visible={selected} />
-      <svg
-        width={w}
-        height={h}
-        className="shape-svg"
-        style={{
-          ...(custom.fill ? ({ "--custom-fill": custom.fill } as React.CSSProperties) : {}),
-          ...(custom.stroke
-            ? ({ "--custom-stroke": custom.stroke } as React.CSSProperties)
-            : {}),
-        }}
-      >
-        {shapeSvg(data.shape, w, h)}
-      </svg>
-      {editing ? (
-        <input
-          className="shape-label-input nodrag"
-          value={draft}
-          // Legitimate autofocus: the inline editor is only rendered after
-          // the user double-clicks to rename, so focus belongs here.
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-            if (e.key === "Escape") setEditing(false);
+      {/* Nothing to draw when the frame is off — and drawing it anyway would
+          put a shape back on selection, since `.shape-node.selected` colours
+          the outline the fill and stroke had blanked. */}
+      {!bare && (
+        <svg
+          width={w}
+          height={h}
+          className="shape-svg"
+          style={{
+            ...(custom.fill ? ({ "--custom-fill": custom.fill } as React.CSSProperties) : {}),
+            ...(custom.stroke
+              ? ({ "--custom-stroke": custom.stroke } as React.CSSProperties)
+              : {}),
           }}
-        />
+        >
+          {shapeSvg(data.shape, w, h)}
+        </svg>
+      )}
+      {/* A node with a picture keeps it while its name is being typed: the
+          field stands in for the words, not for the whole node. Renaming one
+          used to blank the picture and, with no frame to hold the shape open,
+          leave a lone text box where the icon had been.
+
+          A node without a picture keeps the field as it was, a sibling of the
+          label rather than inside it — there is nothing to hold in place, and
+          the label's own padding would only narrow the field. */}
+      {rename.editing && !data.img ? (
+        rename.field
       ) : (
         <div
           className={`shape-label${data.img ? ` with-image pos-${data.imgPos ?? "b"}` : ""}`}
-          style={custom.color ? { color: custom.color } : undefined}
+          style={labelStyle}
         >
           {/* Mermaid's image shape, drawn the way mermaid draws it: the
               picture from its URL, the label above or below. Loaded from the
@@ -216,14 +200,18 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
               className="shape-image"
               src={data.img}
               alt=""
-              width={data.imgWidth ?? 60}
-              height={data.imgHeight ?? 60}
+              width={data.imgWidth ?? IMG_SIZE}
+              height={data.imgHeight ?? IMG_SIZE}
               draggable={false}
             />
           )}
-          <span>
-            <Label text={data.label} />
-          </span>
+          {rename.editing ? (
+            rename.field
+          ) : (
+            <span>
+              <Label text={data.label} />
+            </span>
+          )}
         </div>
       )}
       <SideHandles />
@@ -238,6 +226,9 @@ export function GroupNodeView({
 }: NodeProps<import("../model/types").GroupNode>) {
   const resizeEnd = useGraphStore((s) => s.onNodeDragStop);
   const setNodeSize = useGraphStore((s) => s.setNodeSize);
+  // A container's name is a flowchart subgraph title, which mermaid lets
+  // hold a `<br>` like any other flowchart label.
+  const rename = useRename(id, data.label, { multiline: true });
   return (
     <div
       className={
@@ -256,11 +247,18 @@ export function GroupNodeView({
           mermaid already lets it declare — `group vnet(logos:azure)[VNet]`.
           It is how draw.io labels an Azure or AWS container, and without it
           the only difference between two nested boxes was their wording. */}
-      <div className="group-title">
+      {/* Double-clicking the strip renames the container; double-clicking
+          its middle is a click on the canvas inside it, which is where a new
+          node goes. */}
+      <div className="group-title" onDoubleClick={rename.begin}>
         {data.icon && <IconView name={data.icon} size={15} />}
-        <span>
-          <Label text={data.label} />
-        </span>
+        {rename.editing ? (
+          rename.field
+        ) : (
+          <span>
+            <Label text={data.label} />
+          </span>
+        )}
       </div>
       <SideHandles />
     </div>

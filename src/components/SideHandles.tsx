@@ -12,7 +12,10 @@ import { Handle, Position } from "@xyflow/react";
  *
  * Four faces, and you may connect from any of them, which is what draw.io
  * does. The architecture diagrams have worked this way all along; this is
- * their arrangement, moved somewhere the rest of the families can share it.
+ * their arrangement, moved somewhere the rest of the families can share it —
+ * and, since they went on keeping a copy of their own for a while, the only
+ * one there is. Two identical components are two that will stop being
+ * identical the first time one of them is changed.
  *
  * One handle per side rather than a source and a target on top of each other:
  * the canvas runs in loose connection mode, so a single handle both starts

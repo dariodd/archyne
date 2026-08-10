@@ -85,6 +85,27 @@ export type ClassMarker = (typeof CLASS_MARKERS)[number];
 
 /* ---------- node data ---------- */
 
+/**
+ * How big a picture on a node is drawn, in pixels, when nobody has said.
+ *
+ * A real number rather than "whatever the file says", because the file often
+ * says nothing and the two renderers disagree about what that means: the
+ * canvas fits the picture into the shape, while mermaid falls back to the
+ * SVG's own intrinsic size — which for an icon set is around 16px.
+ */
+export const IMG_SIZE = 60;
+
+/**
+ * The type size a node label is drawn at when nobody has chosen one, in
+ * pixels.
+ *
+ * Kept in step with `.shape-label` in the stylesheet by hand, there being no
+ * import between the two. The inspector needs the number to know when a size
+ * has stopped being a choice: back at the default, the `font-size`
+ * declaration comes out of the file rather than being written down.
+ */
+export const LABEL_SIZE = 12;
+
 export interface ShapeNodeData extends Record<string, unknown> {
   label: string;
   shape: Shape;
@@ -106,10 +127,18 @@ export interface ShapeNodeData extends Record<string, unknown> {
   img?: string;
   /** Which side of the picture the label sits on. Mermaid's default is "b". */
   imgPos?: "t" | "b";
-  /** The size mermaid draws the picture at, in pixels. */
+  /** The size mermaid draws the picture at, in pixels. Default IMG_SIZE. */
   imgWidth?: number;
   imgHeight?: number;
-  /** Mermaid's `constraint: "on"`, which fixes the aspect ratio. */
+  /**
+   * Mermaid's `constraint: "on"`, which fixes the aspect ratio.
+   *
+   * Read on import, but not consulted when drawing or when writing an `img`
+   * node back out: the canvas fits every picture with `object-fit: contain`,
+   * so aspect ratio is always kept here, and the serializer says so. See
+   * `pictureDecl` in `kinds/flowchart.ts` for why leaving it off is not an
+   * option.
+   */
   imgConstrained?: boolean;
   /**
    * Mermaid's `icon:` form, kept only so that re-serialising a file written
@@ -124,18 +153,48 @@ export type ClassDefs = Record<string, string[]>;
 
 export interface StateNodeData extends Record<string, unknown> {
   label: string;
+  /**
+   * Inline styles from a `style <id> ...` statement, e.g. "fill:#f9f".
+   *
+   * The same field, spelled the same way, as a flowchart shape's: mermaid
+   * takes `style` in this family too, and a colour chosen here is a colour
+   * every reader of the file draws with. Only the ones the diagram itself
+   * can carry — `architecture-beta` has no `style` statement at all, which
+   * is why a service has no such field to offer.
+   */
+  styles?: string[];
   stateType: StateType;
   direction: Direction;
 }
 
 export interface EntityNodeData extends Record<string, unknown> {
   label: string;
+  /**
+   * Inline styles from a `style <id> ...` statement, e.g. "fill:#f9f".
+   *
+   * The same field, spelled the same way, as a flowchart shape's: mermaid
+   * takes `style` in this family too, and a colour chosen here is a colour
+   * every reader of the file draws with. Only the ones the diagram itself
+   * can carry — `architecture-beta` has no `style` statement at all, which
+   * is why a service has no such field to offer.
+   */
+  styles?: string[];
   attributes: EntityAttr[];
   direction: Direction;
 }
 
 export interface ClassNodeData extends Record<string, unknown> {
   label: string;
+  /**
+   * Inline styles from a `style <id> ...` statement, e.g. "fill:#f9f".
+   *
+   * The same field, spelled the same way, as a flowchart shape's: mermaid
+   * takes `style` in this family too, and a colour chosen here is a colour
+   * every reader of the file draws with. Only the ones the diagram itself
+   * can carry — `architecture-beta` has no `style` statement at all, which
+   * is why a service has no such field to offer.
+   */
+  styles?: string[];
   members: string[];
   methods: string[];
   /** <<interface>>, <<abstract>>, … */
@@ -365,13 +424,63 @@ export function defaultSize(shape: Shape): { width: number; height: number } {
  * taller because of the file it points at is not a size anybody chose. The
  * picture is fitted into the shape instead (`.shape-image` in the
  * stylesheet), and a node that should be bigger is resized like any other.
+ *
+ * Unless there is no box. A picture with its frame switched off has nothing
+ * to be fitted into, and a 160×54 rectangle around a 60px logo is not a box
+ * the author chose either — it is the absence of one, drawn at the default
+ * size. So that node is the size of what it shows, which is also how mermaid
+ * draws it and how a bare service node has always behaved here.
  */
+
+/**
+ * Whether a node's own style takes the frame off it: `fill:none` together
+ * with `stroke:none`, which is what the inspector's "No frame" writes.
+ *
+ * Only the node's own declarations, not any classDef it also carries. The
+ * canvas resolves both (`styleProps` in `ShapeNode`) and passes the result
+ * in; this reading is for the callers that have the model and not the
+ * stylesheet.
+ */
+export function isFrameless(styles: string[] | undefined): boolean {
+  const says = (key: string) => styles?.some((s) => s.replace(/\s+/g, "") === `${key}:none`);
+  return Boolean(says("fill") && says("stroke"));
+}
+
+/** The type size a node's own style asks for, in pixels, or the default. */
+export function labelSize(styles: string[] | undefined): number {
+  const d = (styles ?? []).find((s) => s.trim().startsWith("font-size:"));
+  const m = /^(\d+(?:\.\d+)?)px$/.exec(d?.slice(d.indexOf(":") + 1).trim() ?? "");
+  return m ? Number(m[1]) : LABEL_SIZE;
+}
+
+/**
+ * What an unframed picture takes up: the picture, its label, and the padding
+ * `.shape-label.with-image` puts around the pair.
+ *
+ * The label's width is guessed from its length rather than measured — there
+ * is no text metric in this layer — but it is scaled by the type size the
+ * node asks for, since `font-size:24px` makes every character of it half
+ * again as wide. A guess either way, and enough: this is only the estimate
+ * used before the browser has measured the node, and every caller prefers
+ * `measured` when there is one.
+ */
+function framelessSize(data: ShapeNodeData): { width: number; height: number } {
+  const w = data.imgWidth ?? IMG_SIZE;
+  const h = data.imgHeight ?? IMG_SIZE;
+  const px = labelSize(data.styles);
+  return {
+    width: Math.round(Math.max(w, data.label.length * 0.58 * px) + 16),
+    height: Math.round(h + px + 18),
+  };
+}
 
 /** Size estimate for layout when the node hasn't been measured yet. */
 export function estimateSize(n: AnyNode): { width: number; height: number } {
   switch (n.type) {
     case "shape":
-      return defaultSize(n.data.shape);
+      return n.data.img && isFrameless(n.data.styles)
+        ? framelessSize(n.data)
+        : defaultSize(n.data.shape);
     case "state": {
       const t = n.data.stateType;
       if (t === "normal") return { width: 150, height: 46 };

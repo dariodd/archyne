@@ -60,6 +60,21 @@ const DEFAULT_SEED: Record<DiagramKind, NodeSeed> = {
   c4: { type: "c4", c4Shape: "system" },
 };
 
+/**
+ * The node the pointer was over when a connection was let go.
+ *
+ * From the document rather than from React Flow's own answer, which is a
+ * connection *point* within reach and so tells us nothing about the node the
+ * gesture ended on. The innermost node wins: a child inside a group is what
+ * the pointer is over, not the group behind it.
+ */
+function nodeIdAt(event: MouseEvent | TouchEvent): string | undefined {
+  const at = "changedTouches" in event ? event.changedTouches[0] : event;
+  if (!at) return undefined;
+  const el = document.elementFromPoint(at.clientX, at.clientY);
+  return el?.closest<HTMLElement>(".react-flow__node")?.dataset.id;
+}
+
 export function CanvasView() {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
@@ -75,6 +90,17 @@ export function CanvasView() {
   const { screenToFlowPosition } = useReactFlow();
   const [menu, setMenu] = useState<MenuState | null>(null);
   const connect = useKeyboardConnect();
+  /**
+   * Whether a connection is being dragged, so the canvas can show every
+   * node's connection points while it is.
+   *
+   * They are hidden the rest of the time — four dots on every node at every
+   * moment sat over the labels and the icons they were meant to serve — and
+   * shown on the node under the pointer and on the selected one. That is
+   * enough to start a connection but not to finish one: the node being aimed
+   * at is nowhere near the pointer when the drag begins.
+   */
+  const [connecting, setConnecting] = useState(false);
   const dragGuides = useDragGuides();
   const coarse = useCoarsePointer();
   const unsupported = useGraphStore((s) => s.unsupported);
@@ -126,7 +152,7 @@ export function CanvasView() {
 
   return (
     <main
-      className="canvas-wrap"
+      className={`canvas-wrap${connecting ? " connecting" : ""}`}
       /* A diagram's own accessible title names the region when the author
          gave one — "Payment flow — diagram canvas" rather than the same
          generic label on every diagram. */
@@ -143,6 +169,36 @@ export function CanvasView() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={() => setConnecting(true)}
+        onConnectEnd={(event, connection) => {
+          setConnecting(false);
+          // React Flow finishes a connection only when it is let go within
+          // `connectionRadius` of a connection point. That is a distance
+          // from a *point*, so whether the middle of a node counts depends
+          // on how big the node is: released dead centre, a 160×54 flowchart
+          // box connected and a 180×174 service did not — the same gesture,
+          // two answers, for a reason nobody can see. Released anywhere on a
+          // node, it connects, which is what draw.io does.
+          if (connection.isValid || !connection.fromNode) return;
+          const target = nodeIdAt(event);
+          // Not the node it came from: with the whole node a target, every
+          // abandoned drag that wandered back over its own node would leave
+          // a loop behind. A deliberate one still works — released on a
+          // point of the same node, which React Flow accepts itself.
+          if (!target || target === connection.fromNode.id) return;
+          // Not a group either. A container covers most of the canvas, and
+          // "anywhere on it" would turn every drag that ends in open space
+          // inside one into a connection to the container. Its own points
+          // are still there for the times that is what you meant.
+          const node = useGraphStore.getState().nodes.find((n) => n.id === target);
+          if (!node || isGroup(node)) return;
+          onConnect({
+            source: connection.fromNode.id,
+            target,
+            sourceHandle: connection.fromHandle?.id ?? null,
+            targetHandle: null,
+          });
+        }}
         onNodeDrag={(_, __, dragged) => dragGuides.track(dragged)}
         onNodeDragStop={(_, node, dragged) => {
           dragGuides.settle(dragged);

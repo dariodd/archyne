@@ -31,6 +31,7 @@ const GROUPS: Array<{ title: MessageKey; rows: Array<[string, MessageKey]> }> = 
       ["Tab", "shortcuts.nextNode"],
       ["C", "shortcuts.connect"],
       ["Enter", "shortcuts.completeConnect"],
+      ["Shift+Enter", "shortcuts.labelBreak"],
       ["Escape", "shortcuts.cancel"],
       ["↑ ↓ ← →", "shortcuts.nudge"],
       ["Shift + ↑ ↓ ← →", "shortcuts.nudgeFar"],

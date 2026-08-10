@@ -11,11 +11,15 @@ import { IconField } from "./IconPicker";
 import type { RouteStyle } from "../model/edgeStyle";
 import type { NodeLook } from "../model/nodeStyle";
 import { useIconPrefs } from "../iconPrefs";
+import { labelToText, textToLabel } from "../model/label";
 import {
   C4_SHAPES,
   CLASS_MARKERS,
   ER_CARDS,
   ER_CARD_LABELS,
+  IMG_SIZE,
+  LABEL_SIZE,
+  labelSize,
   SEQ_OPS,
   SEQ_OP_LABELS,
   SHAPES,
@@ -57,10 +61,97 @@ function withStyle(styles: string[] | undefined, key: string, value: string): st
   return [...rest, `${key}:${value}`];
 }
 
+/** The same list with the declarations for `keys` dropped entirely. */
+function withoutStyles(styles: string[] | undefined, keys: string[]): string[] {
+  return (styles ?? []).filter((s) => !keys.some((k) => s.trim().startsWith(`${k}:`)));
+}
+
+/** Whether a declaration is present and says exactly `none`. */
+function isNone(styles: string[] | undefined, key: string): boolean {
+  const d = (styles ?? []).find((s) => s.trim().startsWith(`${key}:`));
+  return d?.slice(d.indexOf(":") + 1).trim() === "none";
+}
+
 function styleValue(styles: string[] | undefined, key: string, fallback: string): string {
   const d = (styles ?? []).find((s) => s.trim().startsWith(`${key}:`));
   const v = d?.slice(d.indexOf(":") + 1).trim();
   return v && /^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback;
+}
+
+/**
+ * Fill, border, text colour and type size — the `style <id> …` statement,
+ * as controls.
+ *
+ * One component rather than one per family: mermaid takes the same statement
+ * in a flowchart, a state diagram, a class diagram and an ER diagram, and a
+ * colour picker that means the same thing in four places should be the same
+ * colour picker. `architecture-beta` has no `style` statement at all, so a
+ * service is simply not offered one.
+ */
+function StyleRow({ node }: { node: AnyNode & { data: { styles?: string[] } } }) {
+  const t = useT();
+  const updateNodeData = useGraphStore((s) => s.updateNodeData);
+  const styles = node.data.styles;
+  const set = (key: string, value: string) =>
+    updateNodeData(node.id, { styles: withStyle(styles, key, value) });
+
+  return (
+    <div className="color-row">
+      <label>
+        {t("insp.fill")}
+        <input
+          type="color"
+          value={styleValue(styles, "fill", "#232a3a")}
+          onChange={(e) => set("fill", e.target.value)}
+        />
+      </label>
+      <label>
+        {t("insp.border")}
+        <input
+          type="color"
+          value={styleValue(styles, "stroke", "#5b8def")}
+          onChange={(e) => set("stroke", e.target.value)}
+        />
+      </label>
+      <label>
+        {t("insp.text")}
+        <input
+          type="color"
+          value={styleValue(styles, "color", "#e6e9f0")}
+          onChange={(e) => set("color", e.target.value)}
+        />
+      </label>
+      {/* `font-size` is a label style in mermaid's own reckoning, so a
+          number here is a number every reader of the file draws with.
+          Back at the default it is removed rather than written out:
+          12px spelled explicitly on every node is 12px nobody chose. */}
+      <label className="type-size">
+        {t("insp.fontSize")}
+        <input
+          type="number"
+          min={6}
+          max={96}
+          step={1}
+          value={labelSize(styles)}
+          onChange={(e) => {
+            const px = Number(e.target.value);
+            if (!Number.isFinite(px) || px <= 0) return;
+            updateNodeData(node.id, {
+              styles:
+                px === LABEL_SIZE
+                  ? withoutStyles(styles, ["font-size"])
+                  : withStyle(styles, "font-size", `${px}px`),
+            });
+          }}
+        />
+      </label>
+      {(styles?.length ?? 0) > 0 && (
+        <button className="mini" onClick={() => updateNodeData(node.id, { styles: [] })}>
+          {t("insp.reset")}
+        </button>
+      )}
+    </div>
+  );
 }
 
 function NodeFields({ node }: { node: AnyNode }) {
@@ -73,10 +164,18 @@ function NodeFields({ node }: { node: AnyNode }) {
         <>
           <label>
             {t("insp.label")}
-            <input
+            {/* A textarea rather than a field: a flowchart label may be more
+                than one line, `<br>` is how mermaid holds the second, and
+                markup standing where a line break belongs is not something
+                to type into a form. Enter makes a line here — there is
+                nothing for it to submit — where the editor on the canvas
+                needs Shift+Enter, Enter there being how a rename ends. */}
+            <textarea
               id="inspector-label"
-              value={node.data.label}
-              onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
+              className="label-field"
+              rows={labelToText(node.data.label).split("\n").length}
+              value={labelToText(node.data.label)}
+              onChange={(e) => updateNodeData(node.id, { label: textToLabel(e.target.value) })}
             />
           </label>
           <label>
@@ -92,49 +191,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               ))}
             </select>
           </label>
-          <div className="color-row">
-            <label>
-              {t("insp.fill")}
-              <input
-                type="color"
-                value={styleValue(node.data.styles, "fill", "#232a3a")}
-                onChange={(e) =>
-                  updateNodeData(node.id, {
-                    styles: withStyle(node.data.styles, "fill", e.target.value),
-                  })
-                }
-              />
-            </label>
-            <label>
-              {t("insp.border")}
-              <input
-                type="color"
-                value={styleValue(node.data.styles, "stroke", "#5b8def")}
-                onChange={(e) =>
-                  updateNodeData(node.id, {
-                    styles: withStyle(node.data.styles, "stroke", e.target.value),
-                  })
-                }
-              />
-            </label>
-            <label>
-              {t("insp.text")}
-              <input
-                type="color"
-                value={styleValue(node.data.styles, "color", "#e6e9f0")}
-                onChange={(e) =>
-                  updateNodeData(node.id, {
-                    styles: withStyle(node.data.styles, "color", e.target.value),
-                  })
-                }
-              />
-            </label>
-            {(node.data.styles?.length ?? 0) > 0 && (
-              <button className="mini" onClick={() => updateNodeData(node.id, { styles: [] })}>
-                {t("insp.reset")}
-              </button>
-            )}
-          </div>
+          <StyleRow node={node} />
           <label>
             CSS classes (classDef names, space-separated)
             <input
@@ -160,6 +217,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               onChange={(e) => updateNodeData(node.id, { label: e.target.value })}
             />
           </label>
+          <StyleRow node={node} />
           <NodeSize node={node} />
         </>
       ) : (
@@ -193,6 +251,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <StyleRow node={node} />
           <NodeSize node={node} />
         </>
       );
@@ -389,6 +448,7 @@ function NodeFields({ node }: { node: AnyNode }) {
               }
             />
           </label>
+          <StyleRow node={node} />
           <NodeSize node={node} />
         </>
       );
@@ -448,6 +508,11 @@ function NodeFields({ node }: { node: AnyNode }) {
   }
 }
 
+/** The two declarations that take mermaid's frame off a picture. */
+function withoutFrame(styles: string[] | undefined): string[] {
+  return withStyle(withStyle(styles, "fill", "none"), "stroke", "none");
+}
+
 /**
  * A picture on a flowchart node, as a URL.
  *
@@ -460,7 +525,25 @@ function NodeFields({ node }: { node: AnyNode }) {
 function NodeImage({ node }: { node: AnyNode & { type: "shape" } }) {
   const t = useT();
   const updateNodeData = useGraphStore((s) => s.updateNodeData);
-  const { img, imgPos, imgWidth } = node.data;
+  const { img, imgPos, imgWidth, styles } = node.data;
+  const frameless = isNone(styles, "fill") && isNone(styles, "stroke");
+
+  /**
+   * An icon is a picture, not a box with a picture in it, so taking one on
+   * takes the frame off and taking it away puts the frame back.
+   *
+   * Only on the change, never on every edit: a frame switched back on by
+   * hand must survive the next thing done to the node. And written as real
+   * `fill:none,stroke:none` rather than a private flag, so the file says the
+   * same thing to mermaid as it does to us — mermaid draws its frame tight
+   * around the picture from exactly these two values.
+   */
+  const setPicture = (url: string | undefined) => {
+    const patch: Record<string, unknown> = { img: url };
+    if (url && !img) patch.styles = withoutFrame(styles);
+    if (!url && frameless) patch.styles = withoutStyles(styles, ["fill", "stroke"]);
+    updateNodeData(node.id, patch);
+  };
 
   return (
     <>
@@ -470,15 +553,11 @@ function NodeImage({ node }: { node: AnyNode & { type: "shape" } }) {
           key={`img-${node.id}-${img ?? ""}`}
           defaultValue={img ?? ""}
           placeholder="https://api.iconify.design/logos/aws.svg"
-          onBlur={(e) => updateNodeData(node.id, { img: e.target.value.trim() || undefined })}
+          onBlur={(e) => setPicture(e.target.value.trim() || undefined)}
         />
       </label>
       <div className="size-row">
-        <IconField
-          value={img}
-          asImage
-          onChange={(url) => updateNodeData(node.id, { img: url || undefined })}
-        />
+        <IconField value={img} asImage onChange={(url) => setPicture(url || undefined)} />
         {img && (
           <>
             <label>
@@ -499,7 +578,7 @@ function NodeImage({ node }: { node: AnyNode & { type: "shape" } }) {
                 type="number"
                 min={8}
                 max={400}
-                value={imgWidth ?? 60}
+                value={imgWidth ?? IMG_SIZE}
                 onChange={(e) => {
                   const size = Number(e.target.value);
                   if (!Number.isFinite(size) || size <= 0) return;
@@ -512,7 +591,34 @@ function NodeImage({ node }: { node: AnyNode & { type: "shape" } }) {
           </>
         )}
       </div>
-      {img && <p className="field-hint">{t("insp.imageHint")}</p>}
+      {img && (
+        <>
+          {/* The same question a service is asked, in the same words: a box
+              with the icon in it, or the icon alone. What the file gets
+              differs — `fill:none,stroke:none` here, `look` in the graph
+              comment there — because `architecture-beta` has no `style`
+              statement to write. The choice is the user's either way, and
+              it should not read as two different choices. */}
+          <label>
+            {t("insp.look")}
+            <select
+              value={frameless ? "icon" : "boxed"}
+              onChange={(e) =>
+                updateNodeData(node.id, {
+                  styles:
+                    e.target.value === "icon"
+                      ? withoutFrame(styles)
+                      : withoutStyles(styles, ["fill", "stroke"]),
+                })
+              }
+            >
+              <option value="boxed">{t("insp.lookBoxed")}</option>
+              <option value="icon">{t("insp.lookIcon")}</option>
+            </select>
+          </label>
+          <p className="field-hint">{t("insp.imageHint")}</p>
+        </>
+      )}
     </>
   );
 }

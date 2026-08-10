@@ -20,3 +20,26 @@ export function entriesOf(collection: unknown): Array<[string, Record<string, un
   }
   return [];
 }
+
+/**
+ * The inline styles a node carries, as a list, or nothing.
+ *
+ * Mermaid spells the field differently per family — `styles` in a state and
+ * a class, `cssStyles` in an entity — and it is the same `style <id> …`
+ * statement in every one of them, so it is read here rather than three times.
+ */
+export function stylesOf(v: Record<string, unknown>): { styles?: string[] } {
+  const raw = (v.styles ?? v.cssStyles) as unknown;
+  const list = Array.isArray(raw) ? raw.map(String).filter(Boolean) : [];
+  return list.length ? { styles: list } : {};
+}
+
+/** `style a fill:#f9f,stroke:#333` — one line per node that has any. */
+export function styleLines(
+  nodes: Array<{ id: string; data: { styles?: string[] } }>,
+  indent = "  ",
+): string[] {
+  return nodes
+    .filter((n) => (n.data.styles?.length ?? 0) > 0)
+    .map((n) => `${indent}style ${n.id} ${n.data.styles!.join(",")}`);
+}

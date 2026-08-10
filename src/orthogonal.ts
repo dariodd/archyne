@@ -92,7 +92,7 @@ export function attachPoint(r: Frame, side: Side): Point {
 }
 
 /** Which way is away from the box, through this face. */
-function outward(side: Side): Point {
+export function outward(side: Side): Point {
   switch (side) {
     case "left":
       return { x: -1, y: 0 };

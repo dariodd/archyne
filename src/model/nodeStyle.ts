@@ -94,3 +94,67 @@ export function patchNodeStyles(code: string, map: NodeStyleMap): string {
   if (LINE_RE.test(code)) return code.replace(LINE_RE, line);
   return `${code.replace(/\n+$/, "")}\n${line}\n`;
 }
+
+/**
+ * The drawable half of a node's `style` declarations.
+ *
+ * The shape takes fill and stroke; the label takes the rest. Mermaid makes
+ * the same split — `isLabelStyle` in its own `styles.ts` — and a declaration
+ * it puts on the label is one this has to put there too, or a diagram says
+ * one thing here and another everywhere else.
+ *
+ * Lives here rather than in `ShapeNode` because every family that can carry
+ * a `style` statement needs to draw it: a state, a class and an entity all
+ * take one, and only `architecture-beta` has no such statement to read.
+ */
+export interface DrawnStyle {
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: string;
+  strokeDasharray?: string;
+  color?: string;
+  fontSize?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+}
+
+const DRAWN: Record<string, keyof DrawnStyle> = {
+  fill: "fill",
+  stroke: "stroke",
+  color: "color",
+  "stroke-width": "strokeWidth",
+  "stroke-dasharray": "strokeDasharray",
+  "font-size": "fontSize",
+  "font-weight": "fontWeight",
+  "font-style": "fontStyle",
+};
+
+export function styleProps(decls: string[]): DrawnStyle {
+  const out: DrawnStyle = {};
+  for (const d of decls) {
+    const idx = d.indexOf(":");
+    if (idx < 0) continue;
+    const key = DRAWN[d.slice(0, idx).trim()];
+    if (key) out[key] = d.slice(idx + 1).trim();
+  }
+  return out;
+}
+
+/** What a label is drawn with, as inline style for the element holding it. */
+export function labelStyleOf(s: DrawnStyle): React.CSSProperties {
+  return {
+    ...(s.color ? { color: s.color } : {}),
+    ...(s.fontSize ? { fontSize: s.fontSize } : {}),
+    ...(s.fontWeight ? { fontWeight: s.fontWeight } : {}),
+    ...(s.fontStyle ? { fontStyle: s.fontStyle } : {}),
+  };
+}
+
+/** Fill and border, for the families whose box is an ordinary element. */
+export function boxStyleOf(s: DrawnStyle): React.CSSProperties {
+  return {
+    ...(s.fill ? { background: s.fill } : {}),
+    ...(s.stroke ? { borderColor: s.stroke } : {}),
+    ...labelStyleOf(s),
+  };
+}

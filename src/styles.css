@@ -703,6 +703,8 @@ body.resizing-side {
 
 .shape-label {
   position: relative;
+  /* `LABEL_SIZE` in model/types.ts is this number; the inspector needs it to
+     know when a chosen type size has gone back to being no choice at all. */
   font-size: 12px;
   text-align: center;
   padding: 4px 14px;
@@ -736,6 +738,44 @@ body.resizing-side {
   flex-direction: column-reverse;
 }
 
+/* A picture with no frame around it. There is no box to fill, so the label
+   block stops filling one and the node shrinks onto the picture and its
+   name — the same shape a bare service node takes, and the same one mermaid
+   draws, tight around the image rather than 200px wide. */
+.shape-node.bare .shape-label.with-image {
+  position: relative;
+  inset: auto;
+}
+
+/* Selection has to be drawn here: with no frame there is no outline to
+   recolour, and an unframed node with nothing to show for being selected is
+   one you cannot tell you have hold of. Dashed, as a bare service is. */
+.shape-node.bare.selected {
+  outline: 1.5px dashed var(--selected);
+  outline-offset: 3px;
+  border-radius: var(--r);
+}
+
+/* An unframed node is as wide as its contents, so the rename field must not
+   be one of the things deciding that width — or renaming it made it jump
+   wider and back. `size={1}` on the field keeps its own idea of a width (a
+   browser default of about twenty characters) out of the calculation; this
+   fills the width the picture has already settled. */
+.shape-node.bare .shape-label-input {
+  width: 100%;
+  /* No floor here: this node is the size of its picture, and a field wider
+     than that is a node that jumps the moment it is opened. */
+  min-width: 0;
+  /* And exactly as tall as the name it replaces, at one line or at four —
+     on a node that is its own contents, every pixel the field takes beyond
+     the text is a pixel the node grows the moment you start typing. The
+     padding went for that reason; the border goes for the same one, and
+     comes back as an outline, which is drawn without taking room. */
+  padding: 0 4px;
+  border: 0;
+  outline: 1px solid var(--accent);
+}
+
 .shape-image {
   object-fit: contain;
   /* A picture that fails to load must not leave a broken-image glyph in the
@@ -747,9 +787,49 @@ body.resizing-side {
   min-height: 0;
 }
 
+/* The rename editor on the canvas, wherever it opens. A textarea, because a
+   label can hold more than one line — Shift+Enter makes one — styled back
+   down to the single-line field it looks like: no resize grip, no scrollbar,
+   and the face of the text it is standing in for rather than the browser's
+   monospace default.
+
+   Every family gets the same one. A flowchart shape adds `.shape-label-input`
+   on top for the sizing its own node needs; the rest are content with this. */
+.node-rename {
+  position: relative;
+  pointer-events: auto;
+  /* Fills the slot it stands in, with a floor: a service node is 90px wide
+     and 90% of that clipped "Database" after five letters. Below the floor a
+     node grows a little while it is being renamed, which is the right way
+     round — the name being typed is the thing to see. */
+  width: 100%;
+  min-width: 90px;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: normal;
+  text-align: center;
+  display: block;
+  padding: 1px 4px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: var(--r);
+}
+
 .shape-label-input {
   position: relative;
   width: 85%;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+  line-height: normal;
+  display: block;
+  /* The label block around it does not take the pointer — it would swallow
+     clicks meant for the node — but the field inside it must, or the caret
+     cannot be put anywhere with the mouse. */
+  pointer-events: auto;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--accent);
@@ -905,12 +985,29 @@ body.resizing-side {
   resize: vertical;
 }
 
+/* A label is prose, not code, and it grows a row at a time as lines are
+   added — so it keeps the face and the size of the field it replaced rather
+   than the monospace the attribute and member editors beside it want, and
+   has no grip to drag, there being nothing to drag it to. */
+.inspector textarea.label-field {
+  font-family: inherit;
+  font-size: 13px;
+  resize: none;
+}
+
 .inspector label.check {
   flex-direction: row;
   align-items: center;
   gap: 8px;
   font-size: 12px;
   color: var(--text);
+}
+
+/* The browser gives a checkbox 4px of its own margin, which put every tick
+   box in the panel 4px to the right of the edge all the labels start on.
+   The row's `gap` already spaces it from its text. */
+.inspector label.check input[type="checkbox"] {
+  margin: 0;
 }
 
 .inspector code {
@@ -945,6 +1042,31 @@ body.resizing-side {
 .react-flow__node:hover .react-flow__handle {
   width: 12px;
   height: 12px;
+}
+
+/* A connection point is shown when it is wanted, and not before. Four dots
+   on every node at every moment sat over the labels and the icons they were
+   meant to serve — on an icon node, on top of the icon.
+     - the node under the pointer, which is where a connection starts;
+     - the selected node, so the keyboard has the same offer as the mouse;
+     - every node while one is being dragged, because the node you are aiming
+       at is nowhere near the pointer when the drag begins.
+   Dropping does not depend on hitting one: `connectionRadius` is 38, so a
+   line released anywhere near a node takes its nearest point.
+
+   Hidden with `opacity`, never with `display`. React Flow measures a handle
+   to decide where an edge starts, and taking one out of layout leaves every
+   connection with nothing to attach to — the same reason the import preview
+   below hides them this way rather than removing them. */
+.canvas-wrap .react-flow__handle {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.canvas-wrap .react-flow__node:hover .react-flow__handle,
+.canvas-wrap .react-flow__node.selected .react-flow__handle,
+.canvas-wrap.connecting .react-flow__handle {
+  opacity: 1;
 }
 
 /* React Flow's resizer ships a 5px Google-blue square with a white border:
@@ -2255,22 +2377,27 @@ body.resizing-side {
   flex-direction: column;
 }
 
+/* The type size, in among the colours. A number field would otherwise take
+   a text field's width and push the row past the edge of the panel. */
+.color-row .type-size input {
+  width: 58px;
+}
+
+/* 29px is what a field in this panel comes out at — 13px of text in 6px of
+   padding inside a 1px border. A swatch has no text to be sized by, so it is
+   told the number, or the row has one control 3px shorter than the rest. */
 .color-row input[type="color"] {
   width: 42px;
-  height: 26px;
+  height: 29px;
   padding: 2px;
   cursor: pointer;
 }
 
-.color-row .mini {
-  background: var(--panel-2);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 4px 10px;
-  font-size: 11px;
-  cursor: pointer;
-}
+/* No rule for `.mini` in here: this row used to carry its own, written
+   before the shared one existed and left behind when it arrived — 11px of
+   dimmed text in a 23px box, beside 29px fields and 26px swatches, three
+   heights in a row four controls long. The shared `.mini` matches the
+   fields it stands next to, which is the whole point of having one. */
 
 .inspector-empty {
   font-size: 12px;
@@ -2755,7 +2882,9 @@ body.resizing-side {
   padding: 6px 10px;
   font-family: inherit;
   font-size: 12px;
-  line-height: 1.2;
+  /* 1.25 rather than 1.2 so the box comes out at 29px, which is what a field
+     in this panel measures — these buttons always stand beside one. */
+  line-height: 1.25;
   white-space: nowrap;
   color: var(--text);
   background: var(--panel-2);
@@ -2802,6 +2931,21 @@ body.resizing-side {
   font-size: 11px;
   color: var(--text-dim);
   margin-bottom: 4px;
+}
+
+/* The inspector has no inset of its own: every row carries one, so that a
+   colour swatch and a text field line up down a single edge. Three blocks
+   were written for the dialogs, where the modal body supplies that inset,
+   and put in the panel without it — so the hint under a field, and the whole
+   align-and-distribute pane, sat 12px to the left of everything they belong
+   to, hard against the edge of the panel. */
+.inspector .field-hint,
+.inspector .field-label {
+  padding: 6px 12px 0;
+}
+
+.inspector .align-grid {
+  padding-inline: 12px;
 }
 
 /* The patch that takes a drag on an edge's label. Invisible: the label under

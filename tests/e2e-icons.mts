@@ -39,7 +39,7 @@ page.on("pageerror", (e) => errors.push(String(e)));
 
 interface TestNode {
   type: string;
-  data: { icon?: string };
+  data: { icon?: string; styles?: string[] };
 }
 const nodes = () =>
   page.evaluate(
@@ -197,6 +197,232 @@ check(
     return Boolean(swatch?.querySelector("img")?.getAttribute("src"));
   }),
   "the preview swatch was empty",
+);
+
+/* ---------- the type size, which only a browser can confirm ---------- */
+
+// `font-size` is a label style in mermaid's own reckoning, and Archyne kept
+// it in the file while drawing every label at 12px regardless — a diagram
+// that said one thing here and another everywhere else.
+await page.goto(
+  codeUrl('flowchart TD\n  a["Normal"] --> b["Bigger"]\n  style b font-size:22px\n'),
+);
+await page.waitForSelector(".shape-node");
+await page.waitForTimeout(1200);
+check(
+  "a chosen type size is actually drawn",
+  (await page.$$eval(".shape-label", (ls) => ls.map((l) => getComputedStyle(l).fontSize))).join(
+    " ",
+  ) === "12px 22px",
+  await page.$$eval(".shape-label", (ls) =>
+    ls.map((l) => getComputedStyle(l).fontSize).join(" "),
+  ),
+);
+
+await page.locator(".shape-node").nth(1).click();
+await page.waitForTimeout(400);
+const typeSize = page.locator(".inspector .type-size input");
+check(
+  "and the field shows it",
+  (await typeSize.inputValue()) === "22",
+  await typeSize.inputValue(),
+);
+
+const styleLine = async () =>
+  (
+    await page.evaluate(
+      () =>
+        (
+          window as unknown as { __graphTest: { store: { getState(): { code: string } } } }
+        ).__graphTest.store.getState().code,
+    )
+  )
+    .split("\n")
+    .find((l) => l.includes("style b")) ?? "";
+
+await typeSize.fill("30");
+await page.waitForTimeout(700);
+check(
+  "changing it writes ordinary mermaid",
+  (await styleLine()).includes("font-size:30px"),
+  await styleLine(),
+);
+
+// Back at the default the declaration comes out rather than being spelled
+// on every node: 12px written down is 12px nobody chose.
+await typeSize.fill("12");
+await page.waitForTimeout(700);
+check(
+  "and back at the default it comes out of the file",
+  !(await styleLine()).includes("font-size"),
+  await styleLine(),
+);
+
+/* ---------- and an icon arrives without a frame around it ---------- */
+
+// An icon is a picture, not a box with a picture in it. Mermaid draws its
+// frame tight around the image from the node's own `fill` and `stroke`, so
+// the two are switched off when the picture goes on — and back on when it
+// comes off, or the node would be left invisible.
+await page.goto(codeUrl('flowchart TD\n  s["Start"] --> w["Next step"]\n'));
+await page.waitForSelector(".shape-node");
+await page.waitForTimeout(1500);
+await page.locator(".shape-node").nth(1).click();
+await page.waitForTimeout(400);
+
+const url = page.locator(".inspector input[placeholder^='https']");
+// The look, asked in the same words a service is asked it: a box with the
+// icon in it, or the icon alone. It is the last select in the panel — the
+// shape comes first.
+const look = page.locator(".inspector select").last();
+const styles = async () => (await nodes())[1]?.data.styles ?? [];
+const setUrl = async (value: string) => {
+  await url.fill(value);
+  await url.blur();
+  await page.waitForTimeout(700);
+};
+
+await setUrl("https://api.iconify.design/logos/google-cloud.svg");
+check(
+  "taking a picture on takes the frame off",
+  (await styles()).includes("fill:none") && (await styles()).includes("stroke:none"),
+  JSON.stringify(await styles()),
+);
+check(
+  "which the look shows",
+  (await look.inputValue()) === "icon",
+  `the look says ${await look.inputValue()}`,
+);
+
+// And with no frame there is no box to fit into, so the node stops being a
+// 160×54 rectangle standing clear of a 60px logo.
+const box = () =>
+  page.evaluate(() => {
+    const r = document.querySelectorAll(".shape-node")[1].getBoundingClientRect();
+    const i = document.querySelector(".shape-image")!.getBoundingClientRect();
+    return {
+      slack: Math.round(r.width - i.width),
+      size: `${Math.round(r.width)}×${Math.round(r.height)}`,
+    };
+  });
+const hugged = await box();
+check(
+  "and the node shrinks onto the picture",
+  hugged.slack < 40,
+  `${hugged.slack}px of node either side of the picture, in a ${hugged.size} box`,
+);
+
+// Renaming replaced the whole label block, picture included, which on an
+// unframed node left a lone text box where the icon had been.
+await page.locator(".shape-node").nth(1).dblclick();
+await page.waitForTimeout(400);
+// A node that is its own contents is a node the rename field can resize, so
+// the field takes exactly the room the name took and nothing moves.
+const typing = await box();
+check(
+  "and renaming does not resize the node",
+  typing.size === hugged.size,
+  `${hugged.size} at rest became ${typing.size} while renaming`,
+);
+check(
+  "renaming leaves the picture where it is",
+  await page.evaluate(() => {
+    const node = document.querySelectorAll(".shape-node")[1];
+    const field = node.querySelector(".shape-label-input");
+    return Boolean(node.querySelector(".shape-image")) && field === document.activeElement;
+  }),
+  "the picture went away, or the field never took focus",
+);
+// The field sits inside a block that does not take the pointer, so it has
+// to ask for it back: without that the caret cannot be placed by clicking.
+check(
+  "and the field can still be clicked into",
+  await page.evaluate(() => {
+    const field = document
+      .querySelectorAll(".shape-node")[1]
+      .querySelector(".shape-label-input");
+    return field ? getComputedStyle(field).pointerEvents !== "none" : false;
+  }),
+  "the field was not clickable",
+);
+
+// Shift+Enter is the line break, Enter still ends the rename, and the file
+// gets the one spelling mermaid understands. Checked on the unframed node
+// because it is the one a second line can resize — the field has to grow by
+// exactly the height of the line it gained and no more.
+await page.keyboard.press("Control+a");
+await page.keyboard.type("First");
+await page.keyboard.press("Shift+Enter");
+await page.keyboard.type("Second");
+await page.waitForTimeout(300);
+check(
+  "Shift+Enter makes a line instead of ending the rename",
+  (await page.locator(".shape-label-input").count()) === 1,
+  "the rename ended on Shift+Enter",
+);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(600);
+const named = await page.evaluate(() => {
+  const node = document.querySelectorAll(".shape-node")[1] as HTMLElement;
+  return {
+    label: (
+      window as unknown as {
+        __graphTest: { store: { getState(): { nodes: Array<{ data: { label: string } }> } } };
+      }
+    ).__graphTest.store.getState().nodes[1].data.label,
+    drawn: node.querySelector(".shape-label")!.textContent,
+  };
+});
+check(
+  "Enter still ends it, and the second line is written as <br>",
+  named.label === "First<br>Second",
+  `the label reads ${JSON.stringify(named.label)}`,
+);
+check(
+  "which the canvas draws as two lines rather than as markup",
+  !named.drawn?.includes("<br>"),
+  `the node says ${JSON.stringify(named.drawn)}`,
+);
+
+// And re-opening shows the lines, not the markup that holds them — at the
+// size the two lines already take, since a field one row taller than its
+// text is a node that grows the moment it is opened.
+const atRest = await box();
+await page.locator(".shape-node").nth(1).dblclick();
+await page.waitForTimeout(400);
+check(
+  "and re-opening the field shows lines, not markup",
+  (await page.locator(".shape-label-input").inputValue()) === "First\nSecond",
+  JSON.stringify(await page.locator(".shape-label-input").inputValue()),
+);
+check(
+  "and a two-line node is not resized by editing it either",
+  (await box()).size === atRest.size,
+  `${atRest.size} at rest became ${(await box()).size} while renaming`,
+);
+
+await look.selectOption("boxed");
+await page.waitForTimeout(700);
+check(
+  "and the frame can be put back",
+  (await styles()).length === 0,
+  JSON.stringify(await styles()),
+);
+
+// Deliberately after putting it back by hand: an edit to the node must not
+// take the frame off again behind the user.
+await setUrl("https://api.iconify.design/logos/aws.svg");
+check(
+  "changing the picture leaves that decision alone",
+  (await styles()).length === 0,
+  JSON.stringify(await styles()),
+);
+
+await setUrl("");
+check(
+  "and clearing the picture leaves no invisible node behind",
+  !(await styles()).includes("fill:none"),
+  JSON.stringify(await styles()),
 );
 
 check("nothing threw", errors.length === 0, errors.join(" | "));

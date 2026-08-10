@@ -21,6 +21,8 @@ import {
   bestSides,
   facesAway,
   orthogonalRoute,
+  outward,
+  STUB,
   tidy,
   withStubs,
   type Axis,
@@ -72,6 +74,15 @@ export interface Ends {
 }
 
 /**
+ * How far a loop back to the same node stands off it.
+ *
+ * `STUB` is the step a connection takes away from a face before it turns,
+ * and a loop is two of those with a corner between them: any less and the
+ * line would run along the node's own edge.
+ */
+const LOOP = STUB;
+
+/**
  * The faces a connection uses.
  *
  * An architecture diagram writes them into the file (`web:R --> L:db`), where
@@ -86,6 +97,39 @@ export function endsOf(
   const fromBox = boxes.get(edge.source);
   const toBox = boxes.get(edge.target);
   if (!fromBox || !toBox) return null;
+
+  // A connection from a node to itself. `bestSides` compares two centres,
+  // and for one box against itself every difference is zero — it answered
+  // "leave the bottom, arrive at the top", which asks the router to get from
+  // under the node to above it. It did: out of the bottom, down past the
+  // label, around the outside of the group and back. Two adjacent faces are
+  // what a loop wants, and the corner between them is where it goes.
+  //
+  // An architecture diagram writes its faces into the file, and they are the
+  // author's here as much as anywhere — `db:B --> L:db` is a loop round the
+  // bottom-left corner. Only when they are adjacent, though: two opposite
+  // faces are the very request that produced the tour, and one face twice
+  // has no corner to go round.
+  if (edge.source === edge.target) {
+    const authored =
+      kind === "architecture"
+        ? { from: AUTHORED[edge.sourceHandle ?? ""], to: AUTHORED[edge.targetHandle ?? ""] }
+        : null;
+    const usable =
+      authored?.from &&
+      authored.to &&
+      axisOfSide(authored.from) !== axisOfSide(authored.to) &&
+      (authored as { from: Side; to: Side });
+    const sides = usable || { from: "right" as Side, to: "top" as Side };
+    return {
+      start: attachPoint(fromBox, sides.from),
+      end: attachPoint(fromBox, sides.to),
+      from: axisOfSide(sides.from),
+      to: axisOfSide(sides.to),
+      fromSide: sides.from,
+      toSide: sides.to,
+    };
+  }
 
   const named =
     kind === "architecture"
@@ -123,6 +167,24 @@ function routeOf(
 ): Point[] {
   const ends = endsOf(edge, boxes, kind);
   if (!ends) return [];
+
+  // A loop back to the same node: out of one face, round the corner it shares
+  // with the other, and in again. Squared off like everything else here
+  // rather than drawn as mermaid's little arc, because it is the same
+  // connector as the rest and takes the same corners, hops and label. No
+  // obstacle search either — it never leaves the node it belongs to, so
+  // there is nothing on the way.
+  if (edge.source === edge.target) {
+    const away = outward(ends.fromSide);
+    const back = outward(ends.toSide);
+    const out = { x: ends.start.x + away.x * LOOP, y: ends.start.y + away.y * LOOP };
+    const into = { x: ends.end.x + back.x * LOOP, y: ends.end.y + back.y * LOOP };
+    // The faces are adjacent, so one leg is horizontal and the other
+    // vertical: the corner is simply where the two stubs meet.
+    const corner = { x: away.x !== 0 ? out.x : into.x, y: away.y !== 0 ? out.y : into.y };
+    const user = edge.data?.points ?? [];
+    return tidy([ends.start, out, ...user, ...(user.length ? [] : [corner]), into, ends.end]);
+  }
 
   // A connector leaves a face perpendicular to it before it turns; without
   // that, two nodes joined side to side down a column produced a line flat

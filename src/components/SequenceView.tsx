@@ -8,20 +8,28 @@ import {
   type NodeProps,
 } from "@xyflow/react";
 import type { FlowEdge, ParticipantNode } from "../model/types";
+import { useRename } from "./useRename";
 import { useGraphStore } from "../store";
 import { t } from "../i18n";
 
 export { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "../seqLayout";
 import { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "../seqLayout";
 
-export function ParticipantNodeView({ data, selected }: NodeProps<ParticipantNode>) {
+export function ParticipantNodeView({ id, data, selected }: NodeProps<ParticipantNode>) {
+  const rename = useRename(id, data.label, {
+    multiline: true,
+    className: "participant-rename",
+  });
   const rowCount = useGraphStore((s) => s.seqItems.length || s.edges.length);
   const lifelineHeight = SEQ_TOP - SEQ_HEADER + rowCount * SEQ_SPACING + 30;
   return (
     <div className="participant-node">
-      <div className={`participant-head ${data.ptype}${selected ? " selected" : ""}`}>
+      <div
+        className={`participant-head ${data.ptype}${selected ? " selected" : ""}`}
+        onDoubleClick={rename.begin}
+      >
         {data.ptype === "actor" && <span className="actor-icon">☺</span>}
-        {data.label}
+        {rename.editing ? rename.field : data.label}
       </div>
       <div className="lifeline" style={{ height: lifelineHeight }} />
       {/* One source-type handle only: a stacked target handle would sit on

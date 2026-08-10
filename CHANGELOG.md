@@ -20,6 +20,181 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [Unreleased]
+
+### Added
+
+- **A loop in a C4 or architecture diagram says what will become of it.**
+  Both families accept a connection from a node to itself — it parses, and
+  mermaid renders it without complaint — and both then draw an arrowhead and
+  a label at the corner of the box rather than a loop. The file is right and
+  the canvas here draws the loop, so the edge is made and a note says where
+  the two part company. Not a refusal: refusing valid mermaid is not ours to
+  do. Not a nag either — it is said when one is drawn, not when a file
+  carrying one is opened.
+
+- **Colours and a type size, in every family that can hold them.** Only a
+  flowchart shape had anywhere to keep a `style <id> …` statement, so a state
+  diagram or a class diagram that arrived with colours was parsed, drawn
+  plain, and written back out without them — the file lost what it came with.
+  States, classes and entities now read, draw and write their own, through
+  the same row of controls rather than four copies of it.
+
+  Which families those are was settled by asking mermaid's parsers, not by
+  guessing: `style` is accepted in flowchart, state, class and ER diagrams,
+  and `architecture-beta` has no such statement at all — which is why a
+  service is not offered the row. C4 has a syntax of its own
+  (`UpdateElementStyle`) and is left for its own change rather than bent into
+  this one.
+
+- **An icon is asked the same question everywhere.** A flowchart picture had
+  a "No frame" tick box and an architecture service a "Look" menu — one
+  choice, two spellings. Both are now the menu, in the same words: a box with
+  the icon in it, or the icon alone. What reaches the file still differs,
+  `fill:none,stroke:none` against the `look` in the graph comment, because
+  `architecture-beta` has no `style` to write; the question does not.
+
+- **Every node is renamed by double-clicking it.** It was flowchart shapes
+  alone: in the other six families the only way to change a label was to find
+  the field in the inspector. States, entities, classes, services, C4
+  elements, participants, notes and containers all take the same editor now,
+  lifted out of `ShapeNodeView` rather than copied into each of them.
+
+  A second line comes with it, where mermaid will have one. Its parsers were
+  asked rather than assumed: `<br>` is accepted in flowchart, state, class,
+  ER, sequence and C4 labels, and rejected outright by `architecture-beta` —
+  so a service is renamed one line at a time and Shift+Enter there has
+  nothing to do but finish. On a table node it is the title that is typed
+  into, not the rows: attributes, members and methods have a syntax of their
+  own and the inspector already takes it.
+
+- **A node's label has a type size.** A number in pixels beside the three
+  colours, written as `font-size:NNpx` — which is a label style in mermaid's
+  own reckoning, so a size chosen here is a size every reader of the file
+  draws with. Back at the default the declaration comes out again rather
+  than being spelled on every node: 12px written down is 12px nobody chose.
+
+- **Shift+Enter puts a label on a second line.** Mermaid holds a second line
+  as `<br>`, which is right for the file — every other tool reading it draws
+  two lines too — and wrong for a text field, where it is markup standing
+  where a line break should be. Both editors now show the lines and write
+  the `<br>`: on the canvas, Enter still ends the rename and Shift+Enter
+  makes the line; in the inspector the label field is a proper multi-line
+  one, where Enter has nothing to submit and simply makes the line.
+
+  The field takes exactly the room the text takes, at one line or at four,
+  so renaming an unframed node — which is the size of what it shows — does
+  not make it grow while you type. That cost the field its border, which is
+  now an outline: an outline is drawn without taking room.
+
+- **An icon arrives without a frame around it.** Mermaid draws a rectangle
+  tight around an image node, taking its fill and border from the node's own
+  style, and around a logo that box is noise. Choosing a picture now writes
+  `fill:none,stroke:none` — ordinary Mermaid, not a private flag, so the icon
+  stands bare in the Live Editor as well as here — and clearing the picture
+  takes those back off, since a node with no picture and no frame is a node
+  you cannot see. The "Look" menu overrides it either way, and a frame put
+  back by hand survives the next edit to the node.
+
+  An unframed picture is also the size of what it shows. A picture does not
+  grow the box it is drawn in — that rule stands, and a node's size is the
+  author's — but with no frame there is no box, and 160×54 of nothing around
+  a 60px logo is not a size anybody chose either: it is where the selection
+  outline stood and where the edges arriving at it stopped. So that node
+  shrinks onto its picture and its label, the way a bare service node
+  already did and the way mermaid draws the same node. Dragging a handle or
+  typing a size still wins, and "Auto size" gives the fitted one back.
+
+### Fixed
+
+- **An icon on a flowchart node drew as a smear everywhere but here.** The
+  node looked right on the canvas and arrived in the Mermaid Live Editor as
+  a 200×16 rainbow bar. Mermaid draws an image shape at the picture's
+  _intrinsic_ size, which for an icon set is the `width: 1.25em` in the SVG
+  — about 20×16 — and then, whenever the node has a label, widens it to the
+  flowchart wrapping width of 200px and stretches it to fit with
+  `preserveAspectRatio="none"`. Archyne wrote neither a size nor a
+  constraint, on the principle that a file should not carry values nobody
+  chose; the principle was right and the conclusion was wrong, because the
+  canvas fits every picture with `object-fit: contain` and so does choose
+  one. `w`, `h` and `constraint: "on"` are now written for every picture,
+  which is what makes Mermaid derive the width from the height and the
+  picture's own ratio rather than from the wrapping width. An `icon:` node,
+  which Archyne never writes and only hands back, still gains nothing it did
+  not arrive with.
+
+- **The canvas ignored every text style but the colour.** `styleProps` read
+  five declarations, and mermaid puts eighteen on the label — so a file
+  carrying `style a font-size:22px` was parsed, kept, and written back out
+  intact while being drawn at 12px like everything else. The type size, the
+  weight and the italic are now drawn as well as stored, which is also what
+  makes the new field above show its effect rather than only its number.
+
+- **Renaming a node took its picture away while you typed.** The editor
+  replaced the whole label block, and the picture was part of it — so a node
+  with an icon lost the icon for the length of the rename, and an unframed
+  one collapsed to a lone text box floating where the icon had been. The
+  field now stands in for the words only, and the picture stays where it is
+  — taking exactly the room the name took, since a node with no frame is its
+  own contents and a field wider or taller than the text would be a node
+  that resized itself the moment you started typing.
+
+- **A connection let go anywhere on a node connects to it.** React Flow
+  finishes one only within `connectionRadius` of a connection _point_, and
+  that is a distance from a point — so whether the middle of a node counted
+  depended on how big the node happened to be. Released dead centre, a
+  flowchart box connected and an architecture service, twice the size, did
+  not: the same gesture, two answers, for a reason nobody can see. The whole
+  node is now a target, as it is in draw.io.
+
+  Not the node it came from, and not a group. With the whole node a target,
+  a drag that wandered back over its own node would leave a loop behind, and
+  a container covers most of the canvas — every drag ending in open space
+  inside one would connect to the container. Both are still reachable by
+  their own connection points, which is where meaning to do it looks like
+  meaning to do it.
+
+- **One `SideHandles`, not two.** The architecture views kept a private copy,
+  identical to the shared component down to the comment above it. Identical
+  today; two things that stop being identical the first time either is
+  touched — and the shared one had just been touched.
+
+- **The connection points are shown when they are wanted.** Four dots on
+  every node, at every moment, sitting over the labels and the icons they
+  were meant to serve — on a node drawn as an icon, on top of the icon. They
+  now appear on the node under the pointer, on the selected node, and on
+  every node while a connection is being dragged, that last because the node
+  you are aiming at is nowhere near the pointer when the drag starts.
+  Finishing one never depended on hitting a dot: the connection radius is
+  38px, so a line released near a node takes its nearest point.
+
+- **An edge from a node to itself toured the diagram.** `bestSides` picks the
+  two faces a connection uses by comparing the node centres, and for one box
+  against itself every difference is zero — so it answered "leave the bottom,
+  arrive at the top", which is a request to get from under the node to above
+  it. The router obliged: down past the label, out through the wall of the
+  enclosing group, and back up. A loop now uses two _adjacent_ faces and the
+  corner between them, so it sits against the top-right of its node, squared
+  off and hopped like every other connection here. An architecture diagram
+  writes its faces into the file, and a loop takes those when it can —
+  `db:B --> L:db` goes round the bottom-left — falling back only when they
+  name two opposite faces, which is the request that produced the tour.
+
+- **The colour row held three different heights.** "Reset" carried a rule of
+  its own, written before the shared `.mini` existed and left behind when it
+  arrived: 11px of dimmed text in a 23px box, next to 29px fields and 26px
+  swatches. The row's own rule is gone, so the button is the one used
+  everywhere else, and the swatches and the buttons are told the height a
+  field in this panel comes out at. Four controls, one line.
+
+- **Three blocks of the inspector sat 12px left of everything else.** The
+  panel has no inset of its own — each row carries one, so a colour swatch
+  and a text field line up down a single edge — and `.field-hint` and the
+  align-and-distribute pane came from the dialogs, where the modal body
+  supplies it. The hint under the picture field, and the whole selection
+  panel, were flush against the edge of the panel. Every tick box was 4px out
+  in the other direction, on the browser's own checkbox margin.
+
 ## [0.2.1-alpha.1] — 2026-08-10
 
 Work on the editing surface itself: the source panel becomes an editor you

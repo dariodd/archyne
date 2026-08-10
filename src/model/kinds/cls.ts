@@ -7,7 +7,7 @@ import type {
   GroupNode,
   NoteNode,
 } from "../types";
-import { entriesOf } from "./shared";
+import { entriesOf, styleLines, stylesOf } from "./shared";
 
 /** mermaid's numeric relation-type constants. */
 const TYPE_BY_NUM: Record<number, ClassMarker> = {
@@ -78,6 +78,7 @@ export function parseClass(db: Record<string, (...a: unknown[]) => unknown>): {
         members,
         methods,
         annotations: ((v.annotations ?? []) as unknown[]).map(String),
+        ...stylesOf(v),
         ...(generic ? { generic } : {}),
         direction: "TB",
       },
@@ -168,6 +169,8 @@ export function serializeClass(
     const text = n.data.text.replace(/"/g, "'").replace(/\n/g, " ");
     lines.push(n.data.target ? `  note for ${n.data.target} "${text}"` : `  note "${text}"`);
   }
+
+  lines.push(...styleLines(nodes.filter((n): n is ClassNode => n.type === "class")));
 
   if (edges.length > 0) lines.push("");
   for (const e of edges) {
