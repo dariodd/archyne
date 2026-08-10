@@ -145,11 +145,7 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
 
   // Renaming, shared with every other family. A flowchart label may hold a
   // second line, and mermaid spells one `<br>`.
-  const rename = useRename(id, data.label, {
-    multiline: true,
-    className: "shape-label-input",
-    style: labelStyle,
-  });
+  const rename = useRename(id, data.label, { multiline: true, style: labelStyle });
 
   return (
     <div

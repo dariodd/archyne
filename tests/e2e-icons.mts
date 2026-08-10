@@ -328,7 +328,7 @@ check(
   "renaming leaves the picture where it is",
   await page.evaluate(() => {
     const node = document.querySelectorAll(".shape-node")[1];
-    const field = node.querySelector(".shape-label-input");
+    const field = node.querySelector(".node-rename");
     return Boolean(node.querySelector(".shape-image")) && field === document.activeElement;
   }),
   "the picture went away, or the field never took focus",
@@ -338,9 +338,7 @@ check(
 check(
   "and the field can still be clicked into",
   await page.evaluate(() => {
-    const field = document
-      .querySelectorAll(".shape-node")[1]
-      .querySelector(".shape-label-input");
+    const field = document.querySelectorAll(".shape-node")[1].querySelector(".node-rename");
     return field ? getComputedStyle(field).pointerEvents !== "none" : false;
   }),
   "the field was not clickable",
@@ -357,7 +355,7 @@ await page.keyboard.type("Second");
 await page.waitForTimeout(300);
 check(
   "Shift+Enter makes a line instead of ending the rename",
-  (await page.locator(".shape-label-input").count()) === 1,
+  (await page.locator(".node-rename").count()) === 1,
   "the rename ended on Shift+Enter",
 );
 await page.keyboard.press("Enter");
@@ -392,8 +390,8 @@ await page.locator(".shape-node").nth(1).dblclick();
 await page.waitForTimeout(400);
 check(
   "and re-opening the field shows lines, not markup",
-  (await page.locator(".shape-label-input").inputValue()) === "First\nSecond",
-  JSON.stringify(await page.locator(".shape-label-input").inputValue()),
+  (await page.locator(".node-rename").inputValue()) === "First\nSecond",
+  JSON.stringify(await page.locator(".node-rename").inputValue()),
 );
 check(
   "and a two-line node is not resized by editing it either",

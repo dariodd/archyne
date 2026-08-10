@@ -50,32 +50,48 @@ export function useRename(
     if (next && next !== label) updateNodeData(id, { [key]: next });
   };
 
+  /**
+   * The field, laid over the words rather than put in place of them.
+   *
+   * Most of these nodes are the size of what they hold, so a field with a
+   * width of its own is a node that changes shape the moment it is
+   * double-clicked — which it did, in seven families out of eight. So the
+   * text stays in the layout, unseen, holding the box open, and the field
+   * is positioned on top of it. What is held open is the *draft*, not the
+   * label: the box then follows what is being typed, and ends the rename at
+   * the size it had been showing all along.
+   */
   const field = (
-    <textarea
-      className={`node-rename nodrag${className ? ` ${className}` : ""}`}
-      style={style}
-      value={draft}
-      // As many rows as the draft has lines, and no width of its own: a
-      // textarea otherwise helps itself to two rows of twenty characters,
-      // which on a node sized by its contents is a size it would impose.
-      rows={draft.split("\n").length}
-      cols={1}
-      // Legitimate autofocus: this is only rendered after a double-click
-      // asking to type, so focus belongs here.
-      // eslint-disable-next-line jsx-a11y/no-autofocus
-      autoFocus
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        // Enter finishes the rename, which leaves the textarea's own Enter
-        // for the line break — under Shift, where every other field puts it.
-        if (e.key === "Enter" && !(multiline && e.shiftKey)) {
-          e.preventDefault();
-          commit();
-        }
-        if (e.key === "Escape") setEditing(false);
-      }}
-    />
+    <span className="node-rename-slot" style={style}>
+      <span aria-hidden="true" className="node-rename-ghost">
+        {draft || " "}
+      </span>
+      <textarea
+        className={`node-rename nodrag${className ? ` ${className}` : ""}`}
+        value={draft}
+        // No wrapping: a long name scrolls under the caret instead of
+        // folding onto a second line the node has no room for. The lines
+        // Shift+Enter puts in are still lines.
+        wrap="off"
+        rows={draft.split("\n").length}
+        cols={1}
+        // Legitimate autofocus: this is only rendered after a double-click
+        // asking to type, so focus belongs here.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          // Enter finishes the rename, which leaves the textarea's own Enter
+          // for the line break — under Shift, where every other field puts it.
+          if (e.key === "Enter" && !(multiline && e.shiftKey)) {
+            e.preventDefault();
+            commit();
+          }
+          if (e.key === "Escape") setEditing(false);
+        }}
+      />
+    </span>
   );
 
   return { editing, begin, field };

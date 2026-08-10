@@ -13,11 +13,7 @@ export function NoteNodeView({ id, data, selected }: NodeProps<NoteNode>) {
   const sized = useSized(id);
   // A note keeps its words in `text` rather than `label`, and they are the
   // whole of it — so the field stands in for the note itself.
-  const rename = useRename(id, data.text, {
-    multiline: true,
-    field: "text",
-    className: "note-rename",
-  });
+  const rename = useRename(id, data.text, { multiline: true, field: "text" });
   return (
     <div
       className={`note-node${selected ? " selected" : ""}${sized ? " sized" : ""}`}

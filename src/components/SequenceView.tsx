@@ -16,10 +16,7 @@ export { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "../seqLayout";
 import { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "../seqLayout";
 
 export function ParticipantNodeView({ id, data, selected }: NodeProps<ParticipantNode>) {
-  const rename = useRename(id, data.label, {
-    multiline: true,
-    className: "participant-rename",
-  });
+  const rename = useRename(id, data.label, { multiline: true });
   const rowCount = useGraphStore((s) => s.seqItems.length || s.edges.length);
   const lifelineHeight = SEQ_TOP - SEQ_HEADER + rowCount * SEQ_SPACING + 30;
   return (

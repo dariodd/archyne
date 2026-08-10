@@ -44,7 +44,7 @@ export function ServiceNodeView({ id, data, selected }: NodeProps<ServiceNode>) 
   const sized = useSized(id);
   // One line: mermaid's architecture parser rejects `<br>` outright, so a
   // service name that held one would be a file that no longer opens.
-  const rename = useRename(id, data.label, { className: "service-rename" });
+  const rename = useRename(id, data.label);
   return (
     <div
       className={
@@ -55,7 +55,11 @@ export function ServiceNodeView({ id, data, selected }: NodeProps<ServiceNode>) 
     >
       <NodeResize id={id} visible={selected} />
       {data.icon && <IconView name={data.icon} size={44} />}
-      {rename.editing ? rename.field : <div className="service-label">{data.label || id}</div>}
+      {/* The field goes inside the label rather than in place of it: that
+          element carries the type size a service name is drawn at, and a
+          field standing outside it is a field of a different size — six
+          pixels of node that appeared on a double-click. */}
+      <div className="service-label">{rename.editing ? rename.field : data.label || id}</div>
       <SideHandles />
     </div>
   );
@@ -92,7 +96,7 @@ export function C4NodeView({ id, data, selected }: NodeProps<import("../model/ty
   const sized = useSized(id);
   // The name, not the description under it — that has its own field in the
   // inspector, and one double-click cannot mean two things.
-  const rename = useRename(id, data.label, { multiline: true, className: "c4-rename" });
+  const rename = useRename(id, data.label, { multiline: true });
   return (
     <div
       className={`c4-node${external ? " external" : ""}${person ? " person" : ""}${selected ? " selected" : ""}${sized ? " sized" : ""}`}

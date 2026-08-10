@@ -60,6 +60,14 @@ CSS class names and internal store shape are _not_ public API.
   elements, participants, notes and containers all take the same editor now,
   lifted out of `ShapeNodeView` rather than copied into each of them.
 
+  The field is laid over the words rather than put in place of them: these
+  nodes are mostly the size of what they hold, so a field with a width of
+  its own is a node that changes shape the moment it is double-clicked —
+  which it did, in seven families out of eight. The text stays in the
+  layout, unseen, holding the box open, and the field sits on top of it. No
+  border either, for the same reason; an outline is drawn without taking
+  room.
+
   A second line comes with it, where mermaid will have one. Its parsers were
   asked rather than assumed: `<br>` is accepted in flowchart, state, class,
   ER, sequence and C4 labels, and rejected outright by `architecture-beta` —
