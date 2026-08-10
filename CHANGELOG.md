@@ -20,18 +20,21 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [0.2.1] — 2026-08-10
+## [0.2.1-alpha.1] — 2026-08-10
 
 Work on the editing surface itself: the source panel becomes an editor you
 can size and read, and three defects in how icons behave are fixed — one of
 which meant that clicking an icon sometimes did nothing at all.
 
-There is no 0.2.0 release: that version number was taken on npm by a
-publishing rehearsal in the days before the repository was recreated, so the
-0.2 line continues here. This is also the first release published under
-npm's `latest` tag rather than `next`; it is still pre-1.0, and the caveats
-listed under "What is not done" in the 0.1.0-alpha.1 notes still stand
-except where a release since has named them fixed.
+Still alpha, and deliberately: the caveats under "What is not done" in the
+0.1.0-alpha.1 notes — unsigned desktop builds, a self-assessed accessibility
+report, unreviewed translations, no independent security review — are all
+still true, and a version that lands on `npm i archyne` by default should
+not carry them silently. This publishes under `next`, as 0.2.0-alpha.1 did.
+
+There is no 0.2.0 release: that number, along with 0.2.1-rc.0, was taken on
+npm by a publishing rehearsal in the days before the repository was
+recreated, so the 0.2 line continues at 0.2.1 instead.
 
 ### Added
 
