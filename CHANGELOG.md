@@ -61,6 +61,14 @@ CSS class names and internal store shape are _not_ public API.
   One predicate now answers for both kinds of embedding, and Archyne holds the
   splash until the host's document arrives rather than drawing its own first.
 
+  A workflow publishes it — from a button in the Actions tab, with a dry-run
+  option, or from an `ext-v*` tag. Deliberately not the release workflow:
+  that one triggers on `v*`, which matches an extension tag beginning with `v`
+  and would republish the app under whatever version the manifest reads.
+  Whether it goes out marked pre-release is read from the app's version rather
+  than written into the workflow, so the first stable release does not quietly
+  ship as a prerelease.
+
   It carries an icon, and the rewrite that makes the built page loadable in a
   webview is now a module that imports nothing (`rewrite.ts`) with tests under
   the repository's own runner. They read the app's real `index.html` rather

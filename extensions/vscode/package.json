@@ -81,7 +81,7 @@
     "compile": "tsc -p .",
     "build": "npm run version:sync && npm run bundle && npm run compile",
     "typecheck": "tsc -p . --noEmit",
-    "package": "npm run build && vsce package --pre-release --out archyne.vsix"
+    "package": "npm run build && vsce package --out archyne.vsix"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

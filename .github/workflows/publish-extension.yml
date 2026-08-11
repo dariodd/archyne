@@ -1,0 +1,93 @@
+name: Publish the VS Code extension
+
+# Kept apart from `release.yml`, for two reasons that are worth stating.
+#
+# The first is a trap. That workflow triggers on `tags: ["v*"]`, and `v*`
+# matches `vscode-v0.1.0` as happily as `v0.3.0` — so an extension tag under
+# any name beginning with `v` would fire the npm release and republish
+# whatever `package.json` reads, which burns a version number irreversibly.
+# This one takes `ext-v*`, which that pattern cannot match.
+#
+# The second is that they fail differently. A rejected Marketplace publish
+# should not leave a half-finished npm release behind it, and an extension
+# worth republishing is not a reason to cut a new version of the app.
+#
+# `workflow_dispatch` is the ordinary way in. Publishing from a button, on a
+# commit that exists in history, gives the same repeatability as a tag without
+# minting a version number for a listing that may need three attempts to get
+# right the first time.
+on:
+  push:
+    tags: ["ext-v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and package, but do not publish
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Package and publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # The extension ships the app rather than building it, so the app is
+      # built first — from this commit, not from whatever `dist/` a laptop
+      # happened to have.
+      - run: npm ci
+      - run: npm run build
+
+      - name: Install the extension's own dependencies
+        run: npm ci
+        working-directory: extensions/vscode
+
+      # Redundant with the CI check, and cheap: this is the last moment before
+      # a number reaches a public listing, where it cannot be taken back.
+      - name: Version follows the app
+        run: npm run version:check
+        working-directory: extensions/vscode
+
+      # The Marketplace has no way to express a prerelease in a version string
+      # — it refuses one carrying a suffix — so `--pre-release` says it
+      # instead. Read from the app's version rather than written here, so the
+      # first stable release does not quietly go out marked pre-release.
+      - name: Decide the channel
+        id: channel
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [[ "$version" == *-* ]]; then
+            echo "App is $version — publishing as a pre-release."
+            echo "flag=--pre-release" >> "$GITHUB_OUTPUT"
+          else
+            echo "App is $version — publishing as a stable release."
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Package
+        run: npx vsce package ${{ steps.channel.outputs.flag }} --out archyne.vsix
+        working-directory: extensions/vscode
+
+      - name: Publish to the Marketplace
+        if: ${{ !inputs.dry_run }}
+        run: npx vsce publish ${{ steps.channel.outputs.flag }} --packagePath archyne.vsix
+        working-directory: extensions/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      # Kept whether or not the publish ran, so a dry run leaves something to
+      # install by hand and a real one leaves the exact bytes that shipped.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archyne-vsix
+          path: extensions/vscode/archyne.vsix
+          if-no-files-found: error

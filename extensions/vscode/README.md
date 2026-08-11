@@ -36,6 +36,24 @@ To install it into your own VS Code instead, `npm run package` produces a
 `.vsix`, which `code --install-extension archyne.vsix` installs and
 `code --uninstall-extension naxeris.archyne` removes.
 
+## Publishing it
+
+From CI, not from a laptop: `.github/workflows/publish-extension.yml`, either
+by running it from the Actions tab — with a **dry run** option that packages
+without publishing — or by pushing an `ext-v*` tag.
+
+It is a separate workflow from `release.yml` on purpose. That one triggers on
+`v*`, which matches `vscode-v1.0.0` as readily as `v0.3.0`, so an extension tag
+beginning with `v` would fire the npm release and republish whatever the root
+manifest reads. `ext-v*` cannot be matched by it. They also fail differently: a
+rejected listing should not strand a half-finished npm release.
+
+It needs a `VSCE_PAT` secret on the repository — a PAT from Azure DevOps with
+**All accessible organizations** and the **Marketplace → Manage** scope, from
+an account that is a member of the `naxeris` publisher. Whichever account
+issues the token must be listed under **Members** on the publisher; being in
+the Azure DevOps organization is not the same permission and is not enough.
+
 ## Its version
 
 There is one number to bump, and it is not this one: the extension follows the
