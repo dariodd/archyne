@@ -10,8 +10,8 @@ no network call of its own.
 
 ## Getting started
 
-Open a `.mmd` or `.mermaid` file, then run **Archyne: Open in Archyne** from
-the command palette, or use **Reopen Editor With…** and pick Archyne.
+Open a `.mmd` or `.mermaid` file, then run **Archyne: Open on the canvas**
+from the command palette, or use **Reopen Editor With…** and pick Archyne.
 
 The text editor stays the default. The canvas is a second way to look at the
 file, not a replacement for reading it — and edits go both ways: move a node

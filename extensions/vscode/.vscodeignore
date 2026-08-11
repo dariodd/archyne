@@ -11,5 +11,7 @@ tsconfig.json
 # ships.
 *.local.md
 
-# The bundled editor carries its own demo page, which nothing here opens.
+# Things the bundled editor carries for the web deployment and nothing here
+# opens: the embed demo page, and the link-preview image a crawler fetches.
 media/app/embed-demo.html
+media/app/preview.png

@@ -43,18 +43,29 @@ npm run audit
 ### Browser-driven tests
 
 The Vitest suite runs under jsdom, which has no layout engine and no real
-rendering — so contrast, target size, RTL geometry, export rasterization and
-mermaid's sanitizer are all invisible to it. Those live in `tests/e2e-*.mts`
-and drive a real browser through Playwright. CI runs all five.
+rendering — so contrast, target size, RTL geometry, export rasterization,
+pointer gestures and mermaid's sanitizer are all invisible to it. Those live
+in `tests/e2e-*.mts` and drive a real browser through Playwright. **CI runs
+all fourteen** on every pull request.
 
-```sh
-npm run dev            # in one terminal
-npm run test:e2e:csp   # sanitizer + Content Security Policy
-npm run test:e2e:a11y  # WCAG 2.2 AA, both themes, eight surfaces
-npm run test:e2e:rtl   # the chrome stays usable in right-to-left
-npm run test:e2e:export # PNG export pipeline
-npm run test:e2e:i18n  # non-Latin labels survive both export paths
-```
+Run one against a dev server (`npm run dev` in another terminal):
+
+| Script                  | What it drives                                       |
+| ----------------------- | ---------------------------------------------------- |
+| `test:e2e:csp`          | mermaid's sanitizer and the Content Security Policy  |
+| `test:e2e:a11y`         | WCAG 2.2 AA over sixteen surfaces, in both themes    |
+| `test:e2e:rtl`          | the chrome stays usable right-to-left                |
+| `test:e2e:export`       | the PNG/SVG/PDF export pipelines                     |
+| `test:e2e:i18n`         | non-Latin labels survive both export paths           |
+| `test:e2e:drag`         | alignment guides, and the drag that reaches the text |
+| `test:e2e:waypoints`    | edges routed by hand, and straightened again         |
+| `test:e2e:resize`       | the size floor, per family, by handle and by field   |
+| `test:e2e:sequence`     | messages dragged between rows and into blocks        |
+| `test:e2e:architecture` | layout follows the sides an architecture file names  |
+| `test:e2e:icons`        | icon picking, importing and rendering                |
+| `test:e2e:import`       | the six foreign formats, end to end                  |
+| `test:e2e:panel`        | the source panel: resize, zoom, format, folding      |
+| `test:e2e:watch`        | a file edited outside the app reaches the canvas     |
 
 Two environment variables (`tests/env.mts`) steer them:
 
@@ -62,9 +73,12 @@ Two environment variables (`tests/env.mts`) steer them:
 - `PLAYWRIGHT_CHANNEL` — set to `msedge` to drive an installed Edge instead of
   downloading Playwright's Chromium.
 
-`test:e2e:export` and `test:e2e:i18n` need `window.__graphTest`, which
-`App.tsx` exposes only under `import.meta.env.DEV`, so they must run against
-the dev server. The others work against `npm run preview` too.
+All but one need `window.__graphTest`, which `App.tsx` exposes only under
+`import.meta.env.DEV` — deliberately, so a shipped build does not hand its
+store to the page — and so must run against the dev server. The exception is
+`test:e2e:csp`, which CI runs against `npm run preview` instead: a sanitizer
+and a Content Security Policy are properties of the build users get, and the
+dev server's injected refresh preamble is not part of it.
 
 ### Dependency advisories
 
@@ -158,8 +172,9 @@ is a static `import` of something that should be a dynamic one.
 
 Palette search must never import the `@iconify-json/*` packages: those carry
 full SVG path data and come to roughly 6 MB gzipped across the five bundled
-collections. Search reads the index (~63 KB gzipped, lazily loaded); the full
-collection is fetched only when an icon it owns is actually rendered.
+collections. Search reads the index instead — under 70 KB gzipped, and lazily
+loaded; the full collection is fetched only when an icon it owns is actually
+rendered.
 
 Regenerate the index whenever you add, remove or upgrade an icon collection,
 and keep the `COLLECTIONS` list in `scripts/build-icon-index.mjs` in sync with

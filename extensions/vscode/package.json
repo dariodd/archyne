@@ -53,7 +53,7 @@
     "commands": [
       {
         "command": "archyne.open",
-        "title": "Open in Archyne",
+        "title": "Open on the canvas",
         "category": "Archyne"
       }
     ],
