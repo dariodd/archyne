@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { hostOwnsFile } from "../embed";
 import { en } from "../i18n/en";
@@ -60,5 +60,34 @@ describe("when a host owns the file", () => {
     asWebview();
     render(<Toolbar />);
     expect(screen.queryByText(label("toolbar.export"))).not.toBeNull();
+  });
+});
+
+/**
+ * The rule `workspace.ts` states about itself: in embed mode the host owns the
+ * data and nothing touches localStorage.
+ *
+ * It used to check `?embed=1` alone, so a webview — which has no query string
+ * to carry the flag — answered no, and the host's file was copied into
+ * storage. `EMBEDDED` is decided once when the module loads, so these reset
+ * the registry and import it again with the global already in place, which is
+ * the order the real page has.
+ */
+describe("a host's data stays out of localStorage", () => {
+  it("writes nothing when a webview owns the document", async () => {
+    asWebview();
+    vi.resetModules();
+    const { EMBEDDED, writeDocCode } = await import("../workspace");
+    expect(EMBEDDED).toBe(true);
+    writeDocCode("doc-hosted", "flowchart TD\n  a --> b");
+    expect(localStorage.getItem("graph:doc:doc-hosted")).toBeNull();
+  });
+
+  it("writes normally when nobody else owns it", async () => {
+    vi.resetModules();
+    const { EMBEDDED, writeDocCode } = await import("../workspace");
+    expect(EMBEDDED).toBe(false);
+    writeDocCode("doc-own", "flowchart TD\n  a --> b");
+    expect(localStorage.getItem("graph:doc:doc-own")).toContain("a --> b");
   });
 });

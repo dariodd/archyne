@@ -3,7 +3,7 @@
   "displayName": "Archyne — visual editor for Mermaid",
   "description": "Draw Mermaid diagrams on a canvas, in the editor that already has the file open.",
   "version": "0.3.0",
-  "publisher": "dariodd",
+  "publisher": "naxeris",
   "license": "MIT",
   "private": true,
   "engines": {

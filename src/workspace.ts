@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { isEmbedded } from "./host";
 
 /**
  * The set of diagrams a user is working on, and which one is on screen.
@@ -29,14 +30,16 @@ const DOC_PREFIX = "graph:doc:";
 const LEGACY_KEY = "graph:code";
 const INDEX_VERSION = 1;
 
-/** In embed mode the host owns the data — never touch localStorage. */
-export const EMBEDDED = (() => {
-  try {
-    return new URLSearchParams(location.search).has("embed");
-  } catch {
-    return false;
-  }
-})();
+/**
+ * In embed mode the host owns the data — never touch localStorage.
+ *
+ * This used to read `?embed=1` itself, which was the whole of embedding until
+ * a VS Code webview became the second kind: there is no query string to put
+ * the flag in there, so the check silently answered no and Archyne wrote the
+ * host's file into its own storage — the copy it would then show, briefly,
+ * the next time it opened. One predicate now answers for both.
+ */
+export const EMBEDDED = isEmbedded();
 
 /**
  * What is known about a document without loading its source.

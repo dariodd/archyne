@@ -1,5 +1,6 @@
 import { useGraphStore } from "./store";
 import { buildExport, DEFAULT_EXPORT_OPTIONS, type ExportOptions } from "./export";
+import { inWebview } from "./host";
 
 /**
  * Embed mode: when loaded as `/?embed=1` inside an iframe, Archyne speaks a
@@ -26,16 +27,6 @@ import { buildExport, DEFAULT_EXPORT_OPTIONS, type ExportOptions } from "./expor
  * pipe differs. See `transport()` for why that one carries no allowlist.
  */
 
-/** VS Code's webview API. Declared here because it exists nowhere else. */
-interface VsCodeApi {
-  postMessage(message: unknown): void;
-}
-declare global {
-  interface Window {
-    acquireVsCodeApi?: () => VsCodeApi;
-  }
-}
-
 /**
  * The host, whichever kind it is: somewhere to post to, and a rule for which
  * arriving messages are really from it.
@@ -45,38 +36,10 @@ interface Transport {
   accepts: (e: MessageEvent) => boolean;
 }
 
-/** True inside a VS Code webview, where the extension host is the peer. */
-export function inWebview(): boolean {
-  return typeof window.acquireVsCodeApi === "function";
-}
-
-/**
- * True when the document belongs to the host, not to Archyne.
- *
- * In a VS Code webview the file is a `TextDocument` the editor owns: it holds
- * the dirty state, it decides when bytes reach the disk, and Ctrl+S is its
- * key. Archyne offering its own Save beside that is not a duplicate but a
- * contradiction — two buttons that write different things at different times.
- * The same goes for opening a file, and for the whole multi-document
- * workspace: a webview is bound to one document, and switching to another
- * behind the host's back would send that one's text back as an edit to the
- * file the host has open.
- *
- * So the controls those describe are hidden, and everything that edits the
- * diagram in front of you stays — the host is saving the result either way.
- */
-export function hostOwnsFile(): boolean {
-  return inWebview();
-}
-
-export function isEmbedded(): boolean {
-  if (inWebview()) return true;
-  try {
-    return new URLSearchParams(location.search).has("embed");
-  } catch {
-    return false;
-  }
-}
+// Re-exported so `embed.ts` stays the one place callers ask about embedding;
+// the answers live in a leaf module because `workspace.ts` needs them too and
+// cannot import this one without a cycle. See `host.ts`.
+export { hostOwnsFile, inWebview, isEmbedded } from "./host";
 
 /** Wildcard sentinel — accept and reply to any origin. Development only. */
 export const ANY_ORIGIN = "*";

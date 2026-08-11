@@ -34,7 +34,7 @@ installed: close the window and it is gone.
 
 To install it into your own VS Code instead, `npm run package` produces a
 `.vsix`, which `code --install-extension archyne.vsix` installs and
-`code --uninstall-extension dariodd.archyne` removes.
+`code --uninstall-extension naxeris.archyne` removes.
 
 ## Its version
 
@@ -62,8 +62,15 @@ Everything that edits the diagram stays — templates, import, export, the
 canvas, the source panel — because VS Code is saving whatever comes out of
 them.
 
+Nothing is kept in the webview's own storage either: the file is VS Code's,
+and Archyne holds its splash until the document arrives rather than drawing
+one of its own first.
+
 ## What is not done yet
 
-- **No icon, no marketplace listing.** This has not been published.
-- The webview loads whatever document the app had in its own storage before
-  the file arrives, which can show for a frame.
+- **No icon, and no marketplace listing.** The publisher (`naxeris`) exists;
+  the extension has never been published under it, and doing so needs a
+  `VSCE_PAT` the release workflow does not have.
+- **No test suite of its own.** The pure part of the HTML rewrite is the piece
+  most likely to break silently, and it is exactly the piece a test could
+  hold.

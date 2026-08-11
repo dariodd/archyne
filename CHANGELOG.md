@@ -53,6 +53,14 @@ CSS class names and internal store shape are _not_ public API.
   document, so switching to a second sent that one's text back as an edit to
   the file the host still had open.
 
+  Nor does the host's document reach `localStorage` any more. "In embed mode
+  the host owns the data — never touch localStorage" is a rule the workspace
+  states about itself, and it enforced it by looking for `?embed=1`: a webview
+  has no query string to carry that, so the check answered no and the file was
+  copied into storage — the copy that then showed, briefly, on the next open.
+  One predicate now answers for both kinds of embedding, and Archyne holds the
+  splash until the host's document arrives rather than drawing its own first.
+
   Its version follows the app's rather than being kept by hand, and CI fails
   when the two drift. The prerelease suffix is dropped on the way —
   `0.3.0-alpha.1` becomes `0.3.0` — because the Marketplace refuses a version

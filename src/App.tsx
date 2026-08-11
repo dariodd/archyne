@@ -37,7 +37,14 @@ export default function App() {
   const [showPalette, setShowPalette] = useState(false);
 
   useEffect(() => {
-    void applyCode(loadInitialCode());
+    // Called either way: it builds the workspace as well as returning code,
+    // and the rest of the app expects one to exist.
+    const initial = loadInitialCode();
+    // A host sends the document it owns, a moment later. Drawing ours first
+    // is a flash of a diagram the user did not open — so the splash stays up
+    // until the real one lands, which is what `booted` already means.
+    if (hostOwnsFile()) return;
+    void applyCode(initial);
   }, [applyCode]);
 
   useEffect(() => {
