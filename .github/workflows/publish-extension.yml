@@ -67,8 +67,18 @@ jobs:
 
       # Redundant with the CI check, and cheap: this is the last moment before
       # a number reaches a public listing, where it cannot be taken back.
+      # Ahead of the build, which runs `version:sync` and would quietly repair
+      # a drift this is here to catch.
       - name: Version follows the app
         run: npm run version:check
+        working-directory: extensions/vscode
+
+      # Copies the app's `dist/` into `media/app/` and compiles `src/` into
+      # `out/`. Neither exists in a fresh checkout, and `vsce package` fails on
+      # the second — "Extension entrypoint(s) missing: extension/out/
+      # extension.js" — which is the only sign that this step is absent.
+      - name: Build the extension
+        run: npm run build
         working-directory: extensions/vscode
 
       # The Marketplace has no way to express a prerelease in a version string
