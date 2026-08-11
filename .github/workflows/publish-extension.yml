@@ -90,12 +90,35 @@ jobs:
         run: npx vsce package ${{ steps.channel.outputs.flag }} --out archyne.vsix
         working-directory: extensions/vscode
 
+      # `--skip-duplicate` on both, so re-running this is safe. A publish that
+      # already happened should not turn the run red and send somebody looking
+      # for a fault — and with two registries, one of them failing is exactly
+      # when you want to re-run the whole thing.
       - name: Publish to the Marketplace
         if: ${{ !inputs.dry_run }}
-        run: npx vsce publish ${{ steps.channel.outputs.flag }} --packagePath archyne.vsix
+        run: >-
+          npx vsce publish ${{ steps.channel.outputs.flag }}
+          --packagePath archyne.vsix --skip-duplicate
         working-directory: extensions/vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      # The same bytes, to the registry VSCodium, Cursor, Windsurf, Gitpod and
+      # Theia read — none of which can install from Microsoft's. Skipped
+      # rather than failed when the token is absent, so the Marketplace half
+      # still ships for anyone who has not set the second secret up.
+      - name: Publish to Open VSX
+        if: ${{ !inputs.dry_run }}
+        working-directory: extensions/vscode
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          CHANNEL: ${{ steps.channel.outputs.flag }}
+        run: |
+          if [[ -z "$OVSX_PAT" ]]; then
+            echo "::warning title=Open VSX skipped::No OVSX_PAT secret is set, so only the Marketplace was published."
+            exit 0
+          fi
+          npx ovsx publish archyne.vsix $CHANNEL --skip-duplicate -p "$OVSX_PAT"
 
       # Kept whether or not the publish ran, so a dry run leaves something to
       # install by hand and a real one leaves the exact bytes that shipped.
