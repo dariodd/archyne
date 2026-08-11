@@ -7,6 +7,17 @@ files:
   - desktop/**
   - build/icon.png
 
+# The Electron entry point, injected into the packaged app's package.json
+# rather than declared in the repository's own.
+#
+# `main` there would be read by npm as well as by Electron, and npm always
+# ships the file it names — even when `files` does not list it, as ours does
+# not. The published tarball was carrying a copy of the Electron main process
+# for `npx archyne` to never load, and a broken copy at that: its
+# `require("./preload.cjs")` was not coming with it.
+extraMetadata:
+  main: desktop/main.cjs
+
 # Signing is deliberately absent from this file. Windows and macOS both need
 # a purchased certificate plus repository secrets, and electron-builder picks
 # those up from the environment (CSC_LINK / CSC_KEY_PASSWORD, and Apple's

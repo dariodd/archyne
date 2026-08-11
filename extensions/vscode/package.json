@@ -2,7 +2,7 @@
   "name": "archyne",
   "displayName": "Archyne — visual editor for Mermaid",
   "description": "Edit Mermaid diagrams on a canvas, with two-way sync to the text. The file stays ordinary .mmd, and VS Code keeps owning it.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "naxeris",
   "license": "MIT",
   "private": true,

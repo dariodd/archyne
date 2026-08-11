@@ -20,7 +20,30 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [Unreleased]
+## [0.3.1-alpha.1] — 2026-08-11
+
+A patch, not a minor, and the distinction is the one 0.3.0 drew: **what
+Archyne writes has not changed.** A file saved by this release is
+byte-identical to one saved by the last, the `%% graph:` comments hold the
+same things, and nothing was added to the format. What changed is where
+Archyne runs and what it lets you do with the mouse.
+
+It now runs inside VS Code, on the file the editor already has open, and the
+extension is published to both registries. Messages in a sequence diagram can
+be dragged between rows and into a `loop` or `alt`. Nodes stop shrinking where
+their contents stop fitting rather than at a number that could not know what
+they hold. An architecture diagram is laid out along the sides it already
+names, instead of downwards past them.
+
+Three of the fixes are the same shape, and worth saying together: something
+was stated once in the code and then quietly restated somewhere else, where it
+went stale. The version in the About dialog, the version the MCP server gave
+its clients, and the rule that a host's diagram never reaches `localStorage`.
+Each now has one source, and a test where a test could hold it.
+
+Still alpha, and the caveats under "What is not done" in the 0.1.0-alpha.1
+notes all still hold: unsigned desktop builds, a self-assessed accessibility
+report, unreviewed translations, no independent security review.
 
 ### Added
 
