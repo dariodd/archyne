@@ -313,7 +313,9 @@ the other version.
 
 ## Current scope
 
-Five Mermaid diagram families, all with visual editing and two-way sync:
+Seven Mermaid diagram families, all with visual editing and two-way sync.
+Anything else Mermaid can draw — gantt, pie, mindmap, timeline — opens
+read-only, rendered rather than refused.
 
 - **Flowcharts** — all 14 vertex shapes, all edge stroke/arrow types,
   subgraphs as groups (create/dissolve from the toolbar), and full
@@ -329,7 +331,8 @@ Five Mermaid diagram families, all with visual editing and two-way sync:
   dotted relations.
 - **Sequence diagrams** — participants/actors as draggable columns with
   lifelines (drag horizontally to reorder), messages as ordered horizontal
-  arrows with all eight operators; reorder from the inspector. Notes and
+  arrows with all eight operators; drag a message by its grab strip to
+  reorder it, into or out of a block, or step it from the inspector. Notes and
   loop/alt/opt blocks are created from the palette (drop them at a row),
   renamed and deleted in place; par/critical/break blocks, activations, and
   autonumber are rendered and fully preserved through any canvas edit.
@@ -338,8 +341,8 @@ Five Mermaid diagram families, all with visual editing and two-way sync:
   architecture icons** are bundled (`azure:virtual-networks`, and the
   catalogue codes other tools write resolve too), alongside the Iconify
   `logos`, `devicon`, `carbon`, `tabler` and `simple-icons` collections:
-  16 600 icons, all searchable from the palette, nested groups for VPCs/subnets, junctions, and side-anchored
-  connections with per-end arrows. A vendor's own set — Azure's, AWS's —
+  more than 16 000 icons, all searchable from the palette, nested groups for
+  VPCs/subnets, junctions, and side-anchored connections with per-end arrows. A vendor's own set — Azure's, AWS's —
   can be **imported as SVGs**, from files or from a pasted link; the desktop
   build takes a whole `.zip`. Any of Iconify's ~200 000 icons can be pulled in
   the same way (`api.iconify.design/mdi/database.svg`). Imported icons are

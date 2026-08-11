@@ -40,8 +40,8 @@ Archyne is pre-1.0. Only the latest release receives security fixes.
 Archyne has **no backend**. The web build is static files, the desktop app is
 that same build in an Electron window, and diagrams live in the user's own
 files or `localStorage`. There is no account system, no telemetry, and no
-network call to a Archyne-operated service. That removes most of the usual
-web-application attack surface, and it means a compromise of a Archyne
+network call to an Archyne-operated service. That removes most of the usual
+web-application attack surface, and it means a compromise of an Archyne
 deployment cannot expose other users' diagrams — there is no shared store.
 
 What remains in scope:
@@ -83,6 +83,19 @@ The Electron window runs with `contextIsolation: true`, `nodeIntegration:
 false` and `sandbox: true`, and external links are handed to the system
 browser rather than opened in-app. Reports are in scope where renderer content
 reaches Node APIs or the shell.
+
+### The VS Code extension
+
+`extensions/vscode` runs the same static build inside a webview and speaks the
+embed protocol to the extension host, which writes the result back to the
+`TextDocument` VS Code already has open. The extension never touches the disk
+itself, and the webview is restricted to the extension's own directory
+(`localResourceRoots`) under the app's Content-Security-Policy, rewritten so
+that `'self'` names the webview's resource origin.
+
+Reports are in scope where diagram content reaches the extension host as
+anything other than text, where the webview can read outside that directory,
+or where an edit is applied to a document other than the one being viewed.
 
 ## Out of scope
 

@@ -96,9 +96,12 @@ src/
   store.ts        Zustand store: edits, selection, undo/redo, clipboard
   layout/         ELK auto-layout
   export.ts       PNG/SVG export
-  embed.ts        postMessage bridge for host pages
+  embed.ts        postMessage bridge for host pages, and for VS Code webviews
+  host.ts         who is holding the diagram: embedded, a webview, or nobody
 mcp/              MCP server exposing .mmd files to agents
 desktop/          Electron main process
+extensions/
+  vscode/         the VS Code extension — a shell around the same build
 ```
 
 ### Layout positions
@@ -195,6 +198,38 @@ Ground rules for new UI:
 two existing uses carry a disable comment explaining why. Bear in mind that
 axe catches roughly a third of WCAG issues — a green test run is a floor, not
 a conformance claim.
+
+## The VS Code extension
+
+`extensions/vscode` is a shell around the same build, not a second editor: it
+registers a `CustomTextEditorProvider` for `.mmd` and hands VS Code's
+`TextDocument` to the webview over the embed protocol. VS Code keeps owning
+the file, and the extension never touches the disk.
+
+It **ships** the app rather than building it, so build the app first:
+
+```sh
+npm install && npm run build     # repository root — produces dist/
+cd extensions/vscode
+npm install
+npm run build                    # copies dist/ into media/app/, compiles src/
+```
+
+Then press <kbd>F5</kbd> with the **repository root** open in VS Code. That
+runs the _Run the VS Code extension_ configuration, which opens a second
+window with the extension loaded from disk. Nothing is installed; closing the
+window ends it.
+
+Two things to know before changing it:
+
+- **Its version is derived, not written.** `npm run version:check` — which CI
+  runs — fails if `extensions/vscode/package.json` has drifted from the app's
+  version. Do not bump it by hand; `npm run version:sync` does it.
+- **The webview needs the built page rewritten**, and that rewrite lives in
+  `extensions/vscode/src/rewrite.ts` with tests in the root suite. If you
+  change the
+  Content-Security-Policy in `index.html`, run `npm test` — a policy the
+  rewrite cannot handle fails there rather than as a blank panel later.
 
 ## Pull requests
 
