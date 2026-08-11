@@ -701,6 +701,16 @@ body.resizing-side {
   stroke-width: 2;
 }
 
+/* The same bargain the picture below strikes, for the words: a node made
+   smaller than its label clips the label rather than letting it hang out of
+   the shape. Only once a size has been chosen by hand — at its default size a
+   node is as big as the shape needs, and clipping there would hide text
+   nobody asked to hide. */
+.shape-node.sized .shape-label {
+  max-height: 100%;
+  overflow: hidden;
+}
+
 .shape-label {
   position: relative;
   /* `LABEL_SIZE` in model/types.ts is this number; the inspector needs it to
@@ -1297,6 +1307,16 @@ body.resizing-side {
 .arch-icon svg {
   width: 100%;
   height: 100%;
+}
+
+/* 44px is the size an icon wants, not a size it insists on. Once the node has
+   been given a size of its own the icon fits into it — a small service node
+   should read as a small icon with its name under it, not as the top third of
+   a large one. The picture in a flowchart shape strikes the same bargain. */
+.service-node.sized .arch-icon {
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
 }
 
 .service-label {
@@ -2019,6 +2039,14 @@ body.resizing-side {
   height: 100%;
   max-width: none;
   overflow: hidden;
+  /* The `min-width` each of these families declares is how an *unsized* node
+     picks a sensible width for itself. A size chosen by hand has to be able
+     to go under it: without this the drawn box stopped at 170px while the
+     handles, the stored size, the edge anchors and the export box all said
+     48, so the node visibly broke out of its own frame and the drag appeared
+     to stop working partway. */
+  min-width: 0;
+  min-height: 0;
 }
 
 .note-node::before {
@@ -2070,6 +2098,40 @@ body.resizing-side {
   border-radius: var(--r);
   pointer-events: none;
   z-index: 1;
+  /* Short enough to read as the frame giving way to the dragged message
+     rather than as an animation. Neutralized by the reduced-motion reset. */
+  transition:
+    top 90ms ease,
+    height 90ms ease;
+}
+
+/* The block a dragged message would land inside, if dropped now. */
+.seq-block.dropping,
+.seq-block.dropping .seq-block-tag {
+  border-color: var(--accent);
+}
+
+.seq-block.dropping .seq-block-tag {
+  color: var(--accent);
+}
+
+/* Where the dragged message will come to rest. */
+.seq-drop-row {
+  position: absolute;
+  border-top: 2px dashed var(--accent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* The arrow itself is the drag handle — the label is too small a target,
+   and a message with no label has none at all. */
+.seq-grab {
+  pointer-events: stroke;
+  cursor: grab;
+}
+
+.seq-grab.dragging {
+  cursor: grabbing;
 }
 
 .seq-block-tag {
@@ -2199,6 +2261,8 @@ body.resizing-side {
 .message-label.draggable {
   pointer-events: auto;
   cursor: grab;
+  /* A drag that starts on the label must not select its text instead. */
+  user-select: none;
 }
 
 .message-label.dragging {
@@ -2232,8 +2296,10 @@ body.resizing-side {
 }
 
 .actor-icon {
-  font-size: 16px;
-  line-height: 1;
+  /* A drawn figure, not a glyph: it must not stretch or shrink with the
+     label beside it, however long the participant's name gets. */
+  flex: none;
+  color: var(--node-stroke);
 }
 
 .lifeline {

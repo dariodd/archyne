@@ -3,7 +3,7 @@ import { ViewportPortal } from "@xyflow/react";
 import { useGraphStore } from "../store";
 import { t } from "../i18n";
 import { estimateSize } from "../model/types";
-import { SEQ_TOP, SEQ_SPACING } from "../seqLayout";
+import { SEQ_TOP, SEQ_SPACING, dropBlock, shiftedIndex, useSeqDrag } from "../seqLayout";
 
 interface Editing {
   index: number;
@@ -124,6 +124,9 @@ function SeqItemEditor({
 export function SequenceOverlay() {
   const items = useGraphStore((s) => s.seqItems);
   const nodes = useGraphStore((s) => s.nodes);
+  const dragFrom = useSeqDrag((s) => s.from);
+  const dragTo = useSeqDrag((s) => s.to);
+  const draggingId = useSeqDrag((s) => s.edgeId);
   const [editing, setEditing] = useState<Editing | null>(null);
 
   const centers = new Map<string, number>();
@@ -141,7 +144,11 @@ export function SequenceOverlay() {
   }
   if (!centers.size) return null;
 
-  const rowY = (i: number) => SEQ_TOP + i * SEQ_SPACING;
+  // While a message is being dragged, everything draws at the row it will
+  // have once the drop lands — so the frame of a loop / alt / opt visibly
+  // opens up to take the message in, or closes behind one on its way out.
+  const rowY = (i: number) => SEQ_TOP + shiftedIndex(i, dragFrom, dragTo) * SEQ_SPACING;
+  const willHold = draggingId ? dropBlock(items, dragFrom, dragTo) : -1;
   const open = (index: number) => (e: React.MouseEvent) => {
     e.stopPropagation();
     setEditing({ index, x: e.clientX, y: e.clientY });
@@ -149,6 +156,20 @@ export function SequenceOverlay() {
 
   const overlays: React.ReactNode[] = [];
   const stack: Array<{ start: number; op: string; label: string }> = [];
+
+  if (draggingId) {
+    overlays.push(
+      <div
+        key="drop-row"
+        className="seq-drop-row"
+        style={{
+          left: minX - 60,
+          top: SEQ_TOP + dragTo * SEQ_SPACING,
+          width: maxX - minX + 120,
+        }}
+      />,
+    );
+  }
 
   items.forEach((item, i) => {
     if (item.kind === "note") {
@@ -199,7 +220,7 @@ export function SequenceOverlay() {
         overlays.push(
           <div
             key={`blk-${o.start}`}
-            className="seq-block"
+            className={`seq-block${o.start === willHold ? " dropping" : ""}`}
             style={{
               left: minX - 60,
               top: rowY(o.start) - 6,

@@ -5,6 +5,7 @@ import {
   useGraphStore,
   type AlignEdge,
 } from "../store";
+import { fitToContent } from "../contentSize";
 import { useT } from "../i18n";
 import { ImportIcon } from "./ImportIcon";
 import { IconField } from "./IconPicker";
@@ -638,6 +639,16 @@ function NodeSize({ node }: { node: AnyNode }) {
   const width = Math.round(Number(node.style?.width ?? node.measured?.width ?? min.width));
   const height = Math.round(Number(node.style?.height ?? node.measured?.height ?? min.height));
 
+  /**
+   * Raised to fit, against a measurement taken now: typing a size must stop
+   * where dragging a handle stops, or the two controls for one property
+   * disagree — and the label may have grown since the panel opened.
+   */
+  const apply = (w: number, h: number) => {
+    const fit = fitToContent(node.id, { width: w, height: h }, min);
+    resizeNode(node.id, fit.width, fit.height);
+  };
+
   return (
     <div className="size-row">
       <label>
@@ -647,7 +658,7 @@ function NodeSize({ node }: { node: AnyNode }) {
           min={min.width}
           step={10}
           value={width}
-          onChange={(e) => resizeNode(node.id, Number(e.target.value), height)}
+          onChange={(e) => apply(Number(e.target.value), height)}
         />
       </label>
       <label>
@@ -657,7 +668,7 @@ function NodeSize({ node }: { node: AnyNode }) {
           min={min.height}
           step={10}
           value={height}
-          onChange={(e) => resizeNode(node.id, width, Number(e.target.value))}
+          onChange={(e) => apply(width, Number(e.target.value))}
         />
       </label>
       {hasCustomSize(node) && (

@@ -264,3 +264,64 @@ describe("duplicate", () => {
     expect(new Set(nodes.map((n) => n.id)).size).toBe(3);
   });
 });
+
+describe("sequence message order", () => {
+  const SEQUENCE = `sequenceDiagram
+  participant a
+  participant b
+  a->>b: first
+  loop retry
+    a->>b: inner
+  end
+  a->>b: last
+`;
+
+  /** Row index of a message, by label, in the statement stream. */
+  function rowOf(label: string): number {
+    const s = useGraphStore.getState();
+    return s.seqItems.findIndex(
+      (it) =>
+        it.kind === "message" && s.edges.find((e) => e.id === it.edgeId)?.data?.label === label,
+    );
+  }
+
+  function edgeOf(label: string): string {
+    return useGraphStore.getState().edges.find((e) => e.data?.label === label)!.id;
+  }
+
+  it("writes a message dropped between a block and its end inside the block", async () => {
+    await load(SEQUENCE);
+    // "last" sits at the top level, on the row after `end`.
+    useGraphStore.getState().moveMessageTo(edgeOf("last"), rowOf("inner") + 1);
+
+    expect(useGraphStore.getState().code).toContain(
+      "  loop retry\n    a->>b: inner\n    a->>b: last\n  end\n",
+    );
+  });
+
+  it("writes a message dragged past the end back out of the block", async () => {
+    await load(SEQUENCE);
+    const end = useGraphStore.getState().seqItems.findIndex((it) => it.kind === "end");
+    useGraphStore.getState().moveMessageTo(edgeOf("inner"), end);
+
+    const { code } = useGraphStore.getState();
+    expect(code).toContain("  loop retry\n  end\n");
+    expect(code).toContain("  a->>b: inner\n");
+  });
+
+  it("clamps a drop past either end of the stream", async () => {
+    await load(SEQUENCE);
+    useGraphStore.getState().moveMessageTo(edgeOf("last"), -5);
+    expect(rowOf("last")).toBe(0);
+
+    useGraphStore.getState().moveMessageTo(edgeOf("last"), 99);
+    expect(rowOf("last")).toBe(useGraphStore.getState().seqItems.length - 1);
+  });
+
+  it("steps one row at a time from the inspector buttons", async () => {
+    await load(SEQUENCE);
+    const before = rowOf("last");
+    useGraphStore.getState().moveMessage(edgeOf("last"), -1);
+    expect(rowOf("last")).toBe(before - 1);
+  });
+});

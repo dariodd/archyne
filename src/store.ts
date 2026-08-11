@@ -415,6 +415,14 @@ export interface GraphState {
   groupSelection: () => void;
   ungroupSelection: () => void;
   moveMessage: (id: string, delta: number) => void;
+  /**
+   * Put a message on a given row of the statement stream.
+   *
+   * Blocks live in that same stream as an opening row and a matching `end`,
+   * so landing between the two is what puts a message inside a loop / alt /
+   * opt — there is no separate containment to maintain.
+   */
+  moveMessageTo: (id: string, index: number) => void;
   updateSeqItem: (index: number, item: SeqItem) => void;
   removeSeqItem: (index: number) => void;
   selectOnly: (id: string, target: "node" | "edge") => void;
@@ -1787,10 +1795,16 @@ export const useGraphStore = create<GraphState>((set, get) => {
     },
 
     moveMessage: (id, delta) => {
+      const i = get().seqItems.findIndex((it) => it.kind === "message" && it.edgeId === id);
+      if (i < 0) return;
+      get().moveMessageTo(id, i + delta);
+    },
+
+    moveMessageTo: (id, index) => {
       const items = [...get().seqItems];
       const i = items.findIndex((it) => it.kind === "message" && it.edgeId === id);
       if (i < 0) return;
-      const target = Math.max(0, Math.min(items.length - 1, i + delta));
+      const target = Math.max(0, Math.min(items.length - 1, index));
       if (target === i) return;
       const [item] = items.splice(i, 1);
       items.splice(target, 0, item);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useGraphStore } from "../store";
+import { ACTOR_PATH } from "./ActorGlyph";
 import { ImportIcon } from "./ImportIcon";
 import { useIconPrefs } from "../iconPrefs";
 import { SHAPES, type NodeSeed, type Shape } from "../model/types";
@@ -181,8 +182,7 @@ const SEQ_ITEMS: Item[] = [
   {
     labelKey: "item.actor",
     seed: { type: "participant", ptype: "actor" },
-    preview:
-      "M24,2 a4,4 0 1 1 0,8 a4,4 0 1 1 0,-8 M24,10 v6 M16,13 h16 M24,16 l-6,6 M24,16 l6,6",
+    preview: ACTOR_PATH,
   },
   {
     labelKey: "item.note",

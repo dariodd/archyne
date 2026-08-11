@@ -78,6 +78,37 @@ const ELK_DIRECTION: Record<Direction, string> = {
 };
 
 /**
+ * The direction an architecture file has already stated, in the only way it
+ * can state one.
+ *
+ * `architecture-beta` has no direction statement. What it has instead is a
+ * side on every end of every edge — `web:R --> L:db` says web's right face
+ * meets db's left face, which is to say db stands to the right of web. Laid
+ * out downwards anyway, that edge has to leave rightwards, drop past the
+ * target and come back into its left face, passing behind the very node it
+ * points at: the starter diagram arrived with its one arrow apparently
+ * detached, ending on one side of the box while the arrowhead sat on the
+ * other. The sides were the layout, and the layout was ignoring them.
+ *
+ * The dominant axis decides, because one graph gets one direction: a file
+ * that is mostly a left-to-right chain lays out left to right even if a
+ * service or two hangs below. Files with no sides at all — every other
+ * family — answer null and keep the direction they came with.
+ */
+export function statedDirection(edges: FlowEdge[]): Direction | null {
+  let across = 0;
+  let down = 0;
+  for (const e of edges) {
+    for (const side of [e.data?.arch?.lhsDir, e.data?.arch?.rhsDir]) {
+      if (side === "L" || side === "R") across++;
+      else if (side === "T" || side === "B") down++;
+    }
+  }
+  if (across === 0 && down === 0) return null;
+  return across >= down ? "LR" : "TB";
+}
+
+/**
  * Compute positions for every node with ELK's layered algorithm. Groups
  * become ELK hierarchy nodes, so child coordinates come back parent-relative
  * — exactly what React Flow expects.
@@ -114,7 +145,7 @@ export async function autoLayout(
     id: "root",
     layoutOptions: {
       "elk.algorithm": "layered",
-      "elk.direction": ELK_DIRECTION[direction],
+      "elk.direction": ELK_DIRECTION[statedDirection(edges) ?? direction],
       "elk.layered.spacing.nodeNodeBetweenLayers": "70",
       "elk.spacing.nodeNode": "40",
       "elk.hierarchyHandling": "INCLUDE_CHILDREN",

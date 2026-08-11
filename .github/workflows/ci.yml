@@ -118,6 +118,16 @@ jobs:
         env:
           ARCHYNE_URL: http://localhost:5173
 
+      - name: Sequence message order
+        run: npm run test:e2e:sequence
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      - name: Architecture layout
+        run: npm run test:e2e:architecture
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Node resizing
         run: npm run test:e2e:resize
         env:

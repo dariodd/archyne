@@ -65,6 +65,8 @@
     "test:e2e:csp": "tsx tests/e2e-csp.mts",
     "test:e2e:drag": "tsx tests/e2e-drag.mts",
     "test:e2e:waypoints": "tsx tests/e2e-waypoints.mts",
+    "test:e2e:sequence": "tsx tests/e2e-sequence.mts",
+    "test:e2e:architecture": "tsx tests/e2e-architecture.mts",
     "test:e2e:resize": "tsx tests/e2e-resize.mts",
     "test:e2e:watch": "tsx tests/e2e-watch.mts",
     "test:e2e:panel": "tsx tests/e2e-panel.mts",

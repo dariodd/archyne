@@ -149,7 +149,10 @@ export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) 
 
   return (
     <div
-      className={`shape-node${selected ? " selected" : ""}${bare ? " bare" : ""}`}
+      className={
+        `shape-node${selected ? " selected" : ""}${bare ? " bare" : ""}` +
+        (style?.width == null ? "" : " sized")
+      }
       style={fitted ? undefined : { width: w, height: h }}
       onDoubleClick={rename.begin}
     >

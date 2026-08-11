@@ -20,6 +20,58 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [Unreleased]
+
+### Added
+
+- **A message is dragged to where it goes, into a loop or out of one.**
+  Reordering was two buttons in the inspector moving one row at a time, which
+  is a poor way to say "this one happens inside the retry" — and on the canvas
+  the arrows were the one thing that could not be picked up and moved. Each
+  message now carries a grab strip: drag it and the rows part to show where it
+  will land, the frame of the `loop` / `alt` / `opt` it would fall into
+  lights up and opens to take it, and dragging past the closing row carries it
+  back out.
+
+  Containment is not a second thing to maintain — blocks live in the same
+  statement stream as an opening row and a matching `end`, so landing between
+  the two _is_ what puts a message inside one. The gesture writes nothing
+  until it is dropped, Escape abandons it, and a plain click still selects the
+  arrow rather than nudging it, so the strip adds a gesture without taking
+  one away.
+
+### Fixed
+
+- **A node stops shrinking where its content stops fitting.** The handles
+  stopped at a flat 48×28 for every node in the app, so a box with a 44px icon
+  and a two-word name dragged to that size simply cut both off — the floor was
+  a single number that could not know what any particular node was carrying.
+  It is now measured from the drawn element as the gesture starts, and the
+  typed width and height in the inspector are raised the same way, so the two
+  controls for one property can no longer disagree.
+
+  The two directions are settled differently, and deliberately. The narrowest
+  the content goes is a fixed number, so width gets a hard stop during the
+  drag. How _tall_ the content needs to be depends on how wide the box is — a
+  label taking four lines at 54px takes one at 250 — so a height stop would
+  have to move mid-gesture, and React Flow picks which way to apply a clamp
+  from the sign of the vertical travel, which is zero on a horizontal drag:
+  a rising `minHeight` there comes out subtracted, and the node ends up with a
+  negative height. So height snaps back on release instead, which also leaves
+  a wide flat box reachable, since at that width it fits.
+
+- **An architecture diagram is laid out along the sides it already names.**
+  `architecture-beta` has no direction statement; what it has is a side on
+  every end of every edge, and `web:R --> L:db` says db stands to the right of
+  web. Auto-layout ignored those and laid the graph downwards anyway, so the
+  edge had to leave rightwards, drop past its target and come back into its
+  left face, passing behind the very node it pointed at — the starter diagram
+  arrived with its one arrow looking detached, the line ending on one side of
+  the box and the arrowhead sitting on the other. The sides were the layout
+  all along. The dominant axis decides, because one graph gets one direction,
+  and every other family answers that it has stated nothing and keeps the
+  direction it came with.
+
 ## [0.3.0-alpha.1] — 2026-08-10
 
 A minor bump rather than a patch, for a reason that outlives the feature

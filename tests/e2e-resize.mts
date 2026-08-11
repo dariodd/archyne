@@ -176,6 +176,133 @@ for (const c of CASES) {
     `style width was ${stored.width}, comment was ${stored.code.split("\n").find((l) => l.includes("graph:positions"))}`,
   );
 
+  // Shrinking is the direction that broke. Each family declares a `min-width`
+  // for how an *unsized* node picks its own width, and that floor used to beat
+  // the size chosen by hand: the frame, the handles and the stored size went
+  // down to 48 while the drawn box stopped at 90, 140, 170 or 180 and hung out
+  // of its own selection. Anything but a perfect fit here is that bug back.
+  const shrunk = await page.evaluate(() => {
+    const s = (
+      window as unknown as { __graphTest: { store: { getState(): unknown } } }
+    ).__graphTest.store.getState() as {
+      nodes: Array<{ id: string; selected?: boolean }>;
+      resizeNode(id: string, width: number, height: number): void;
+    };
+    const n = s.nodes.find((x) => x.selected);
+    if (!n) return null;
+    // `NODE_MIN` in src/store.ts — the smallest a handle can drag anything to.
+    s.resizeNode(n.id, 48, 28);
+    return n.id;
+  });
+  await page.waitForTimeout(250);
+  const overflow = await page.evaluate((id) => {
+    const wrap = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+    const drawn = wrap?.firstElementChild as HTMLElement | null;
+    if (!wrap || !drawn) return null;
+    return [drawn.offsetWidth - wrap.offsetWidth, drawn.offsetHeight - wrap.offsetHeight];
+  }, shrunk);
+  check(
+    `${c.label} shrinks all the way to the frame it is given`,
+    overflow?.[0] === 0 && overflow?.[1] === 0,
+    `drawn box overflowed the frame by ${overflow?.join(" × ") ?? "?"} px`,
+  );
+
+  // A flowchart shape draws its box as an SVG, so the box was never the thing
+  // that overflowed — its label was, wrapping to four lines and standing well
+  // clear of the shape it names. Families with no `.shape-label` skip this.
+  const spill = await page.evaluate((id) => {
+    const wrap = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+    const label = wrap?.querySelector<HTMLElement>(".shape-label");
+    if (!wrap || !label) return null;
+    const f = wrap.getBoundingClientRect();
+    const l = label.getBoundingClientRect();
+    return Math.round(
+      Math.max(0, f.top - l.top, l.bottom - f.bottom, f.left - l.left, l.right - f.right),
+    );
+  }, shrunk);
+  if (spill !== null) {
+    check(
+      `${c.label} keeps its label inside the shape`,
+      spill === 0,
+      `label stood ${spill}px outside the frame`,
+    );
+  }
+
+  // And the point of all of it: drag the handle as far as it will go, and
+  // everything in the node is still there to read. The floor a handle stops
+  // at is this node's own — what its icon, its name and its padding need —
+  // so "smallest" can never mean "with the label cut off".
+  await page.evaluate(() => {
+    const s = (
+      window as unknown as { __graphTest: { store: { getState(): unknown } } }
+    ).__graphTest.store.getState() as {
+      resetNodeSize(id: string): void;
+      nodes: Array<{ id: string; selected?: boolean }>;
+    };
+    const n = s.nodes.find((x) => x.selected);
+    if (n) s.resetNodeSize(n.id);
+  });
+  await page.waitForTimeout(400);
+  const floorHandle = page.locator(".react-flow__resize-control.handle.bottom.right").first();
+  const fb = await floorHandle.boundingBox();
+  if (fb) {
+    await page.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2);
+    await page.mouse.down();
+    // Far past any possible floor, so the drag ends wherever the node stops.
+    await page.mouse.move(fb.x - 500, fb.y - 500, { steps: 12 });
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+  }
+  const clipped = await page.evaluate((id) => {
+    const wrap = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`);
+    const drawn = wrap?.firstElementChild as HTMLElement | null;
+    if (!wrap || !drawn) return null;
+    const f = drawn.getBoundingClientRect();
+    return [...drawn.querySelectorAll<HTMLElement>("*")]
+      .filter(
+        (el) =>
+          !el.closest(".react-flow__handle") && !el.closest(".react-flow__resize-control"),
+      )
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return false;
+        return (
+          r.left < f.left - 1 ||
+          r.right > f.right + 1 ||
+          r.top < f.top - 1 ||
+          r.bottom > f.bottom + 1
+        );
+      })
+      .map((el) => `${el.tagName.toLowerCase()}.${el.className || "?"}`);
+  }, shrunk);
+  if (clipped !== null) {
+    check(
+      `${c.label} is still readable at the smallest the handle allows`,
+      clipped.length === 0,
+      `cut off: ${clipped.join(", ")}`,
+    );
+  }
+
+  // Typing a size has to stop in the same place the handle does. Two controls
+  // for one property that disagree are two ways to get different diagrams out
+  // of the same intention — and the fields are the accessible way in (2.5.7),
+  // so a floor they do not honour is a floor keyboard users do not have.
+  await page.locator(".size-row input[type=number]").first().fill("10");
+  await page.waitForTimeout(400);
+  const typed = await page.evaluate(() => {
+    const s = (
+      window as unknown as { __graphTest: { store: { getState(): unknown } } }
+    ).__graphTest.store.getState() as {
+      nodes: Array<{ selected?: boolean; style?: { width?: number } }>;
+    };
+    return s.nodes.find((x) => x.selected)?.style?.width ?? 0;
+  });
+  check(
+    `${c.label} refuses a typed size below that floor too`,
+    typed > 10,
+    `a typed width of 10 was taken as ${typed}`,
+  );
+
   await page.close();
 }
 
