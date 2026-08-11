@@ -30,6 +30,18 @@ npx archyne                 # opens http://localhost:4173
 npx archyne diagram.mmd     # …with a diagram already loaded
 ```
 
+Or inside the editor you already have open:
+
+```sh
+code --install-extension naxeris.archyne
+```
+
+Archyne registers as an optional editor for `.mmd`, so the file stays VS Code's
+— its dirty dot, its undo, its save, its diff against `HEAD`. It is on the
+[Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne)
+and on [Open VSX](https://open-vsx.org/extension/naxeris/archyne), for
+VSCodium, Cursor, Windsurf, Gitpod and Theia.
+
 Desktop builds for Windows, macOS and Linux are attached to every
 [release](https://github.com/dariodd/archyne/releases/latest). They are **not
 yet code-signed** — Windows warns, macOS needs one `xattr` command — and each

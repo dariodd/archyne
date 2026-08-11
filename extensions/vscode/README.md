@@ -8,129 +8,49 @@ the text.
 Nothing leaves your machine. The editor is bundled — no service, no account,
 no network call of its own.
 
-## Installing it
+## Getting started
 
-Search for **Archyne** in the Extensions view, or:
+Open a `.mmd` or `.mermaid` file, then run **Archyne: Open in Archyne** from
+the command palette, or use **Reopen Editor With…** and pick Archyne.
 
-```sh
-code --install-extension naxeris.archyne
-```
+The text editor stays the default. The canvas is a second way to look at the
+file, not a replacement for reading it — and edits go both ways: move a node
+and the file is rewritten, type in a text editor open on the same file and the
+canvas redraws.
 
-It is published to both registries, from the same package:
+Seven diagram families can be edited on the canvas: flowchart, sequence, class,
+state, entity-relationship, C4 and `architecture-beta`. Anything else Mermaid
+can draw opens read-only, rendered rather than refused.
 
-- [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne),
-  for VS Code
-- [Open VSX](https://open-vsx.org/extension/naxeris/archyne), for VSCodium,
-  Cursor, Windsurf, Gitpod and Theia, none of which can install from the
-  Marketplace
+## Saving is VS Code's
 
-Archyne is on an alpha line and this is the extension's first release, so
-everything under "What is not done yet" below is what that means in practice.
+While VS Code owns the file, Archyne stands aside from it: no Save, no Save
+as…, no Open, no Reload from disk, no New diagram, and no document tabs of its
+own. <kbd>Ctrl</kbd>+<kbd>S</kbd> and <kbd>Ctrl</kbd>+<kbd>O</kbd> reach VS
+Code rather than being intercepted, and nothing is kept in the extension's own
+storage.
 
-## Using it
+Everything that edits the diagram is still here — templates, import, export,
+the canvas, the Mermaid source panel — because VS Code saves whatever comes
+out of them.
 
-Open a `.mmd` or `.mermaid` file and run **Archyne: Open in Archyne** from the
-command palette, or use **Reopen Editor With…** and pick Archyne. The text
-editor stays the default — the canvas is a second way to look at the file, not
-a replacement for reading it.
+## Known limitations
 
-Edits go both ways. Moving a node rewrites the file; typing in a text editor
-open on the same file redraws the canvas.
+- **Archyne is alpha, and this carries it.** The accessibility report is
+  self-assessed, the translations have not been reviewed by native speakers,
+  and there has been no independent security review.
+- **The canvas's undo history is its own.** Closing the editor tab and
+  reopening it re-reads the file, as it should, but the canvas does not
+  restore its undo stack — that one is not VS Code's. <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+  in the text editor is unaffected.
 
-## Building it
+## Elsewhere
 
-The extension ships the editor rather than building it, so the app has to be
-built first, from the repository root:
+Archyne also runs as a [web app](https://dariodd.github.io/archyne/), a desktop
+application, `npx archyne`, and an MCP server for agents. Source, issues and
+the full changelog are at
+[github.com/dariodd/archyne](https://github.com/dariodd/archyne); building and
+publishing this extension are covered in
+[DEVELOPING.md](https://github.com/dariodd/archyne/blob/main/extensions/vscode/DEVELOPING.md).
 
-```sh
-npm install && npm run build     # repository root — produces dist/
-cd extensions/vscode
-npm install
-npm run build                    # copies dist/ into media/app/, compiles src/
-```
-
-Then open the **repository root** in VS Code and press <kbd>F5</kbd>. That runs
-the _Run the VS Code extension_ configuration in `.vscode/launch.json`, which
-rebuilds the extension and opens a second window with it loaded. Nothing is
-installed: close the window and it is gone.
-
-To install it into your own VS Code instead, `npm run package` produces a
-`.vsix`, which `code --install-extension archyne.vsix` installs and
-`code --uninstall-extension naxeris.archyne` removes.
-
-## Publishing it
-
-From CI, not from a laptop: `.github/workflows/publish-extension.yml`, either
-by running it from the Actions tab — with a **dry run** option that packages
-without publishing — or by pushing an `ext-v*` tag.
-
-It is a separate workflow from `release.yml` on purpose. That one triggers on
-`v*`, which matches `vscode-v1.0.0` as readily as `v0.3.0`, so an extension tag
-beginning with `v` would fire the npm release and republish whatever the root
-manifest reads. `ext-v*` cannot be matched by it. They also fail differently: a
-rejected listing should not strand a half-finished npm release.
-
-It needs a `VSCE_PAT` secret on the repository — a PAT from Azure DevOps with
-**All accessible organizations** and the **Marketplace → Manage** scope, from
-an account that is a member of the `naxeris` publisher. Whichever account
-issues the token must be listed under **Members** on the publisher; being in
-the Azure DevOps organization is not the same permission and is not enough.
-
-## Its version
-
-There is one number to bump, and it is not this one: the extension follows the
-app's version in the repository root's `package.json`. `npm run build` syncs
-it, `npm run version:check` fails when the two have drifted, and CI runs that
-check on every push, so a release that bumps the app and forgets the extension
-does not get out.
-
-The prerelease suffix is dropped along the way — `0.3.0-alpha.1` here becomes
-`0.3.0` — because the Marketplace refuses a version with one, and `vsce
-publish` says so at the last step, after `vsce package` has cheerfully built
-it. What carries that meaning instead is the `--pre-release` flag, which is
-how VS Code expresses the same thing.
-
-## What Archyne hides in here
-
-Saving, opening and the multi-document workspace belong to VS Code while it
-owns the file, so Archyne withdraws its own: Save, Save as…, Open, Reload from
-disk, New diagram, Rename, Duplicate and the document tab strip. <kbd>Ctrl</kbd>+<kbd>S</kbd>
-and <kbd>Ctrl</kbd>+<kbd>O</kbd> pass through to VS Code rather than being
-intercepted.
-
-Everything that edits the diagram stays — templates, import, export, the
-canvas, the source panel — because VS Code is saving whatever comes out of
-them.
-
-Nothing is kept in the webview's own storage either: the file is VS Code's,
-and Archyne holds its splash until the document arrives rather than drawing
-one of its own first.
-
-## Tests
-
-The rewrite that makes the page loadable in a webview is the piece most likely
-to break silently — a tightened directive in the app's `index.html` shows up
-as a blank panel and nothing worth reading in the log — so it lives in
-`src/rewrite.ts`, which imports nothing, and is covered by
-`src/rewrite.test.ts` under the repository's own runner (`npm test` at the
-root). It is checked against the real `index.html` rather than a fixture,
-which is the point: a fixture would keep passing after the page changed.
-
-## What is not done yet
-
-- **Archyne is alpha, and this carries it.** The caveats that apply to the app
-  apply here: the accessibility report is self-assessed, the translations have
-  not been reviewed by native speakers, and there has been no independent
-  security review.
-- **The two registries disagree about the channel.** `0.3.0` went out as a
-  pre-release on the Marketplace and as a stable release on Open VSX, because
-  the first publish of each was done by hand with different flags. The
-  workflow passes one computed channel to both, so the next version settles
-  it; this one stays as it is, since neither registry can move a published
-  version between channels.
-- **The Open VSX namespace is unverified.** Ownership can be claimed
-  separately; it changes the badge, not what installs.
-- **The webview keeps the diagram in memory while the tab is open.** Closing
-  the editor tab and reopening it re-reads the file, as it should — but the
-  canvas's own undo history does not survive that, because it is not VS Code's
-  undo stack. `Ctrl+Z` in the text editor is unaffected.
+MIT licensed.
