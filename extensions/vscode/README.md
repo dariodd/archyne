@@ -5,6 +5,22 @@ open. The diagram stays an ordinary `.mmd` file: VS Code owns it, so the dirty
 dot, undo, save and the diff against `HEAD` all behave exactly as they do for
 the text.
 
+Nothing leaves your machine. The editor is bundled — no service, no account,
+no network call of its own.
+
+## Installing it
+
+Search for **Archyne** in the Extensions view, or:
+
+```sh
+code --install-extension naxeris.archyne
+```
+
+It ships on the **pre-release channel**, which is the honest place for it:
+Archyne itself is on an alpha line, and this is the first release of the
+extension. Everything in "What is not done yet" below is what that means in
+practice.
+
 ## Using it
 
 Open a `.mmd` or `.mermaid` file and run **Archyne: Open in Archyne** from the
@@ -96,6 +112,13 @@ which is the point: a fixture would keep passing after the page changed.
 
 ## What is not done yet
 
-- **No marketplace listing.** The publisher (`naxeris`) exists; the extension
-  has never been published under it, and the release workflow does not publish
-  it.
+- **Archyne is alpha, and this carries it.** The caveats that apply to the app
+  apply here: the accessibility report is self-assessed, the translations have
+  not been reviewed by native speakers, and there has been no independent
+  security review.
+- **Not on Open VSX yet**, so VSCodium, Cursor, Windsurf and Gitpod cannot
+  install it from their own registry.
+- **The webview keeps the diagram in memory while the tab is open.** Closing
+  the editor tab and reopening it re-reads the file, as it should — but the
+  canvas's own undo history does not survive that, because it is not VS Code's
+  undo stack. `Ctrl+Z` in the text editor is unaffected.

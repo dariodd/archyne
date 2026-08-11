@@ -34,10 +34,12 @@ CSS class names and internal store shape are _not_ public API.
   it, and there is no second candidate an allowlist could exclude.
 
   Its first consumer is a **VS Code extension**, in-tree at
-  `extensions/vscode/` and **not published anywhere yet**. It registers
-  Archyne as an optional editor for `.mmd`, so VS Code keeps owning the file
-  and the dirty dot, undo, save and the diff against `HEAD` all keep working
-  as they do for the text.
+  `extensions/vscode/` and published as
+  [`naxeris.archyne`](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne)
+  on the Marketplace's pre-release channel. It registers Archyne as an
+  optional editor for `.mmd`, so VS Code keeps owning the file and the dirty
+  dot, undo, save and the diff against `HEAD` all keep working as they do for
+  the text.
 
   Inside it, Archyne withdraws the controls that are no longer its own. The
   line is not "hide the file menu" but between binding to a file and editing
