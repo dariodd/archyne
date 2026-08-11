@@ -16,7 +16,7 @@ import {
   type ExportOptions,
 } from "./export";
 import { useThemeStore } from "./theme";
-import { initEmbedBridge, isEmbedded } from "./embed";
+import { hostOwnsFile, initEmbedBridge, isEmbedded } from "./embed";
 import { useLayoutStore } from "./layoutStore";
 import { desktopBridge, initDesktopFiles, useFileStore } from "./files";
 import { useWorkspace } from "./workspace";
@@ -170,6 +170,11 @@ export default function App() {
         e.preventDefault();
         s.selectAll();
       } else if (key === "s") {
+        // Left alone where a host owns the file: not preventing the default
+        // is what lets Ctrl+S reach VS Code, whose save is the real one. A
+        // hidden Save button and a live Ctrl+S would be the same
+        // contradiction, only harder to see.
+        if (hostOwnsFile()) return;
         // The browser's own Save is meaningless here and would save the page.
         e.preventDefault();
         void (e.shiftKey ? useFileStore.getState().saveAs() : useFileStore.getState().save())
@@ -179,6 +184,9 @@ export default function App() {
         e.preventDefault();
         setShowPalette((open) => !open);
       } else if (key === "o") {
+        // Same reasoning as Save: opening a file is the host's gesture, and
+        // its Ctrl+O opens one properly rather than behind its back.
+        if (hostOwnsFile()) return;
         e.preventDefault();
         void openFileHere().catch(() => {
           // "no-picker" browsers fall back to the toolbar's file input.
@@ -222,7 +230,11 @@ export default function App() {
               spans the canvas column rather than the whole application. */}
           <div className="canvas-column">
             <CanvasView />
-            <DocumentTabs />
+            {/* A host binds this window to one of its documents, so a strip
+                offering to switch to another is not just spare furniture: the
+                one you switched to would be sent back as an edit to the file
+                the host still has open. */}
+            {!hostOwnsFile() && <DocumentTabs />}
           </div>
           <SideResizer targetRef={sideRef} />
           <aside ref={sideRef} className="side" aria-label={t("panel.sourceAndInspector")}>

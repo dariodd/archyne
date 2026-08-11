@@ -39,6 +39,20 @@ CSS class names and internal store shape are _not_ public API.
   and the dirty dot, undo, save and the diff against `HEAD` all keep working
   as they do for the text.
 
+  Inside it, Archyne withdraws the controls that are no longer its own. The
+  line is not "hide the file menu" but between binding to a file and editing
+  the diagram in front of you: Save, Save as…, Open, Reload from disk, New
+  diagram, Rename, Duplicate and the document tab strip all belong to the
+  host, while templates, import, export and everything on the canvas stay,
+  because the host saves whatever comes out of them. `Ctrl+S` and `Ctrl+O`
+  stop calling `preventDefault`, which is what lets them reach VS Code — a
+  hidden Save button beside a live `Ctrl+S` would be the same contradiction,
+  only harder to see.
+
+  The tab strip is the part that was not cosmetic. A webview is bound to one
+  document, so switching to a second sent that one's text back as an edit to
+  the file the host still had open.
+
   Its version follows the app's rather than being kept by hand, and CI fails
   when the two drift. The prerelease suffix is dropped on the way —
   `0.3.0-alpha.1` becomes `0.3.0` — because the Marketplace refuses a version

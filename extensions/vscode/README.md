@@ -50,11 +50,20 @@ publish` says so at the last step, after `vsce package` has cheerfully built
 it. What carries that meaning instead is the `--pre-release` flag, which is
 how VS Code expresses the same thing.
 
+## What Archyne hides in here
+
+Saving, opening and the multi-document workspace belong to VS Code while it
+owns the file, so Archyne withdraws its own: Save, Save as…, Open, Reload from
+disk, New diagram, Rename, Duplicate and the document tab strip. <kbd>Ctrl</kbd>+<kbd>S</kbd>
+and <kbd>Ctrl</kbd>+<kbd>O</kbd> pass through to VS Code rather than being
+intercepted.
+
+Everything that edits the diagram stays — templates, import, export, the
+canvas, the source panel — because VS Code is saving whatever comes out of
+them.
+
 ## What is not done yet
 
-- The app's own **Save** and **Open** controls are still on the toolbar inside
-  the webview. In here they are the wrong controls — VS Code saves the
-  document — and they will be hidden.
 - **No icon, no marketplace listing.** This has not been published.
 - The webview loads whatever document the app had in its own storage before
   the file arrives, which can show for a frame.

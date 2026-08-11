@@ -13,6 +13,7 @@ import {
   reloadFromDisk,
 } from "../documents";
 import { toast, toastError } from "../toast";
+import { hostOwnsFile } from "../embed";
 import { LOCALES, useI18n, useT, type Locale } from "../i18n";
 import { ExportDialog } from "./ExportDialog";
 import { AboutDialog } from "./AboutDialog";
@@ -137,6 +138,11 @@ export function Toolbar() {
     <button onClick={() => void runAutoLayout()}>{t("toolbar.autoLayout")}</button>
   ) : null;
 
+  // Hidden rather than disabled: a greyed-out Save invites you to work out
+  // why, and the answer — the host has it — is not something a tooltip is
+  // going to land. See `hostOwnsFile`.
+  const hosted = hostOwnsFile();
+
   const newDiagramSelect = (
     <select
       className="tb-compact"
@@ -224,12 +230,16 @@ export function Toolbar() {
 
       {/* The document itself. */}
       <div className="tb-group">
-        {!narrow && newDiagramSelect}
+        {!narrow && !hosted && newDiagramSelect}
         {!narrow && (
           <>
             <button onClick={() => setShowTemplates(true)}>{t("tpl.open")}</button>
-            <button onClick={() => void open("open")()}>{t("toolbar.open")}</button>
-            <button onClick={runSave(saveFile)}>{t("toolbar.save")}</button>
+            {!hosted && (
+              <>
+                <button onClick={() => void open("open")()}>{t("toolbar.open")}</button>
+                <button onClick={runSave(saveFile)}>{t("toolbar.save")}</button>
+              </>
+            )}
           </>
         )}
         {/* Export stays whatever the width. It is the one thing the bar must
@@ -249,18 +259,22 @@ export function Toolbar() {
           {narrow && (
             <>
               <MenuItem onSelect={() => setShowTemplates(true)}>{t("tpl.open")}</MenuItem>
-              <MenuItem onSelect={() => void open("open")()}>{t("toolbar.open")}</MenuItem>
+              {!hosted && (
+                <MenuItem onSelect={() => void open("open")()}>{t("toolbar.open")}</MenuItem>
+              )}
               <MenuItem onSelect={() => void open("import")()}>{t("toolbar.import")}</MenuItem>
-              <MenuItem onSelect={runSave(saveFile)}>{t("toolbar.save")}</MenuItem>
+              {!hosted && <MenuItem onSelect={runSave(saveFile)}>{t("toolbar.save")}</MenuItem>}
               {autoLayoutButton && (
                 <MenuItem onSelect={() => void runAutoLayout()}>
                   {t("toolbar.autoLayout")}
                 </MenuItem>
               )}
-              <label className="menu-field">
-                {t("toolbar.newDiagram")}
-                {newDiagramSelect}
-              </label>
+              {!hosted && (
+                <label className="menu-field">
+                  {t("toolbar.newDiagram")}
+                  {newDiagramSelect}
+                </label>
+              )}
               {directionSelect && (
                 <label className="menu-field">
                   {t("toolbar.direction")}
@@ -273,16 +287,19 @@ export function Toolbar() {
           {!narrow && (
             <MenuItem onSelect={() => void open("import")()}>{t("toolbar.import")}</MenuItem>
           )}
-          <MenuItem onSelect={runSave(saveAsFile)}>{t("toolbar.saveAs")}</MenuItem>
+          {!hosted && <MenuItem onSelect={runSave(saveAsFile)}>{t("toolbar.saveAs")}</MenuItem>}
           {/* Only offered when there is a file behind the document. It is
               also the way out of a conflict: the watcher will not overwrite
               unsaved work, which leaves the disk version otherwise
               unreachable. */}
-          {fileBacked && (
+          {fileBacked && !hosted && (
             <MenuItem onSelect={() => void reload()}>{t("menu.reloadFromDisk")}</MenuItem>
           )}
-          <MenuItem onSelect={docActions.rename}>{t("doc.rename")}</MenuItem>
-          <MenuItem onSelect={docActions.duplicate}>{t("doc.duplicate")}</MenuItem>
+          {/* Renaming and duplicating are workspace gestures: one names a tab
+              the host does not show, the other makes a second document the
+              host has no file for. */}
+          {!hosted && <MenuItem onSelect={docActions.rename}>{t("doc.rename")}</MenuItem>}
+          {!hosted && <MenuItem onSelect={docActions.duplicate}>{t("doc.duplicate")}</MenuItem>}
           <MenuItem onSelect={() => void copy()}>
             {copied ? t("toolbar.copied") : t("toolbar.copyCode")}
           </MenuItem>
