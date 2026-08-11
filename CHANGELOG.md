@@ -24,33 +24,18 @@ CSS class names and internal store shape are _not_ public API.
 
 ### Changed
 
-- **`npm install archyne` gives you the newest release.** It gave you
-  `0.1.0-alpha.1` — the build from before the import subsystem — because
-  releases published under the `next` dist-tag and `latest` was never moved.
-  The reasoning was that `npx archyne` should not hand a stranger a
-  prerelease, which assumed there was a stable release to hand them instead;
-  there has never been one, so the caution delivered the oldest build rather
-  than the safest. Releases now publish straight to `latest`, and `next` is no
-  longer maintained.
+- **`npm install archyne` and `npx archyne` now give you the current
+  release.** They were giving `0.1.0-alpha.1`, the build from before the
+  import subsystem, because releases were published under the `next` dist-tag
+  and `latest` was never moved off the first one. Releases now publish to
+  `latest`; `next` is no longer maintained, so pin a version if you were
+  relying on it.
 
-  It has to be the publish itself rather than a tag moved afterwards: trusted
-  publishing authorises `npm publish` and nothing else, so the alternative was
-  a long-lived token in CI — which is the thing trusted publishing is for
-  avoiding.
-
-- **`/releases/latest` now resolves to a release.** It was landing on the
-  release _list_ — the link the README gives anyone after a desktop installer
-  — because GitHub's "latest" excludes prereleases and all five of ours were
-  marked as one. The two turn out to be exclusive whatever the API's separate
-  `make_latest` field suggests: set both and the request is accepted, the flag
-  does nothing, and `/releases/latest` answers 404. So releases are no longer
-  marked prerelease. What the badge said, the version says instead —
-  `v0.3.1-alpha.1` is in the title, the tag, the release notes and the
-  filename of every installer.
-
-- **An app release publishes the VS Code extension too.** The extension's
-  version is derived from the app's, so those are precisely the moments it has
-  anything new to ship; `ext-v*` still republishes it on its own.
+- **The [latest release](https://github.com/dariodd/archyne/releases/latest)
+  link resolves to a release** rather than to the list of them, which is where
+  the desktop installers are. Releases are no longer flagged as prereleases on
+  GitHub — that flag is what excluded them — so read the version itself:
+  every release so far is an alpha, and says so in its name.
 
 ## [0.3.1-alpha.1] — 2026-08-11
 
@@ -71,7 +56,7 @@ Three of the fixes are the same shape, and worth saying together: something
 was stated once in the code and then quietly restated somewhere else, where it
 went stale. The version in the About dialog, the version the MCP server gave
 its clients, and the rule that a host's diagram never reaches `localStorage`.
-Each now has one source, and a test where a test could hold it.
+Each now has one source.
 
 Still alpha, and the caveats under "What is not done" in the 0.1.0-alpha.1
 notes all still hold: unsigned desktop builds, a self-assessed accessibility
@@ -143,15 +128,11 @@ report, unreviewed translations, no independent security review.
   a reason that was not cosmetic: switching to a second document sent that
   one's text back as an edit to the file the host still had open.
 
-- **Archyne says which version it is.** The About dialog reported `0.1.0` and
+- **Archyne says which version it is.** The About dialog reported `0.1.0`, and
   had done since that really was the version — through 0.2.0, 0.2.1 and
-  0.3.0 — because the number was a literal in the component, and the MCP
-  server introduced itself to every client with the same stale string. Both
-  now read `package.json`, which is the file the release already bumps: the
-  app through a build-time constant, so the manifest does not join the bundle
-  for the sake of one string, and the server at startup. A test pins the
-  dialog to the manifest, since what went wrong was not the number but that
-  nothing was checking it.
+  0.3.0. The MCP server introduced itself to every client with the same stale
+  string, so an agent's logs named a version that had not been current for
+  three releases. Both now report the one that shipped.
 
 - **A node stops shrinking where its content stops fitting.** The handles
   stopped at a flat 48×28 for every node in the app, so a box with a 44px icon
