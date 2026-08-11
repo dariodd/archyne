@@ -51,6 +51,12 @@ jobs:
       - name: Third-party notices are up to date
         run: npm run notices:check
 
+      # Plain Node, no install: the extension's own dependencies are not
+      # needed to compare two numbers, and this has to fail on a release that
+      # bumped the app and forgot the extension.
+      - name: VS Code extension version follows the app
+        run: node extensions/vscode/scripts/sync-version.mjs --check
+
       # Production dependencies only, gated at high/critical, with written
       # exceptions in audit-allow.json — see scripts/audit-gate.mjs.
       - name: Dependency advisories

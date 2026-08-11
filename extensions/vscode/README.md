@@ -36,6 +36,20 @@ To install it into your own VS Code instead, `npm run package` produces a
 `.vsix`, which `code --install-extension archyne.vsix` installs and
 `code --uninstall-extension dariodd.archyne` removes.
 
+## Its version
+
+There is one number to bump, and it is not this one: the extension follows the
+app's version in the repository root's `package.json`. `npm run build` syncs
+it, `npm run version:check` fails when the two have drifted, and CI runs that
+check on every push, so a release that bumps the app and forgets the extension
+does not get out.
+
+The prerelease suffix is dropped along the way — `0.3.0-alpha.1` here becomes
+`0.3.0` — because the Marketplace refuses a version with one, and `vsce
+publish` says so at the last step, after `vsce package` has cheerfully built
+it. What carries that meaning instead is the `--pre-release` flag, which is
+how VS Code expresses the same thing.
+
 ## What is not done yet
 
 - The app's own **Save** and **Open** controls are still on the toolbar inside

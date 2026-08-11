@@ -2,7 +2,7 @@
   "name": "archyne",
   "displayName": "Archyne — visual editor for Mermaid",
   "description": "Draw Mermaid diagrams on a canvas, in the editor that already has the file open.",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "publisher": "dariodd",
   "license": "MIT",
   "private": true,
@@ -70,11 +70,13 @@
     }
   },
   "scripts": {
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check",
     "bundle": "node scripts/bundle-app.mjs",
     "compile": "tsc -p .",
-    "build": "npm run bundle && npm run compile",
+    "build": "npm run version:sync && npm run bundle && npm run compile",
     "typecheck": "tsc -p . --noEmit",
-    "package": "npm run build && vsce package --out archyne.vsix"
+    "package": "npm run build && vsce package --pre-release --out archyne.vsix"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

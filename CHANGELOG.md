@@ -39,6 +39,12 @@ CSS class names and internal store shape are _not_ public API.
   and the dirty dot, undo, save and the diff against `HEAD` all keep working
   as they do for the text.
 
+  Its version follows the app's rather than being kept by hand, and CI fails
+  when the two drift. The prerelease suffix is dropped on the way —
+  `0.3.0-alpha.1` becomes `0.3.0` — because the Marketplace refuses a version
+  carrying one, and refuses it at publish time, after packaging has already
+  succeeded. `--pre-release` carries that meaning instead.
+
 - **A message is dragged to where it goes, into a loop or out of one.**
   Reordering was two buttons in the inspector moving one row at a time, which
   is a poor way to say "this one happens inside the retry" — and on the canvas
