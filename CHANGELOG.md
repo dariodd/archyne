@@ -20,7 +20,32 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [Unreleased]
+## [0.3.2-alpha.1] — 2026-08-11
+
+A patch on the terms 0.3.1 set: **what Archyne writes has not changed.** A file
+saved by this release is byte-identical to one saved by the last, and the
+`%% graph:` comments hold the same things.
+
+What changed is reach. The VS Code extension no longer needs a `.mmd` file to
+be useful — a fenced Mermaid block in a Markdown document is editable where it
+sits. That is where most Mermaid in a repository actually is, and until now
+none of it could be drawn on a canvas without first being moved out of the
+document it belonged to.
+
+The other two entries are the release plumbing catching up with itself: `npx
+archyne` was handing out a build from before the import subsystem, and the link
+the README gives for desktop installers was resolving to the wrong page.
+
+### Added
+
+- **The VS Code extension reaches Mermaid inside Markdown.** A fenced
+  ` ```mermaid ` block in a README, an ADR or a page under `docs/` now carries
+  an **Open on canvas** action above it, and what you draw is written back into
+  that fence — the rest of the document, and the block's own indentation inside
+  a list item, left alone. Most Mermaid is not in a `.mmd` file, and until now
+  none of it could be edited visually without being moved out of the document
+  it belonged to. The command palette has the same action for the block at the
+  cursor, and `archyne.codeLens.enabled` turns the lens off.
 
 ### Changed
 

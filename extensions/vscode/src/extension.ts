@@ -1,11 +1,18 @@
 import * as vscode from "vscode";
 import { ArchyneEditorProvider } from "./editor";
+import { FencePanels } from "./fenceEditor";
+import { FenceLensProvider, OPEN_FENCE } from "./lens";
 
 /**
  * The extension is a shell around the editor that already exists: it hands a
  * VS Code `TextDocument` to the same bundle the web app and the desktop app
  * run, and hands the edits back. What it adds is where it runs — beside the
  * file, in the tool the diagram is already committed from.
+ *
+ * Two ways in, because Mermaid lives in two places. A `.mmd` file gets the
+ * custom editor, which owns the whole document. A fenced block in Markdown
+ * gets a CodeLens and a panel bound to the block's range — which is where most
+ * Mermaid in a repository actually is: a README, an ADR, a page under `docs/`.
  */
 export function activate(context: vscode.ExtensionContext): void {
   const appRoot = vscode.Uri.joinPath(context.extensionUri, "media", "app");
@@ -36,6 +43,35 @@ export function activate(context: vscode.ExtensionContext): void {
         target,
         ArchyneEditorProvider.viewType,
       );
+    }),
+  );
+
+  // Markdown, and MDX where a language extension has registered it. Both are
+  // selectors rather than a single `scheme: "file"` entry, so a diagram in an
+  // untitled buffer or in a remote workspace gets a lens too.
+  const lenses = new FenceLensProvider();
+  const panels = new FencePanels(context.extensionUri);
+  context.subscriptions.push(
+    lenses,
+    panels,
+    vscode.languages.registerCodeLensProvider(
+      [{ language: "markdown" }, { language: "mdx" }],
+      lenses,
+    ),
+    // One command, two ways in. The lens names the block it was drawn over;
+    // the command palette names nothing, and the cursor says which block —
+    // which is also the only way to reach a lens without a mouse.
+    vscode.commands.registerCommand(OPEN_FENCE, async (uri?: vscode.Uri, line?: number) => {
+      const editor = vscode.window.activeTextEditor;
+      const target = uri ?? editor?.document.uri;
+      const at = line ?? editor?.selection.active.line;
+      if (!target || at === undefined) {
+        void vscode.window.showInformationMessage(
+          "Put the cursor inside a Mermaid code block first.",
+        );
+        return;
+      }
+      await panels.open(target, at);
     }),
   );
 }

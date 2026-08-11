@@ -1,8 +1,8 @@
 {
   "name": "archyne",
   "displayName": "Archyne — visual editor for Mermaid",
-  "description": "Edit Mermaid diagrams on a canvas, with two-way sync to the text. The file stays ordinary .mmd, and VS Code keeps owning it.",
-  "version": "0.3.1",
+  "description": "Edit Mermaid diagrams on a canvas, with two-way sync to the text — in a .mmd file, or in a ```mermaid block inside your Markdown. The file stays ordinary, and VS Code keeps owning it.",
+  "version": "0.3.2",
   "publisher": "naxeris",
   "license": "MIT",
   "private": true,
@@ -22,7 +22,8 @@
     "diagram",
     "flowchart",
     "uml",
-    "sequence-diagram"
+    "sequence-diagram",
+    "markdown"
   ],
   "repository": {
     "type": "git",
@@ -34,7 +35,21 @@
   },
   "homepage": "https://github.com/dariodd/archyne/tree/main/extensions/vscode",
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onLanguage:mdx"
+  ],
   "contributes": {
+    "configuration": {
+      "title": "Archyne",
+      "properties": {
+        "archyne.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show an \"Open on canvas\" action above Mermaid code blocks in Markdown files."
+        }
+      }
+    },
     "customEditors": [
       {
         "viewType": "archyne.editor",
@@ -55,6 +70,11 @@
         "command": "archyne.open",
         "title": "Open on the canvas",
         "category": "Archyne"
+      },
+      {
+        "command": "archyne.openFence",
+        "title": "Open the Mermaid block at the cursor on the canvas",
+        "category": "Archyne"
       }
     ],
     "menus": {
@@ -62,6 +82,10 @@
         {
           "command": "archyne.open",
           "when": "resourceExtname == .mmd || resourceExtname == .mermaid"
+        },
+        {
+          "command": "archyne.openFence",
+          "when": "editorLangId == markdown || editorLangId == mdx"
         }
       ],
       "editor/title": [

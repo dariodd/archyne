@@ -38,7 +38,10 @@ code --install-extension naxeris.archyne
 ```
 
 Archyne registers as an optional editor for `.mmd`, so the file stays VS Code's
-— its dirty dot, its undo, its save, its diff against `HEAD`. It is on the
+— its dirty dot, its undo, its save, its diff against `HEAD`. A
+` ```mermaid ` block inside Markdown gets an **Open on canvas** action above the
+fence, which is where most Mermaid actually lives: the diagram is edited in
+place, and the rest of the document is left alone. It is on the
 [Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne)
 and on [Open VSX](https://open-vsx.org/extension/naxeris/archyne), for
 VSCodium, Cursor, Windsurf, Gitpod and Theia.
