@@ -16,10 +16,16 @@ Search for **Archyne** in the Extensions view, or:
 code --install-extension naxeris.archyne
 ```
 
-It ships on the **pre-release channel**, which is the honest place for it:
-Archyne itself is on an alpha line, and this is the first release of the
-extension. Everything in "What is not done yet" below is what that means in
-practice.
+It is published to both registries, from the same package:
+
+- [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne),
+  for VS Code
+- [Open VSX](https://open-vsx.org/extension/naxeris/archyne), for VSCodium,
+  Cursor, Windsurf, Gitpod and Theia, none of which can install from the
+  Marketplace
+
+Archyne is on an alpha line and this is the extension's first release, so
+everything under "What is not done yet" below is what that means in practice.
 
 ## Using it
 
@@ -116,8 +122,14 @@ which is the point: a fixture would keep passing after the page changed.
   apply here: the accessibility report is self-assessed, the translations have
   not been reviewed by native speakers, and there has been no independent
   security review.
-- **Not on Open VSX yet**, so VSCodium, Cursor, Windsurf and Gitpod cannot
-  install it from their own registry.
+- **The two registries disagree about the channel.** `0.3.0` went out as a
+  pre-release on the Marketplace and as a stable release on Open VSX, because
+  the first publish of each was done by hand with different flags. The
+  workflow passes one computed channel to both, so the next version settles
+  it; this one stays as it is, since neither registry can move a published
+  version between channels.
+- **The Open VSX namespace is unverified.** Ownership can be claimed
+  separately; it changes the badge, not what installs.
 - **The webview keeps the diagram in memory while the tab is open.** Closing
   the editor tab and reopening it re-reads the file, as it should — but the
   canvas's own undo history does not survive that, because it is not VS Code's
