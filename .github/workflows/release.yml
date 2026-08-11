@@ -185,8 +185,17 @@ jobs:
       # credential this whole arrangement exists to avoid.
       #
       # `next` is left where it stands and is no longer maintained.
+      #
+      # **`--tag latest` is named rather than left to the default**, because for
+      # a prerelease version there is no default: npm refuses a bare publish of
+      # anything carrying a suffix — "You must specify a tag using --tag when
+      # publishing a prerelease version" — precisely so that landing an alpha on
+      # `latest` has to be somebody's decision. It is this project's decision,
+      # for the reason above, and this is where it is stated. Dropping the flag
+      # is what made 0.3.2-alpha.1's first release run fail on this step, with
+      # the GitHub release and both extension registries already served.
       - name: Publish
-        run: npm publish
+        run: npm publish --tag latest
 
   # Deliberately does not wait on the npm job: a registry problem should not
   # withhold the desktop downloads. That job failing still turns the run red,
