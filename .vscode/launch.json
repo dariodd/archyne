@@ -1,0 +1,16 @@
+{
+  // Runs the in-tree extension in a second VS Code window (an Extension
+  // Development Host) without installing anything: the extension is loaded
+  // from `extensions/vscode/` on disk, and closing the window ends it.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run the VS Code extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode"],
+      "outFiles": ["${workspaceFolder}/extensions/vscode/out/**/*.js"],
+      "preLaunchTask": "build the VS Code extension"
+    }
+  ]
+}

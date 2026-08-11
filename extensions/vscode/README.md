@@ -27,10 +27,14 @@ npm install
 npm run build                    # copies dist/ into media/app/, compiles src/
 ```
 
-Then press <kbd>F5</kbd> in VS Code to launch an Extension Development Host
-with it loaded.
+Then open the **repository root** in VS Code and press <kbd>F5</kbd>. That runs
+the _Run the VS Code extension_ configuration in `.vscode/launch.json`, which
+rebuilds the extension and opens a second window with it loaded. Nothing is
+installed: close the window and it is gone.
 
-`npm run package` produces a `.vsix`.
+To install it into your own VS Code instead, `npm run package` produces a
+`.vsix`, which `code --install-extension archyne.vsix` installs and
+`code --uninstall-extension dariodd.archyne` removes.
 
 ## What is not done yet
 

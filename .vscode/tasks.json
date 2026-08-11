@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // Copies the built app into the extension and compiles the host code.
+      // It needs `dist/` to exist, so run `npm run build` at the root first —
+      // the script says so plainly if it is missing.
+      "label": "build the VS Code extension",
+      "type": "shell",
+      "command": "npm run build",
+      "options": { "cwd": "${workspaceFolder}/extensions/vscode" },
+      "problemMatcher": "$tsc",
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "dedicated" }
+    }
+  ]
+}
