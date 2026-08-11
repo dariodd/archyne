@@ -1,7 +1,7 @@
 {
   "name": "archyne",
   "displayName": "Archyne — visual editor for Mermaid",
-  "description": "Draw Mermaid diagrams on a canvas, in the editor that already has the file open.",
+  "description": "Edit Mermaid diagrams on a canvas, with two-way sync to the text. The file stays ordinary .mmd, and VS Code keeps owning it.",
   "version": "0.3.0",
   "publisher": "naxeris",
   "license": "MIT",
@@ -15,15 +15,14 @@
     "theme": "dark"
   },
   "categories": [
-    "Visualization",
-    "Other"
+    "Visualization"
   ],
   "keywords": [
     "mermaid",
     "diagram",
     "flowchart",
     "uml",
-    "editor"
+    "sequence-diagram"
   ],
   "repository": {
     "type": "git",

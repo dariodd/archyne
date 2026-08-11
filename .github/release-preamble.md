@@ -31,6 +31,13 @@ archyne`, or accepting the warnings above.
 
 Everything runs locally either way — no server, no accounts, and no network
 requests of Archyne's own. See the
-[security policy](../blob/main/SECURITY.md) for the threat model.
+[security policy](https://github.com/dariodd/archyne/blob/main/SECURITY.md)
+for the threat model.
+
+<!-- Absolute, not relative. This file is pasted into a GitHub Release body,
+     where a relative link resolves against the release page rather than the
+     repository root — `../blob/main/SECURITY.md` became a 404 under
+     /releases/. Nothing here can assume it is being read from its own
+     directory. -->
 
 ---

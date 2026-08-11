@@ -9,8 +9,9 @@ A draw.io-style diagram editor with **two-way sync to Mermaid code**. Edit visua
 other. Because the document _is_ standard Mermaid, LLMs can generate, read, and
 modify your diagrams as plain text, and anything they produce opens on the canvas.
 
-Runs entirely in the browser — no server, no accounts, nothing leaves your machine.
-Self-host by serving the `dist/` folder from any static file server.
+Runs entirely on your own machine — in a browser, as a desktop app, or inside
+VS Code. No server, no accounts, nothing leaves it. Self-host by serving the
+`dist/` folder from any static file server.
 
 <p align="center">
   <a href="https://github.com/dariodd/archyne/actions/workflows/ci.yml"><img src="https://github.com/dariodd/archyne/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -56,7 +57,7 @@ entirely.
 <tr>
 <td width="50%">
 <img src="docs/images/editor-architecture-dark.png" alt="An architecture diagram with vendor icons for Cloudflare, AWS, Node.js, Redis and Postgres, grouped inside a VPC" width="100%">
-<p align="center"><em>Architecture diagrams with 13 000+ searchable vendor icons</em></p>
+<p align="center"><em>Architecture diagrams with 16 000+ searchable vendor icons</em></p>
 </td>
 <td width="50%">
 <img src="docs/images/editor-sequence-dark.png" alt="A sequence diagram with participants, activations, a note and numbered messages" width="100%">
@@ -401,7 +402,7 @@ names the five hosts that makes possible and nothing else — never
 Untrusted diagram text is held by two independent layers — Mermaid's
 sanitizer and the CSP — each verified separately in a real browser on every
 pull request. Accessibility is checked the same way: `axe` reports no WCAG
-2.2 AA violations across ten interface surfaces in both themes.
+2.2 AA violations across sixteen interface surfaces, in both themes.
 
 Two things stated up front rather than discovered later: the desktop
 installers are **not yet code-signed**, and the accessibility work is a
@@ -415,8 +416,8 @@ on request.
 listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); all are compatible
 with MIT distribution (elkjs is EPL-2.0, consumed unmodified as a library;
 the Iconify collections are CC0/MIT/Apache-2.0, with depicted logos remaining
-their owners' trademarks). The full breakdown is also available in-app: click
-the Archyne logo.
+their owners' trademarks). The full breakdown is also available in-app, under
+**About Archyne** in the ⋯ menu.
 
 **One bundled thing is not MIT.** The 636 Azure architecture icons in
 `src/icons-azure.generated.json` are Microsoft's, shipped under

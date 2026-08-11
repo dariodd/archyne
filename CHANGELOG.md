@@ -24,65 +24,38 @@ CSS class names and internal store shape are _not_ public API.
 
 ### Added
 
-- **The embed protocol gained a second transport, for VS Code webviews.** The
-  messages are unchanged — `load`, `getCode`, `export` in, `ready`, `change`,
-  `code`, `exported` out — and only the pipe differs: inside a webview there
-  is no framing page to answer, and the extension host sits behind
-  `acquireVsCodeApi()` instead. Hosts that embed Archyne in an iframe are
-  unaffected, including the default-deny origin allowlist, which the webview
-  does not carry and does not need: it is the top document, nothing may frame
-  it, and there is no second candidate an allowlist could exclude.
-
-  Its first consumer is a **VS Code extension**, in-tree at
-  `extensions/vscode/` and published as `naxeris.archyne` on both the
+- **Archyne runs inside VS Code.** Published as `naxeris.archyne` on the
   [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne)
-  and [Open VSX](https://open-vsx.org/extension/naxeris/archyne) — the second
-  being where VSCodium, Cursor, Windsurf and Gitpod look, none of which can
-  install from the first. It registers Archyne as an optional editor for
-  `.mmd`, so VS Code keeps owning the file and the dirty dot, undo, save and
-  the diff against `HEAD` all keep working as they do for the text.
+  and on [Open VSX](https://open-vsx.org/extension/naxeris/archyne), which is
+  where VSCodium, Cursor, Windsurf, Gitpod and Theia look and which cannot
+  install from the first. Open a `.mmd` and pick Archyne, and the canvas opens
+  on the file the editor already had.
 
-  Inside it, Archyne withdraws the controls that are no longer its own. The
-  line is not "hide the file menu" but between binding to a file and editing
-  the diagram in front of you: Save, Save as…, Open, Reload from disk, New
-  diagram, Rename, Duplicate and the document tab strip all belong to the
-  host, while templates, import, export and everything on the canvas stay,
-  because the host saves whatever comes out of them. `Ctrl+S` and `Ctrl+O`
-  stop calling `preventDefault`, which is what lets them reach VS Code — a
-  hidden Save button beside a live `Ctrl+S` would be the same contradiction,
-  only harder to see.
+  It is an optional editor, not a replacement: `.mmd` still opens as text
+  unless you ask otherwise, and VS Code keeps owning the document, so the
+  dirty dot, undo, save and the diff against `HEAD` are the ones already
+  there. The extension never writes to disk itself.
 
-  The tab strip is the part that was not cosmetic. A webview is bound to one
-  document, so switching to a second sent that one's text back as an edit to
-  the file the host still had open.
+  Inside it, Archyne withdraws the controls that are no longer its own —
+  Save, Save as…, Open, Reload from disk, New diagram, Rename, Duplicate and
+  the document tabs. The line is not "hide the file menu" but between binding
+  to a file and editing the diagram in front of you: templates, import,
+  export and everything on the canvas stay, because VS Code saves whatever
+  comes out of them. `Ctrl+S` and `Ctrl+O` reach VS Code rather than being
+  intercepted — a hidden Save button beside a live `Ctrl+S` would be the same
+  contradiction, only harder to see.
 
-  Nor does the host's document reach `localStorage` any more. "In embed mode
-  the host owns the data — never touch localStorage" is a rule the workspace
-  states about itself, and it enforced it by looking for `?embed=1`: a webview
-  has no query string to carry that, so the check answered no and the file was
-  copied into storage — the copy that then showed, briefly, on the next open.
-  One predicate now answers for both kinds of embedding, and Archyne holds the
-  splash until the host's document arrives rather than drawing its own first.
+- **The embed protocol gained a second transport**, which is what the
+  extension is built on. The messages are unchanged — `load`, `getCode`,
+  `export` in, `ready`, `change`, `code`, `exported` out — and only the pipe
+  differs: inside a webview there is no framing page to answer, and the
+  extension host sits behind `acquireVsCodeApi()` instead.
 
-  A workflow publishes it — from a button in the Actions tab, with a dry-run
-  option, or from an `ext-v*` tag. Deliberately not the release workflow:
-  that one triggers on `v*`, which matches an extension tag beginning with `v`
-  and would republish the app under whatever version the manifest reads.
-  Whether it goes out marked pre-release is read from the app's version rather
-  than written into the workflow, so the first stable release does not quietly
-  ship as a prerelease.
-
-  It carries an icon, and the rewrite that makes the built page loadable in a
-  webview is now a module that imports nothing (`rewrite.ts`) with tests under
-  the repository's own runner. They read the app's real `index.html` rather
-  than a fixture, because a fixture would keep passing after the page changed
-  — and the way this breaks is a blank panel with nothing in the log.
-
-  Its version follows the app's rather than being kept by hand, and CI fails
-  when the two drift. The prerelease suffix is dropped on the way —
-  `0.3.0-alpha.1` becomes `0.3.0` — because the Marketplace refuses a version
-  carrying one, and refuses it at publish time, after packaging has already
-  succeeded. `--pre-release` carries that meaning instead.
+  Pages that embed Archyne in an iframe are unaffected, default-deny origin
+  allowlist included. The webview does not carry one and does not need one: it
+  is the top document, nothing may frame it, and there is no second candidate
+  an allowlist could exclude. What guards it is the extension's
+  `localResourceRoots` and the page's own policy.
 
 - **A message is dragged to where it goes, into a loop or out of one.**
   Reordering was two buttons in the inspector moving one row at a time, which
@@ -101,6 +74,19 @@ CSS class names and internal store shape are _not_ public API.
   one away.
 
 ### Fixed
+
+- **A host's diagram no longer reaches `localStorage`.** "In embed mode the
+  host owns the data — never touch localStorage" is a rule the workspace
+  states about itself, and it enforced it by looking for `?embed=1`. A VS Code
+  webview has no query string to carry that flag, so the check answered no and
+  the file was copied into Archyne's own storage — the copy that then showed,
+  briefly, the next time it opened. One predicate now answers for both kinds
+  of embedding, and the splash is held until the host's document arrives
+  rather than another being drawn first.
+
+  A webview is also bound to one document, so the tab strip is gone there for
+  a reason that was not cosmetic: switching to a second document sent that
+  one's text back as an edit to the file the host still had open.
 
 - **Archyne says which version it is.** The About dialog reported `0.1.0` and
   had done since that really was the version — through 0.2.0, 0.2.1 and
