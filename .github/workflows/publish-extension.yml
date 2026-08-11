@@ -25,6 +25,10 @@ on:
         description: Build and package, but do not publish
         type: boolean
         default: false
+      stable_override:
+        description: Publish to the stable channel even though the app is a prerelease
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -59,17 +63,26 @@ jobs:
 
       # The Marketplace has no way to express a prerelease in a version string
       # — it refuses one carrying a suffix — so `--pre-release` says it
-      # instead. Read from the app's version rather than written here, so the
-      # first stable release does not quietly go out marked pre-release.
+      # instead. Derived from the app's version rather than written here, so
+      # the first stable Archyne does not go out still marked alpha, and every
+      # release before it does. `naxeris.archyne 0.3.0`, published by hand,
+      # went out this way, and this keeps the workflow on the same channel
+      # rather than quietly opening a second one beside it.
+      #
+      # `stable_override` exists for the case the version cannot express:
+      # shipping a settled extension while the app it carries is still alpha.
       - name: Decide the channel
         id: channel
         run: |
           version="$(node -p "require('./package.json').version")"
-          if [[ "$version" == *-* ]]; then
-            echo "App is $version — publishing as a pre-release."
+          if [[ "${{ inputs.stable_override }}" == "true" ]]; then
+            echo "Overridden: publishing to the stable channel."
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          elif [[ "$version" == *-* ]]; then
+            echo "App is $version — publishing to the pre-release channel."
             echo "flag=--pre-release" >> "$GITHUB_OUTPUT"
           else
-            echo "App is $version — publishing as a stable release."
+            echo "App is $version — publishing to the stable channel."
             echo "flag=" >> "$GITHUB_OUTPUT"
           fi
 
