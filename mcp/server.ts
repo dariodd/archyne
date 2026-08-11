@@ -140,7 +140,7 @@ server.registerTool(
   {
     title: "Validate mermaid code",
     description:
-      "Validate mermaid diagram code (flowchart, stateDiagram-v2, erDiagram, classDiagram) without writing anything. Returns the parsed structure, or the parse error.",
+      "Validate mermaid diagram code without writing anything. Returns the parsed structure, or the parse error. Covers the seven families Archyne understands structurally: flowchart, stateDiagram-v2, erDiagram, classDiagram, sequenceDiagram, C4 and architecture-beta. Other types mermaid can render (gantt, pie, mindmap, timeline, …) are reported as an error here, because this tool answers with structure rather than with a yes.",
     inputSchema: { code: z.string().describe("Mermaid diagram source") },
   },
   async ({ code }) => {

@@ -53,6 +53,33 @@
     <link rel="icon" type="image/svg+xml" href="./logo.svg" />
     <link rel="alternate icon" type="image/png" href="./logo.png" />
     <title>Archyne — a visual editor for Mermaid diagrams</title>
+
+    <!--
+      What a search engine and a pasted link have to go on. Without these the
+      demo shared into a chat is a bare URL with the filename under it.
+
+      The absolute URLs name the canonical deployment on purpose: a crawler
+      resolves `og:image` against nothing, so a relative path gives no card at
+      all. A self-hosted copy should point them at its own origin or drop
+      them — they describe where this build is published, not where it runs.
+    -->
+    <meta
+      name="description"
+      content="Draw diagrams on a canvas and get Mermaid code, or edit the code and watch the canvas follow. Seven diagram families, import from draw.io, Visio, PlantUML and DOT, PNG/SVG/PDF export. Runs entirely on your machine — no server, no accounts."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Archyne — a visual editor for Mermaid diagrams" />
+    <meta
+      property="og:description"
+      content="Draw on a canvas, get Mermaid code — and edit either side. Local-first: no server, no accounts, nothing leaves your machine."
+    />
+    <meta property="og:url" content="https://dariodd.github.io/archyne/" />
+    <meta property="og:image" content="https://dariodd.github.io/archyne/preview.png" />
+    <meta
+      property="og:image:alt"
+      content="Archyne editing a flowchart: shape palette on the left, canvas in the middle, Mermaid source on the right"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <style>
       /* static splash, shown until React mounts (styles inline on purpose) */
       #root:empty::after {
