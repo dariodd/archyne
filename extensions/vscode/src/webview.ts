@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { rewriteHtml } from "./rewrite";
 
 /**
  * The app's own `index.html`, made loadable inside a webview.
@@ -9,13 +10,8 @@ import * as vscode from "vscode";
  * And its Content-Security-Policy talks about `'self'`, which in a webview is
  * not the scheme the resources arrive on.
  *
- * Both are handled by rewriting rather than by keeping a second copy of the
- * page here. A `<base>` element answers the first for every asset at once,
- * including the chunks the app fetches later, which a search-and-replace over
- * the markup would never see. And the policy is taken from the page with
- * `'self'` swapped for the webview's source, so the two cannot drift: the
- * hosts the app allows for icon fetching, and anything a future commit adds
- * to that list, arrive here without this file being touched.
+ * This half reads the file and asks VS Code the two questions only it can
+ * answer; `rewrite.ts` does the rewriting, and has the tests.
  */
 export async function webviewHtml(
   webview: vscode.Webview,
@@ -28,16 +24,5 @@ export async function webviewHtml(
   // parent of the last path segment, which drops the folder the app lives in.
   const base = `${webview.asWebviewUri(appRoot).toString()}/`;
 
-  return (
-    html
-      // The app declares `base-uri 'none'` — correct for a page served over
-      // HTTP, where nothing should be able to re-point its relative URLs, and
-      // fatal here, because that is precisely the mechanism this needs. Left
-      // alone the `<base>` below is ignored and every asset 404s. Widened to
-      // the webview's own source rather than dropped: the directive keeps
-      // doing its job, against a base pointing anywhere else.
-      .replace(/base-uri 'none'/, `base-uri ${webview.cspSource}`)
-      .replace(/'self'/g, webview.cspSource)
-      .replace(/<head>/i, `<head>\n    <base href="${base}">`)
-  );
+  return rewriteHtml(html, webview.cspSource, base);
 }

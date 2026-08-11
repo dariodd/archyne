@@ -14,5 +14,9 @@
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true
   },
-  "include": ["src"]
+  // The tests belong to the repository's runner, which has vitest; this
+  // project does not, and compiling them would also put them in `out/`, which
+  // is what the `.vsix` ships.
+  "include": ["src"],
+  "exclude": ["**/*.test.ts"]
 }

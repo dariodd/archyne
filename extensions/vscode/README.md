@@ -66,11 +66,18 @@ Nothing is kept in the webview's own storage either: the file is VS Code's,
 and Archyne holds its splash until the document arrives rather than drawing
 one of its own first.
 
+## Tests
+
+The rewrite that makes the page loadable in a webview is the piece most likely
+to break silently — a tightened directive in the app's `index.html` shows up
+as a blank panel and nothing worth reading in the log — so it lives in
+`src/rewrite.ts`, which imports nothing, and is covered by
+`src/rewrite.test.ts` under the repository's own runner (`npm test` at the
+root). It is checked against the real `index.html` rather than a fixture,
+which is the point: a fixture would keep passing after the page changed.
+
 ## What is not done yet
 
-- **No icon, and no marketplace listing.** The publisher (`naxeris`) exists;
-  the extension has never been published under it, and doing so needs a
-  `VSCE_PAT` the release workflow does not have.
-- **No test suite of its own.** The pure part of the HTML rewrite is the piece
-  most likely to break silently, and it is exactly the piece a test could
-  hold.
+- **No marketplace listing.** The publisher (`naxeris`) exists; the extension
+  has never been published under it, and the release workflow does not publish
+  it.

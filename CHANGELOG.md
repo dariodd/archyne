@@ -61,6 +61,12 @@ CSS class names and internal store shape are _not_ public API.
   One predicate now answers for both kinds of embedding, and Archyne holds the
   splash until the host's document arrives rather than drawing its own first.
 
+  It carries an icon, and the rewrite that makes the built page loadable in a
+  webview is now a module that imports nothing (`rewrite.ts`) with tests under
+  the repository's own runner. They read the app's real `index.html` rather
+  than a fixture, because a fixture would keep passing after the page changed
+  — and the way this breaks is a blank panel with nothing in the log.
+
   Its version follows the app's rather than being kept by hand, and CI fails
   when the two drift. The prerelease suffix is dropped on the way —
   `0.3.0-alpha.1` becomes `0.3.0` — because the Marketplace refuses a version

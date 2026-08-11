@@ -9,6 +9,11 @@
   "engines": {
     "vscode": "^1.90.0"
   },
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0f1014",
+    "theme": "dark"
+  },
   "categories": [
     "Visualization",
     "Other"
