@@ -38,11 +38,15 @@ CSS class names and internal store shape are _not_ public API.
   a long-lived token in CI — which is the thing trusted publishing is for
   avoiding.
 
-- **`/releases/latest` now resolves to a release.** Every Archyne release is a
-  prerelease, GitHub's "latest" excludes those, and the link the README gives
-  for desktop installers was landing on the release _list_. Releases are still
-  labelled prerelease, because they are; they are additionally marked latest,
-  which the API keeps as a separate flag for this exact case.
+- **`/releases/latest` now resolves to a release.** It was landing on the
+  release _list_ — the link the README gives anyone after a desktop installer
+  — because GitHub's "latest" excludes prereleases and all five of ours were
+  marked as one. The two turn out to be exclusive whatever the API's separate
+  `make_latest` field suggests: set both and the request is accepted, the flag
+  does nothing, and `/releases/latest` answers 404. So releases are no longer
+  marked prerelease. What the badge said, the version says instead —
+  `v0.3.1-alpha.1` is in the title, the tag, the release notes and the
+  filename of every installer.
 
 - **An app release publishes the VS Code extension too.** The extension's
   version is derived from the app's, so those are precisely the moments it has

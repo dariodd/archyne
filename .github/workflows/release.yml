@@ -71,23 +71,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # A hyphen in a semver tag means a prerelease: v0.3.0-rc.1. The label
-          # stays, because the release is one.
+          # Not marked as a prerelease, even though every Archyne release so
+          # far is an alpha — because on GitHub the two are exclusive, whatever
+          # the API's separate `make_latest` field suggests. Setting both was
+          # tried: the request is accepted, the flag has no effect, and
+          # /releases/latest answers 404 — no latest release exists at all.
           #
-          # `--latest` is separate from it, and is set regardless: GitHub's
-          # "latest release" excludes prereleases, and with every Archyne
-          # release being an alpha that left /releases/latest resolving to the
-          # release *list* — which is where the README sends anyone after a
-          # desktop installer. Honest label, working link; the API keeps
-          # `prerelease` and `make_latest` apart precisely for this.
-          case "$TAG" in
-            *-*) prerelease=--prerelease ;;
-            *) prerelease= ;;
-          esac
+          # That link is where the README sends anyone after a desktop
+          # installer, so the choice is between a badge and a working
+          # download. The version string carries the warning the badge would
+          # have: `v0.3.1-alpha.1` says alpha in the title, the tag, the
+          # filename of every installer, and the release notes.
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; reusing it."
           else
-            gh release create "$TAG" --draft $prerelease --latest \
+            gh release create "$TAG" --draft --latest \
               --title "Archyne $TAG" --generate-notes
           fi
 
