@@ -6,9 +6,10 @@ tsconfig.json
 **/*.map
 **/tsconfig.tsbuildinfo
 
-# Maintainer notes. `README.md` is the listing page and ships; this is the
-# file that exists so the listing does not have to carry any of it.
-DEVELOPING.md
+# Maintainer notes, kept beside the project and out of both the repository and
+# the package. `README.md` is the listing page and is the only prose that
+# ships.
+*.local.md
 
 # The bundled editor carries its own demo page, which nothing here opens.
 media/app/embed-demo.html

@@ -49,8 +49,6 @@ out of them.
 Archyne also runs as a [web app](https://dariodd.github.io/archyne/), a desktop
 application, `npx archyne`, and an MCP server for agents. Source, issues and
 the full changelog are at
-[github.com/dariodd/archyne](https://github.com/dariodd/archyne); building and
-publishing this extension are covered in
-[DEVELOPING.md](https://github.com/dariodd/archyne/blob/main/extensions/vscode/DEVELOPING.md).
+[github.com/dariodd/archyne](https://github.com/dariodd/archyne).
 
 MIT licensed.
