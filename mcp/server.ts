@@ -95,7 +95,17 @@ function errorText(err: unknown) {
   };
 }
 
-const server = new McpServer({ name: "archyne", version: "0.1.0" });
+/**
+ * Read from the manifest rather than written here. This string is what an MCP
+ * client records and reports as the server it talked to, and a second copy of
+ * a version number is a copy that stops being true — this one said 0.1.0
+ * across three releases.
+ */
+const { version } = JSON.parse(
+  await fs.readFile(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+const server = new McpServer({ name: "archyne", version });
 
 server.registerTool(
   "list_diagrams",

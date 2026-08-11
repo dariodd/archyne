@@ -56,7 +56,7 @@ export function AboutDialog({ onClose }: { onClose: () => void }) {
           states those terms in full — read it before redistributing a build.
         </p>
         <p className="about-trademark">{t("about.trademark")}</p>
-        <p className="about-version">{t("about.version", { version: "0.1.0" })}</p>
+        <p className="about-version">{t("about.version", { version: __APP_VERSION__ })}</p>
       </div>
 
       <div className="modal-actions">

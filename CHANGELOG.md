@@ -57,6 +57,16 @@ CSS class names and internal store shape are _not_ public API.
 
 ### Fixed
 
+- **Archyne says which version it is.** The About dialog reported `0.1.0` and
+  had done since that really was the version — through 0.2.0, 0.2.1 and
+  0.3.0 — because the number was a literal in the component, and the MCP
+  server introduced itself to every client with the same stale string. Both
+  now read `package.json`, which is the file the release already bumps: the
+  app through a build-time constant, so the manifest does not join the bundle
+  for the sake of one string, and the server at startup. A test pins the
+  dialog to the manifest, since what went wrong was not the number but that
+  nothing was checking it.
+
 - **A node stops shrinking where its content stops fitting.** The handles
   stopped at a flat 48×28 for every node in the app, so a box with a 44px icon
   and a two-word name dragged to that size simply cut both off — the floor was
