@@ -118,7 +118,10 @@ jobs:
             echo "::warning title=Open VSX skipped::No OVSX_PAT secret is set, so only the Marketplace was published."
             exit 0
           fi
-          npx ovsx publish archyne.vsix $CHANNEL --skip-duplicate -p "$OVSX_PAT"
+          # No `-p`: ovsx reads OVSX_PAT from the environment, and a token in
+          # argv is a token in the process list. Same reason vsce gets its
+          # VSCE_PAT that way above.
+          npx ovsx publish archyne.vsix $CHANNEL --skip-duplicate
 
       # Kept whether or not the publish ran, so a dry run leaves something to
       # install by hand and a real one leaves the exact bytes that shipped.
