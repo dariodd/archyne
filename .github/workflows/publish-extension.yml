@@ -16,9 +16,19 @@ name: Publish the VS Code extension
 # commit that exists in history, gives the same repeatability as a tag without
 # minting a version number for a listing that may need three attempts to get
 # right the first time.
+# `v*` publishes the extension alongside an app release, which is what the
+# derived version means in practice: the extension's number moves only when
+# the app's does, so those are exactly the moments it has something new to
+# ship. `ext-v*` stays for the other case — republishing the extension alone,
+# without cutting a version of the app.
+#
+# Running on the same tag as `release.yml` is deliberate here, and is not the
+# trap described above: that one is an extension tag *accidentally* matching
+# `v*` and firing the npm release. This is the app's own tag, firing two
+# workflows that fail independently.
 on:
   push:
-    tags: ["ext-v*"]
+    tags: ["v*", "ext-v*"]
   workflow_dispatch:
     inputs:
       dry_run:

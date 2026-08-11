@@ -71,8 +71,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # A hyphen in a semver tag means a prerelease: v0.3.0-rc.1. GitHub
-          # will happily present one as the latest release unless told.
+          # A hyphen in a semver tag means a prerelease: v0.3.0-rc.1. The label
+          # stays, because the release is one.
+          #
+          # `--latest` is separate from it, and is set regardless: GitHub's
+          # "latest release" excludes prereleases, and with every Archyne
+          # release being an alpha that left /releases/latest resolving to the
+          # release *list* — which is where the README sends anyone after a
+          # desktop installer. Honest label, working link; the API keeps
+          # `prerelease` and `make_latest` apart precisely for this.
           case "$TAG" in
             *-*) prerelease=--prerelease ;;
             *) prerelease= ;;
@@ -80,7 +87,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; reusing it."
           else
-            gh release create "$TAG" --draft $prerelease \
+            gh release create "$TAG" --draft $prerelease --latest \
               --title "Archyne $TAG" --generate-notes
           fi
 
@@ -167,15 +174,21 @@ jobs:
       # automatically. No token either — that is the point.
       # `prepublishOnly` builds dist/, which `files` ships.
       #
-      # npm does not infer a dist-tag from the version: publishing
-      # 0.3.0-rc.1 without `--tag` would make it `latest`, so the next
-      # `npx archyne` would hand a stranger a release candidate.
+      # **Published to `latest`, alpha or not.** This used to go to `next`, on
+      # the reasoning that `npx archyne` should not hand a stranger a
+      # prerelease. That reasoning assumed a stable release existed to hand
+      # them instead; there has never been one, so `latest` sat on
+      # 0.1.0-alpha.1 — the build from before the import subsystem — and every
+      # newcomer got the oldest thing published rather than the safest.
+      #
+      # It has to happen here rather than as a `dist-tag` step afterwards:
+      # trusted publishing authorises `npm publish`, and nothing else. Moving
+      # a tag needs a real token, which would put back the long-lived
+      # credential this whole arrangement exists to avoid.
+      #
+      # `next` is left where it stands and is no longer maintained.
       - name: Publish
-        run: |
-          case "$TAG" in
-            *-*) npm publish --tag next ;;
-            *) npm publish ;;
-          esac
+        run: npm publish
 
   # Deliberately does not wait on the npm job: a registry problem should not
   # withhold the desktop downloads. That job failing still turns the run red,

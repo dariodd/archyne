@@ -20,6 +20,34 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [Unreleased]
+
+### Changed
+
+- **`npm install archyne` gives you the newest release.** It gave you
+  `0.1.0-alpha.1` — the build from before the import subsystem — because
+  releases published under the `next` dist-tag and `latest` was never moved.
+  The reasoning was that `npx archyne` should not hand a stranger a
+  prerelease, which assumed there was a stable release to hand them instead;
+  there has never been one, so the caution delivered the oldest build rather
+  than the safest. Releases now publish straight to `latest`, and `next` is no
+  longer maintained.
+
+  It has to be the publish itself rather than a tag moved afterwards: trusted
+  publishing authorises `npm publish` and nothing else, so the alternative was
+  a long-lived token in CI — which is the thing trusted publishing is for
+  avoiding.
+
+- **`/releases/latest` now resolves to a release.** Every Archyne release is a
+  prerelease, GitHub's "latest" excludes those, and the link the README gives
+  for desktop installers was landing on the release _list_. Releases are still
+  labelled prerelease, because they are; they are additionally marked latest,
+  which the API keeps as a separate flag for this exact case.
+
+- **An app release publishes the VS Code extension too.** The extension's
+  version is derived from the app's, so those are precisely the moments it has
+  anything new to ship; `ext-v*` still republishes it on its own.
+
 ## [0.3.1-alpha.1] — 2026-08-11
 
 A patch, not a minor, and the distinction is the one 0.3.0 drew: **what
