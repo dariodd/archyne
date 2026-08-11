@@ -1,9 +1,10 @@
 # Archyne for VS Code
 
 Draw Mermaid diagrams on a canvas, in the editor that already has the file
-open. The diagram stays an ordinary `.mmd` file: VS Code owns it, so the dirty
-dot, undo, save and the diff against `HEAD` all behave exactly as they do for
-the text.
+open — a `.mmd` file, or a ` ```mermaid ` block inside the Markdown you were
+already writing. The file stays ordinary: VS Code owns it, so the dirty dot,
+undo, save and the diff against `HEAD` all behave exactly as they do for the
+text.
 
 Nothing leaves your machine. The editor is bundled — no service, no account,
 no network call of its own.
@@ -21,6 +22,33 @@ canvas redraws.
 Seven diagram families can be edited on the canvas: flowchart, sequence, class,
 state, entity-relationship, C4 and `architecture-beta`. Anything else Mermaid
 can draw opens read-only, rendered rather than refused.
+
+## Mermaid inside Markdown
+
+Most Mermaid is not in a `.mmd` file — it is a fenced block in a README, an ADR
+or a page under `docs/`. Those get an **Open on canvas** action above the fence:
+
+````markdown
+```mermaid
+flowchart TD
+  api --> db
+```
+````
+
+Click it and the canvas opens beside the file, on that block alone. What you
+draw is written back into the same fence, with the rest of the document — and
+the block's own indentation, if it sits inside a list item — left alone. The
+command palette has the same thing as **Archyne: Open the Mermaid block at the
+cursor on the canvas**, which is also how to reach it without a mouse.
+
+Tilde fences and longer backtick fences work. A ` ```mermaid ` block nested
+inside a wider fence is example text about Mermaid rather than Mermaid, and is
+skipped, as is a block with no closing fence. Set
+`archyne.codeLens.enabled` to `false` to turn the action off.
+
+If the block is deleted while its canvas is open, Archyne stops writing to the
+file and says so once, rather than guessing at a neighbouring block. The panel
+stays open so you can copy your work out of it.
 
 ## Saving is VS Code's
 
