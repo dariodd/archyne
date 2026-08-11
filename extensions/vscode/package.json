@@ -1,0 +1,85 @@
+{
+  "name": "archyne",
+  "displayName": "Archyne — visual editor for Mermaid",
+  "description": "Draw Mermaid diagrams on a canvas, in the editor that already has the file open.",
+  "version": "0.1.0",
+  "publisher": "dariodd",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "mermaid",
+    "diagram",
+    "flowchart",
+    "uml",
+    "editor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dariodd/archyne.git",
+    "directory": "extensions/vscode"
+  },
+  "bugs": {
+    "url": "https://github.com/dariodd/archyne/issues"
+  },
+  "homepage": "https://github.com/dariodd/archyne/tree/main/extensions/vscode",
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "archyne.editor",
+        "displayName": "Archyne",
+        "selector": [
+          {
+            "filenamePattern": "*.mmd"
+          },
+          {
+            "filenamePattern": "*.mermaid"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "archyne.open",
+        "title": "Open in Archyne",
+        "category": "Archyne"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "archyne.open",
+          "when": "resourceExtname == .mmd || resourceExtname == .mermaid"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "archyne.open",
+          "when": "resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "bundle": "node scripts/bundle-app.mjs",
+    "compile": "tsc -p .",
+    "build": "npm run bundle && npm run compile",
+    "typecheck": "tsc -p . --noEmit",
+    "package": "npm run build && vsce package --out archyne.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.0",
+    "typescript": "~5.8.0"
+  }
+}

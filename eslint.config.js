@@ -15,6 +15,10 @@ export default tseslint.config(
       "node_modules/**",
       "public/embed-demo.html",
       "rendertest.html",
+      // Generated into the extension: its compiler output, and the copy of
+      // the built app it packages.
+      "extensions/*/out/**",
+      "extensions/*/media/**",
     ],
   },
 
@@ -62,6 +66,23 @@ export default tseslint.config(
   // Node-side code: MCP server, browser-driven tests, tooling.
   {
     files: ["mcp/**/*.ts", "tests/**/*.mts", "scripts/**/*.mjs", "*.config.{ts,js}"],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
+      ],
+    },
+  },
+
+  // VS Code extension host: Node, but a separate TypeScript project with its
+  // own dependencies, so it is listed rather than folded into the block above.
+  {
+    files: ["extensions/*/src/**/*.ts", "extensions/*/scripts/**/*.mjs"],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,

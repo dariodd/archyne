@@ -3,6 +3,10 @@ release
 build
 node_modules
 package-lock.json
+# Generated into the VS Code extension: compiler output and the copy of the
+# built app it packages.
+extensions/*/out
+extensions/*/media/app
 src/icon-names.generated.json
 THIRD-PARTY-NOTICES.md
 *.tsbuildinfo

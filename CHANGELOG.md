@@ -24,6 +24,21 @@ CSS class names and internal store shape are _not_ public API.
 
 ### Added
 
+- **The embed protocol gained a second transport, for VS Code webviews.** The
+  messages are unchanged — `load`, `getCode`, `export` in, `ready`, `change`,
+  `code`, `exported` out — and only the pipe differs: inside a webview there
+  is no framing page to answer, and the extension host sits behind
+  `acquireVsCodeApi()` instead. Hosts that embed Archyne in an iframe are
+  unaffected, including the default-deny origin allowlist, which the webview
+  does not carry and does not need: it is the top document, nothing may frame
+  it, and there is no second candidate an allowlist could exclude.
+
+  Its first consumer is a **VS Code extension**, in-tree at
+  `extensions/vscode/` and **not published anywhere yet**. It registers
+  Archyne as an optional editor for `.mmd`, so VS Code keeps owning the file
+  and the dirty dot, undo, save and the diff against `HEAD` all keep working
+  as they do for the text.
+
 - **A message is dragged to where it goes, into a loop or out of one.**
   Reordering was two buttons in the inspector moving one row at a time, which
   is a poor way to say "this one happens inside the retry" — and on the canvas

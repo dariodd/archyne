@@ -5,6 +5,13 @@ dist
 release
 sbom.json
 
+# Built into the VS Code extension: its compiled output, the copy of the app
+# it packages, and the package itself. All three are produced by
+# `extensions/vscode` → `npm run build`.
+extensions/*/out
+extensions/*/media/app
+extensions/*/*.vsix
+
 # Output of the browser-driven e2e scripts (tests/e2e-*.mts). They write their
 # renders beside the project so a failure can be looked at; none of it belongs
 # in history.

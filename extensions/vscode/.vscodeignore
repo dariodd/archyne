@@ -1,0 +1,10 @@
+# Sources and build inputs: the package ships `out/` and `media/app/`.
+src/**
+scripts/**
+tsconfig.json
+.gitignore
+**/*.map
+**/tsconfig.tsbuildinfo
+
+# The bundled editor carries its own demo page, which nothing here opens.
+media/app/embed-demo.html

@@ -19,8 +19,39 @@ import { buildExport, DEFAULT_EXPORT_OPTIONS, type ExportOptions } from "./expor
  * `&origin=https://host.example` (comma-separate several). Diagram content is
  * only ever posted to an origin on that list. `origin=*` restores the old
  * answer-anyone behaviour and exists for local development only.
+ *
+ * The same protocol has a second transport. Inside a VS Code webview there is
+ * no framing page to talk to — the extension host is on the other side of
+ * `acquireVsCodeApi()` instead — so the messages are identical and only the
+ * pipe differs. See `transport()` for why that one carries no allowlist.
  */
+
+/** VS Code's webview API. Declared here because it exists nowhere else. */
+interface VsCodeApi {
+  postMessage(message: unknown): void;
+}
+declare global {
+  interface Window {
+    acquireVsCodeApi?: () => VsCodeApi;
+  }
+}
+
+/**
+ * The host, whichever kind it is: somewhere to post to, and a rule for which
+ * arriving messages are really from it.
+ */
+interface Transport {
+  post: (msg: Record<string, unknown>) => void;
+  accepts: (e: MessageEvent) => boolean;
+}
+
+/** True inside a VS Code webview, where the extension host is the peer. */
+export function inWebview(): boolean {
+  return typeof window.acquireVsCodeApi === "function";
+}
+
 export function isEmbedded(): boolean {
+  if (inWebview()) return true;
   try {
     return new URLSearchParams(location.search).has("embed");
   } catch {
@@ -62,8 +93,30 @@ export function parseAllowedOrigins(search: string): string[] | typeof ANY_ORIGI
   return origins.length > 0 ? origins : null;
 }
 
-export function initEmbedBridge(): void {
-  if (window.parent === window) return;
+/**
+ * The pipe to the host, or null when there is no host to speak to and the
+ * bridge must stay shut.
+ *
+ * **Why the webview carries no allowlist.** An origin allowlist answers "which
+ * of the pages that can reach me may read the diagram", and a framing page is
+ * one of many — hence default-deny. A webview has no such ambiguity: it is the
+ * top document, nothing may frame it, and the extension host that created it
+ * is the only party on the other end of `acquireVsCodeApi`. There is no second
+ * candidate to distinguish the first from, so there is nothing an allowlist
+ * could exclude. What guards this pipe is the extension's `localResourceRoots`
+ * and the webview CSP, not an origin string.
+ */
+function transport(): Transport | null {
+  if (inWebview()) {
+    const vscode = window.acquireVsCodeApi!();
+    return {
+      post: (msg) => vscode.postMessage(msg),
+      // Only the extension host can post into its own webview.
+      accepts: () => true,
+    };
+  }
+
+  if (window.parent === window) return null;
   const target = window.parent;
 
   const allowed = parseAllowedOrigins(location.search);
@@ -74,7 +127,7 @@ export function initEmbedBridge(): void {
         "origin may read and write the diagram. Use `origin=*` for local " +
         "development only.",
     );
-    return;
+    return null;
   }
   const anyOrigin = allowed === ANY_ORIGIN;
   if (anyOrigin) {
@@ -84,22 +137,30 @@ export function initEmbedBridge(): void {
     );
   }
 
-  /**
-   * Post to every allowed origin. `postMessage` only delivers when the
-   * frame's actual origin matches the target, so naming several is safe —
-   * at most one of them can receive it.
-   */
-  const post = (msg: Record<string, unknown>) => {
-    if (anyOrigin) {
-      target.postMessage(msg, ANY_ORIGIN);
-      return;
-    }
-    for (const origin of allowed) target.postMessage(msg, origin);
+  return {
+    /**
+     * Post to every allowed origin. `postMessage` only delivers when the
+     * frame's actual origin matches the target, so naming several is safe —
+     * at most one of them can receive it.
+     */
+    post: (msg) => {
+      if (anyOrigin) {
+        target.postMessage(msg, ANY_ORIGIN);
+        return;
+      }
+      for (const origin of allowed) target.postMessage(msg, origin);
+    },
+    accepts: (e) => e.source === target && (anyOrigin || allowed.includes(e.origin)),
   };
+}
+
+export function initEmbedBridge(): void {
+  const host = transport();
+  if (!host) return;
+  const post = host.post;
 
   window.addEventListener("message", (e: MessageEvent) => {
-    if (e.source !== target) return;
-    if (!anyOrigin && !allowed.includes(e.origin)) return;
+    if (!host.accepts(e)) return;
     const msg = e.data as { type?: unknown; code?: unknown; options?: unknown };
     if (!msg || typeof msg.type !== "string") return;
     const s = useGraphStore.getState();
