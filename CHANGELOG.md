@@ -16,9 +16,69 @@ purposes:
   Mermaid
 - the **embed `postMessage` protocol** (`src/embed.ts`)
 - the **MCP tool names and their schemas** (`mcp/server.ts`)
+- the **`archyne-render` entry points** and the options they take, whose version
+  is the same as this one
 
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
+
+## [0.4.0-alpha.1] — 2026-08-13
+
+**Archyne's renderer is now a package you can install.** `archyne-render` draws
+a Mermaid diagram as a self-contained SVG string — real geometry, real text, its
+own colours inlined — so the picture survives the page that made it. It is not
+an alternative to Mermaid: Mermaid still does the parsing, and this draws what
+it parsed, with ELK layout and orthogonal edge routing.
+
+Why it matters: every Markdown preview that draws diagrams bundles a library or
+shells out to a binary, and none of them offers a hook where a third-party
+extension supplies the renderer. Archyne could only ever be _embedded_ — an
+iframe and a `postMessage` protocol. It can now be imported.
+
+What Archyne writes has not changed. A file saved by this release is
+byte-identical to one saved by the last.
+
+The rest of the release follows from the same work. Making a picture without a
+browser meant a node's size had to be _worked out_ rather than assumed, and the
+constants that stood in for it were wrong in ways nothing had ever checked — so
+auto-layout, the draw.io import and the SVG export all move with it.
+
+### Added
+
+- **`archyne-render` on npm.** Two entry points, because they cost differently:
+  `archyne-render` draws a graph you have already parsed and laid out, and runs
+  anywhere JavaScript does — no DOM, no Mermaid, no dependencies at all.
+  `archyne-render/mermaid` parses and lays out for you, bringing Mermaid as an
+  optional peer and ELK lazily. It draws all seven families Archyne edits, and
+  refuses a diagram kind it does not know rather than returning half a picture.
+
+### Changed
+
+- **Exporting to SVG gives you an SVG.** The vector download used to be
+  html-to-image's capture of the live page: one enormous `<foreignObject>` full
+  of HTML, which opens in a browser and nowhere else — not in an `<img>`, not on
+  GitHub, not in Inkscape, not in a PDF tool. It is now geometry and text: shapes as
+  `<rect>` and `<path>`, labels as `<text>`, and the colours inlined so nothing
+  resolves against the page it lands in. PNG and PDF are unchanged, which is the
+  right tool for a raster.
+
+- **Nodes are sized by what is written in them.** The layout engine was being
+  handed constants — every state 150×46, every entity and class exactly 210
+  wide, whatever they contained — so it reserved room for a diagram other than
+  the one on screen. Sizes are measured now, which shows up as auto-layout
+  leaving the right gaps rather than approximately right ones.
+
+### Fixed
+
+- **A drawing imported from draw.io is no longer packed too tightly.** The
+  import works out how much to stretch the original coordinates by asking how
+  much room a service needs, and it asked with a node carrying **no name** — a
+  question whose answer was 23px short of the truth for every labelled node in
+  the file. Nodes could end up overlapping, and spilling out of the subnet they
+  belonged to.
+
+- **A C4 element is the height it should be.** Every one of them reserved room
+  for the 26px disc that only a _person_ draws.
 
 ## [0.3.2-alpha.1] — 2026-08-11
 
