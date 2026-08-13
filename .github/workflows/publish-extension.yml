@@ -2,11 +2,13 @@ name: Publish the VS Code extension
 
 # Kept apart from `release.yml`, for two reasons that are worth stating.
 #
-# The first is a trap. That workflow triggers on `tags: ["v*"]`, and `v*`
-# matches `vscode-v0.1.0` as happily as `v0.3.0` — so an extension tag under
-# any name beginning with `v` would fire the npm release and republish
-# whatever `package.json` reads, which burns a version number irreversibly.
-# This one takes `ext-v*`, which that pattern cannot match.
+# The first is a trap, now closed. `release.yml` used to trigger on
+# `tags: ["v*"]`, and `v*` matches `vscode-v0.1.0` as happily as `v0.3.0` — so
+# an extension tag under any name beginning with `v` would have fired the npm
+# release and republished whatever `package.json` read, burning a version
+# number irreversibly. That workflow now requires a digit after the `v`
+# (`v[0-9]*`), and this one takes `ext-v*`, which neither pattern can match.
+# Both halves are kept: the prefix is the intent, the digit is the guard.
 #
 # The second is that they fail differently. A rejected Marketplace publish
 # should not leave a half-finished npm release behind it, and an extension
@@ -16,19 +18,19 @@ name: Publish the VS Code extension
 # commit that exists in history, gives the same repeatability as a tag without
 # minting a version number for a listing that may need three attempts to get
 # right the first time.
-# `v*` publishes the extension alongside an app release, which is what the
+# `v[0-9]*` publishes the extension alongside an app release, which is what the
 # derived version means in practice: the extension's number moves only when
 # the app's does, so those are exactly the moments it has something new to
 # ship. `ext-v*` stays for the other case — republishing the extension alone,
 # without cutting a version of the app.
 #
 # Running on the same tag as `release.yml` is deliberate here, and is not the
-# trap described above: that one is an extension tag *accidentally* matching
-# `v*` and firing the npm release. This is the app's own tag, firing two
+# trap described above: that one was some *other* artifact's tag accidentally
+# matching, and firing the npm release. This is the app's own tag, firing two
 # workflows that fail independently.
 on:
   push:
-    tags: ["v*", "ext-v*"]
+    tags: ["v[0-9]*", "ext-v*"]
   workflow_dispatch:
     inputs:
       dry_run:

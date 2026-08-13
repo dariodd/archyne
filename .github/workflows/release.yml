@@ -19,9 +19,17 @@ name: Release
 # as workflow artifacts. Artifacts expire, require a login to download, and
 # are not linked from the Releases page — which makes them useless as the
 # answer to "where do I get the app".
+#
+# The trigger is `v[0-9]*` and not `v*` on purpose. `v*` matches `vscode-v0.1.0`
+# and `render-v0.1.0` as happily as `v0.3.0`, so tagging any *other* artifact
+# with a name beginning with `v` would fire this workflow and publish whatever
+# `package.json` reads at that moment — burning a version number on npm, which
+# cannot be undone. Requiring a digit after the `v` leaves this workflow with
+# only the application's own tags. `publish-extension.yml` matches `ext-v*`
+# precisely so it never collides here.
 on:
   push:
-    tags: ["v*"]
+    tags: ["v[0-9]*"]
   workflow_dispatch:
     inputs:
       tag:
