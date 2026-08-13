@@ -6,6 +6,19 @@
  * are build-time tooling and are not distributed in `dist/`.
  *
  * Run:  npm run sbom
+ *
+ * **`dependencies` here means "in the shipped bundle", not "npm must install
+ * it".** The published tarball is `bin/` and `dist/`: `bin/archyne.mjs` imports
+ * nothing but Node builtins, and `dist/` is a resolved Vite bundle, so a
+ * consumer loads none of these at run time — `npm i archyne` fetches 267
+ * packages it will never open, and moving them to devDependencies would make
+ * that number nearly zero.
+ *
+ * Do not. React, Mermaid and the Iconify collections *are* in `dist/`, and this
+ * file and `audit-gate.mjs` are how their licences get disclosed and their
+ * advisories gate a release. Pruning the declaration for install size would
+ * trade a supply-chain guarantee for a download, silently, and the tooling
+ * would go on passing with nothing left to check.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";

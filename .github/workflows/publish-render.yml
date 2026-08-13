@@ -1,0 +1,104 @@
+name: Publish the renderer
+
+# `archyne-render` is the editor's drawing engine, packaged so other tools can
+# import it. It ships from here rather than from `release.yml` for the reason
+# the extension does: the three artifacts fail differently, and a rejected
+# publish of one should not leave a half-finished release of another behind it.
+#
+# The tag is `render-v*`, which `release.yml`'s `v[0-9]*` cannot match — that
+# separation is deliberate and was made before this workflow existed, because a
+# tag beginning with `v` firing the app's release would republish whatever
+# `package.json` read at that moment and burn a version number irreversibly.
+#
+# It also triggers on the app's own tags. The version is identical to the app's
+# and checked in CI, so those are exactly the moments this has something new to
+# ship; `render-v*` stays for the other case — republishing the renderer alone,
+# without cutting a version of the app.
+#
+# **Trusted publishing.** npm accepts the publish because of an OIDC token
+# minted for this exact workflow *filename*, registered against the package on
+# npmjs.com — not because of a secret stored here. Renaming this file breaks
+# the publish until that setting is updated to match. The first version,
+# 0.3.2-alpha.1, was published by hand to create the package, since a package
+# that does not exist has no settings to register against; every version after
+# it comes from here, with provenance.
+on:
+  push:
+    tags: ["v[0-9]*", "render-v*"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and pack, but do not publish
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The whole mechanism: the job mints a short-lived OIDC token that npm
+      # verifies against the trusted publisher registered for this package.
+      # Nothing long-lived to leak, and nothing to rotate.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          # npm's own guidance for release builds: a restored cache is not
+          # worth the chance of it influencing what gets published.
+          package-manager-cache: false
+
+      # Trusted publishing needs npm 11.5.1 or newer, and Node 22 ships npm 10.
+      # Without this the publish fails on a version check.
+      - run: npm install -g npm@latest
+      - run: npm --version
+
+      # The package builds from `src/render/`, so the repository's own
+      # dependencies are what it compiles against.
+      - run: npm ci
+
+      # Redundant with the CI check, and cheap: this is the last moment before
+      # a number reaches a public registry, where it cannot be taken back.
+      - name: Version follows the app
+        run: node packages/render/scripts/sync-version.mjs --check
+
+      # Builds, then refuses the build if the bundle has picked up React,
+      # xyflow, Zustand or the Iconify collections — each of which has been in
+      # it at least once, and any of which makes this an application rather
+      # than a library.
+      - name: Build
+        run: node packages/render/scripts/build.mjs
+
+      # Packs the tarball, installs it into a temporary directory outside the
+      # tree and imports it by name. An `exports` map naming a file `files`
+      # does not ship, or a dependency that was really a devDependency, can
+      # only fail here — inside the repository every path resolves.
+      - name: Consumable from outside
+        run: node packages/render/scripts/smoke.mjs
+
+      # No `--provenance` flag: publishing this way generates the attestation
+      # automatically. No token either — that is the point.
+      #
+      # `--tag latest` is not optional. npm refuses a version carrying a
+      # prerelease suffix without an explicit tag ("You must specify a tag
+      # using --tag when publishing a prerelease version"), and every version
+      # of this package will carry one for a while. A bare `npm publish` here
+      # would fail the whole job, which is exactly what it did to the app's
+      # release once.
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --tag latest
+        working-directory: packages/render
+
+      - name: Dry run — what would have shipped
+        if: ${{ inputs.dry_run }}
+        run: npm publish --tag latest --dry-run
+        working-directory: packages/render
