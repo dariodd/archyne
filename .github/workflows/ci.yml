@@ -36,6 +36,20 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # `measureNode` works out a node's box from padding, floors and type sizes
+      # that `src/styles.css` also states. They are extracted rather than
+      # copied, and this fails if the stylesheet has moved on without them —
+      # which would otherwise be silent until a diagram looked wrong.
+      - name: Box model matches the stylesheet
+        run: npm run boxmodel:check
+
+      # Weight is most of what "easy to import" means, and the shape matters
+      # more than the number: this fails if the renderer's import graph ever
+      # reaches React, xyflow, zustand or Mermaid, which would make it an
+      # application again rather than a library.
+      - name: Renderer stays small and first-party
+        run: npm run size:render
+
       - name: Unit tests
         run: npm test
 
@@ -56,6 +70,21 @@ jobs:
       # bumped the app and forgot the extension.
       - name: VS Code extension version follows the app
         run: node extensions/vscode/scripts/sync-version.mjs --check
+
+      - name: Renderer package version follows the app
+        run: node packages/render/scripts/sync-version.mjs --check
+
+      # Builds `archyne-render` from `src/render/`, then packs it, installs the
+      # tarball into a temporary directory outside the tree and imports it by
+      # name. That is the only place an `exports` map naming a missing file, or
+      # a devDependency that was really a dependency, can fail — inside the
+      # repository every path resolves. The build itself refuses to produce a
+      # bundle containing React, xyflow, Zustand or the Iconify collections,
+      # each of which has been in it at least once.
+      - name: Renderer package is consumable
+        run: |
+          node packages/render/scripts/build.mjs
+          node packages/render/scripts/smoke.mjs
 
       # Production dependencies only, gated at high/critical, with written
       # exceptions in audit-allow.json — see scripts/audit-gate.mjs.
@@ -138,6 +167,23 @@ jobs:
         run: npm run test:e2e:resize
         env:
           ARCHYNE_URL: http://localhost:5173
+
+      # `measureNode` works out a node's box without a browser, from constants
+      # copied by hand out of `src/styles.css`. A copied constant is wrong the
+      # moment somebody edits the original, and nothing else would notice —
+      # the editor re-measures every node a frame later and papers over it.
+      # This compares the two where both answers exist.
+      - name: Node measurement matches the browser
+        run: npm run test:e2e:measure
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      # Deliberately without `ARCHYNE_URL`: this one never opens the app. It
+      # builds an SVG string in Node, writes it to a file, and asks a browser
+      # to open that file cold — which is the whole claim behind the renderer,
+      # and would be untested by anything that went through the dev server.
+      - name: A rendered SVG stands on its own
+        run: npm run test:e2e:render
 
       - name: Side panel and editor
         run: npm run test:e2e:panel
