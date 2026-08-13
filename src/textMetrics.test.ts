@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { BOX_MODEL } from "./render/boxModel.generated";
+import { WIDTH_TABLES } from "./widthTable.generated";
 import {
   NODE_FONT,
   approximateTextMetrics,
   cached,
+  faceKey,
   measureBlock,
   resetTextMetrics,
   textMetrics,
@@ -166,5 +169,58 @@ describe("measuring a block", () => {
 
   it("is nothing at all when there is nothing to draw", () => {
     expect(measureBlock("", font, 100, fixed)).toEqual({ width: 0, height: 0, ascent: 0 });
+  });
+});
+
+describe("the measured width table", () => {
+  /**
+   * Every face the stylesheet letters something in has to be one the table
+   * measured.
+   *
+   * The two generated files are read from different sources — `BOX_MODEL` from
+   * `styles.css`, the widths from fonts in a browser — and nothing links them.
+   * Add a `font-weight: 700` heading to the stylesheet and the box model picks
+   * it up on the next `npm run boxmodel`, while the table quietly keeps
+   * answering with 600: a Node-rendered label would come out narrow, and only
+   * a pre-rendered file would ever show it. This is the link.
+   */
+  it("covers every face the box model asks for", () => {
+    const faces: FontSpec[] = [];
+    const walk = (v: unknown): void => {
+      if (!v || typeof v !== "object") return;
+      const o = v as Record<string, unknown>;
+      if ("fontSize" in o || "fontFamily" in o || "fontWeight" in o) {
+        faces.push({
+          family: String(o.fontFamily ?? BOX_MODEL.fontFamily),
+          size: Number(o.fontSize ?? 12),
+          ...(o.fontWeight ? { weight: String(o.fontWeight) } : {}),
+        });
+      }
+      for (const child of Object.values(o)) walk(child);
+    };
+    walk(BOX_MODEL);
+
+    expect(faces.length).toBeGreaterThan(0);
+    const uncovered = faces
+      .map((f) => faceKey(f))
+      .filter((key) => !WIDTH_TABLES[key])
+      .sort();
+    expect([...new Set(uncovered)]).toEqual([]);
+  });
+
+  it("gives a semibold string more room than a regular one", () => {
+    // Not a detail: `approximateWidth` used to ignore weight entirely, so every
+    // bold label was measured as though it were 400 and came out narrow.
+    const m = approximateTextMetrics();
+    const regular = m.measure("Authentication service", NODE_FONT).width;
+    const semibold = m.measure("Authentication service", { ...NODE_FONT, weight: "600" }).width;
+    expect(semibold).toBeGreaterThan(regular);
+  });
+
+  it("falls back to the width classes for a script it never measured", () => {
+    // The table is Latin. A CJK label has to still get a sane number rather
+    // than nothing, which is what an unguarded lookup would return.
+    const m = approximateTextMetrics();
+    expect(m.measure("テスト", NODE_FONT).width).toBeGreaterThan(0);
   });
 });

@@ -50,6 +50,15 @@ globalThis.document = dom.window.document;
 const { render } = await import("archyne-render/mermaid");
 ```
 
+Text is measured a little differently in the two places, and it is worth knowing
+which you are in. A browser is asked directly, through canvas `measureText`, and
+the answer is exact. Node has no canvas — jsdom does not implement one — so
+widths are summed from a table of per-glyph advances measured from the same
+fonts. On a typical label the two agree to the rounding; what the table cannot
+see is kerning, so a string like "AVATAR" comes out a few percent wide. It errs
+wide rather than narrow, which is the harmless direction: a box slightly too big
+clips nothing.
+
 ## Three ways to plug it in
 
 Whatever draws your Markdown — VS Code's built-in preview, Markdown Preview

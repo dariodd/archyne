@@ -185,6 +185,16 @@ jobs:
       - name: A rendered SVG stands on its own
         run: npm run test:e2e:render
 
+      # `src/widthTable.generated.ts` is a measurement of fonts, committed, and
+      # a committed measurement goes stale silently — the editor re-measures a
+      # frame later and papers over it, so only a pre-rendered file would show
+      # the damage. The generator's own `--check` cannot run here (this runner
+      # has neither Segoe UI nor Cascadia Code); this asks the runner what *it*
+      # would paint and compares, which is a question any machine can answer
+      # about itself. It knows which regime it is in and says so.
+      - name: The browser-free measurement holds up
+        run: npm run test:e2e:metrics
+
       # The package README tells a reader how to plug the renderer into their
       # Markdown preview, their build step, or their file watcher. Instructions
       # rot silently — the API moves, the snippet stops working, and nobody

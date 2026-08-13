@@ -26,6 +26,7 @@
  * because the drawing layer above never encodes the assumption.
  */
 import { LABEL_SIZE } from "./model/types";
+import { WIDTH_TABLES } from "./widthTable.generated";
 
 /** A font, in the terms both CSS and canvas understand. */
 export interface FontSpec {
@@ -102,39 +103,67 @@ function fontKey(font: FontSpec): string {
 /* ---------- the approximation ---------- */
 
 /**
- * Character widths as a fraction of the type size.
+ * Character widths as a fraction of the type size, for anything the measured
+ * table does not cover.
  *
- * A flat average — which is what `framelessSize` uses today, at 0.58 — reads
+ * A flat average — which is what `framelessSize` used to do, at 0.58 — reads
  * "Illinois" and "Womanhood" as the same width, and they differ by nearly half.
  * Four classes is not precision, but it is the difference between a fallback
  * that is roughly right and one that is wrong in a way you can see.
  *
  * These are eyeballed against Segoe UI and are not claimed to be more than
- * that. The fallback exists so that a node which has never been on screen has a
- * sane size, and so that the test environment is deterministic — jsdom
- * implements neither `getBBox` nor a canvas context. Anything that needs to be
- * *correct* must run where `exact` is true.
+ * that. They now answer only for characters outside `WIDTH_TABLES` — CJK,
+ * emoji, anything in a script a table of a Latin font could not describe — for
+ * which they are a poor answer that is nonetheless the honest one.
  */
 const NARROW = new Set(" iljtfrI.,'!|()[]{};:`");
 const WIDE = new Set("mwMW@");
 const CAPITAL = /[A-Z0-9]/;
 
-function approximateWidth(text: string, size: number): number {
+function classWidth(ch: string): number {
+  if (NARROW.has(ch)) return 0.33;
+  if (WIDE.has(ch)) return 0.92;
+  if (CAPITAL.test(ch)) return 0.62;
+  return 0.52;
+}
+
+/**
+ * Which measured face a request lands on.
+ *
+ * The table is keyed by the two stacks the stylesheet uses and the two weights
+ * it asks for, because advance widths do not scale with weight — a semibold
+ * label is wider than the same string at 400, and reading one table for both
+ * understated every bold string. A weight nobody measured rounds to the nearer
+ * of the two rather than being refused: half a table is better than none.
+ */
+export function faceKey(font: FontSpec): string {
+  const mono = /mono|cascadia|consolas|courier/i.test(font.family);
+  if (mono) return "mono/400";
+  const weight = Number(font.weight ?? 400);
+  return Number.isFinite(weight) && weight >= 500 ? "sans/600" : "sans/400";
+}
+
+/**
+ * A string's advance width, summed from measured glyphs.
+ *
+ * What this cannot see is kerning: a browser tucks "AV" and "To" closer than
+ * the two advances imply, so those strings come out a few percent wide. Every
+ * other string in the sample was exact to the rounding. Storing kern pairs
+ * would close that too, at several times the size for a handful of labels, and
+ * erring wide is the safe direction — a box a little too big clips nothing.
+ */
+function approximateWidth(text: string, font: FontSpec): number {
+  const table = WIDTH_TABLES[faceKey(font)];
   let ratio = 0;
-  for (const ch of text) {
-    if (NARROW.has(ch)) ratio += 0.33;
-    else if (WIDE.has(ch)) ratio += 0.92;
-    else if (CAPITAL.test(ch)) ratio += 0.62;
-    else ratio += 0.52;
-  }
-  return ratio * size;
+  for (const ch of text) ratio += table?.[ch] ?? classWidth(ch);
+  return ratio * font.size;
 }
 
 const approximateMetrics: TextMetrics = {
   exact: false,
   measure(text, font) {
     return {
-      width: approximateWidth(text, font.size),
+      width: approximateWidth(text, font),
       height: font.size * NORMAL_LINE_HEIGHT,
       ascent: font.size * NORMAL_ASCENT,
     };
