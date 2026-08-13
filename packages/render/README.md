@@ -179,6 +179,19 @@ Note what this one needs that the others do not: the SVG has to render as an
 `<foreignObject>`, which is the difference between this working and coming back
 as boxes with no words in them.
 
+## Rendering a whole directory
+
+`render()` is safe to call concurrently and will not go any faster for it.
+Mermaid's parser keeps one database per diagram family, as a module singleton
+that every parse clears before it starts, so all parsing here goes through a
+lock. `Promise.all` over five hundred fences is correct and finishes in the same
+time as a `for` loop: **throughput is one diagram at a time, per process.**
+
+If that is too slow, the unit to multiply is the process — a worker pool, one
+`render()` at a time in each — not the number of calls in flight. A rejected
+parse does not strand the ones queued behind it, so one malformed diagram in a
+directory costs you that diagram and nothing else.
+
 ## What the output is
 
 Geometry as `<rect>`, `<path>` and `<polygon>`; labels as `<text>` with the line
