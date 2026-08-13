@@ -42,6 +42,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "prepublishOnly": "node scripts/build.mjs && node scripts/sync-version.mjs --check",
     "version:sync": "node scripts/sync-version.mjs",
     "version:check": "node scripts/sync-version.mjs --check",
     "smoke": "node scripts/smoke.mjs"
