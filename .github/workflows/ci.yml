@@ -195,6 +195,18 @@ jobs:
       - name: Every recipe in the README runs
         run: npm run test:e2e:recipes
 
+      # `test:e2e:measure` pins the geometry the canvas and the emitter agree
+      # on; this pins the paint, which is where four defects got through a
+      # green suite — a `fill` attribute the document's own `<style>` beat, a
+      # `classDef` never read, `style` statements ignored by three families,
+      # and labels in a `<foreignObject>` that nothing paints. Each was
+      # invisible to an assertion about a string, so both pictures are read
+      # here with `getComputedStyle` instead, in the same browser.
+      - name: The canvas and the emitter paint the same colours
+        run: npm run test:e2e:paint
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Side panel and editor
         run: npm run test:e2e:panel
         env:
