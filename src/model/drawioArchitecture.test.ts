@@ -174,7 +174,11 @@ describe("a real drawing, read as architecture", () => {
     // than the flat box it had in draw.io — so the arrangement is intact
     // while nothing is packed into a slot too small for it.
     const vpc = positions!.amazon_vpc;
-    expect(vpc.w! / vpc.h!).toBeCloseTo(960 / 680, 3);
+    // Two decimals, not three: both sides are whole pixels, so the ratio of
+    // the stretched box can only match the original up to that rounding, and
+    // how far off it lands depends on the factor rather than on anything the
+    // reader would call a change in behaviour.
+    expect(vpc.w! / vpc.h!).toBeCloseTo(960 / 680, 2);
     expect(vpc.w!).toBeGreaterThan(960);
     expect(Object.keys(positions?.aws_waf_firewall_applica ?? {})).toEqual(["x", "y"]);
   });
@@ -189,9 +193,14 @@ describe("a real drawing, read as architecture", () => {
     const vpc = positions.amazon_vpc;
     const monitoring = positions.monitoraggio_sicurezza;
 
-    // 96px of node in a 60px slot: everything grows by the same 1.6.
-    expect(vpc.w).toBe(Math.round(960 * 1.6));
-    expect(monitoring.x).toBe(Math.round(1030 * 1.6));
+    // The factor itself is not the claim, and pinning it made this fail the
+    // day nodes started being measured instead of assumed a flat 110×96. What
+    // is the claim: the space grew, and every coordinate grew by the one
+    // factor — so whatever a service turns out to need, the arrangement it was
+    // drawn in survives.
+    const factor = vpc.w! / 960;
+    expect(factor).toBeGreaterThan(1);
+    expect(monitoring.x! / 1030).toBeCloseTo(factor, 2);
   });
 
   it("nests the subnets inside the VPC", () => {

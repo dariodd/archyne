@@ -278,6 +278,32 @@ export const C4_SHAPES = [
 ] as const;
 export type C4Shape = (typeof C4_SHAPES)[number];
 
+/**
+ * What each C4 shape is called on the node, drawn in guillemets above the name.
+ *
+ * Here rather than beside the component that draws it because it is a fact
+ * about the model, and because measurement needs it too: the tag is a line of
+ * text inside the box, so a node's height depends on it, and `measureNode`
+ * cannot import a React component to find out what it says. A shape with no
+ * entry falls back to its own name.
+ */
+export const C4_TAGS: Record<string, string> = {
+  person: "Person",
+  external_person: "Person (ext)",
+  system: "System",
+  external_system: "System (ext)",
+  system_db: "System DB",
+  system_queue: "System Queue",
+  container: "Container",
+  external_container: "Container (ext)",
+  container_db: "Container DB",
+  container_queue: "Container Queue",
+  component: "Component",
+  external_component: "Component (ext)",
+  component_db: "Component DB",
+  component_queue: "Component Queue",
+};
+
 export interface C4NodeData extends Record<string, unknown> {
   label: string;
   c4Shape: C4Shape;
@@ -453,59 +479,16 @@ export function labelSize(styles: string[] | undefined): number {
   return m ? Number(m[1]) : LABEL_SIZE;
 }
 
-/**
- * What an unframed picture takes up: the picture, its label, and the padding
- * `.shape-label.with-image` puts around the pair.
+/*
+ * `estimateSize` used to live here: one constant per node type — 150×46 for
+ * any state, a flat 210 wide for every entity and class — as the size to lay
+ * out with before the browser had measured anything.
  *
- * The label's width is guessed from its length rather than measured — there
- * is no text metric in this layer — but it is scaled by the type size the
- * node asks for, since `font-size:24px` makes every character of it half
- * again as wide. A guess either way, and enough: this is only the estimate
- * used before the browser has measured the node, and every caller prefers
- * `measured` when there is one.
+ * It is gone, and `measureNode` in `src/measureNode.ts` answers instead, by
+ * measuring the text the node actually carries. The constants were harmless
+ * while the only consumer was an editor that re-measured a frame later; they
+ * stop being harmless the moment something has to draw the diagram without a
+ * browser, because then the guess is the final answer. The floors those
+ * constants encoded did not disappear — `defaultSize` above still holds the
+ * ones that are real, and the rest came from the stylesheet.
  */
-function framelessSize(data: ShapeNodeData): { width: number; height: number } {
-  const w = data.imgWidth ?? IMG_SIZE;
-  const h = data.imgHeight ?? IMG_SIZE;
-  const px = labelSize(data.styles);
-  return {
-    width: Math.round(Math.max(w, data.label.length * 0.58 * px) + 16),
-    height: Math.round(h + px + 18),
-  };
-}
-
-/** Size estimate for layout when the node hasn't been measured yet. */
-export function estimateSize(n: AnyNode): { width: number; height: number } {
-  switch (n.type) {
-    case "shape":
-      return n.data.img && isFrameless(n.data.styles)
-        ? framelessSize(n.data)
-        : defaultSize(n.data.shape);
-    case "state": {
-      const t = n.data.stateType;
-      if (t === "normal") return { width: 150, height: 46 };
-      if (t === "choice") return { width: 40, height: 40 };
-      if (t === "fork" || t === "join") return { width: 70, height: 12 };
-      return { width: 28, height: 28 };
-    }
-    case "entity":
-      return { width: 210, height: 36 + Math.max(1, n.data.attributes.length) * 22 };
-    case "class":
-      return {
-        width: 210,
-        height: 38 + (n.data.members.length + n.data.methods.length) * 20 + 12,
-      };
-    case "participant":
-      return { width: 150, height: 48 };
-    case "note":
-      return { width: 150, height: 64 };
-    case "service":
-      return { width: 110, height: 96 };
-    case "junction":
-      return { width: 16, height: 16 };
-    case "c4":
-      return { width: 200, height: 110 };
-    default:
-      return { width: 320, height: 220 };
-  }
-}

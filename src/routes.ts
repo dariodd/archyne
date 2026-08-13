@@ -13,7 +13,7 @@
  * kept until the nodes or the edges change. React renders every edge in one
  * pass from the same arrays, so the first edge to ask pays and the rest read.
  */
-import { absoluteBoxes } from "./store";
+import { absoluteBoxes } from "./boxes";
 import { isGroup, type AnyNode, type DiagramKind, type FlowEdge } from "./model/types";
 import {
   attachPoint,

@@ -14,7 +14,7 @@
  * can survive, and they survive as the anchors.
  */
 import type { AnyNode, ArchDir, FlowEdge, GroupNode, ServiceNode } from "./types";
-import { estimateSize } from "./types";
+import { measureNode } from "../measureNode";
 import { serializeArchitecture } from "./kinds/architecture";
 import { positionsLine, type PositionMap } from "./positions";
 import { idFactory } from "./importShared";
@@ -156,16 +156,22 @@ export function buildArchitecture(
    * them and they overlapped — and spilled out of the subnet they belong to.
    * Stretching the whole coordinate space by the worst case keeps every
    * relationship in the drawing while giving each node the room it draws in.
+   *
+   * Each cell is measured with the name it actually carries rather than one
+   * stand-in for all of them. That used to be a single constant, which quietly
+   * assumed every node was the same size as every other; a long name makes a
+   * wider node, and it is the widest one that decides whether the arrangement
+   * still fits.
    */
-  const natural = estimateSize({
-    id: "",
-    type: "service",
-    position: { x: 0, y: 0 },
-    data: { label: "", icon: "", direction: "TB" },
-  });
   let scale = 1;
   for (const cell of cells) {
     if (cell.container || !cell.box) continue;
+    const natural = measureNode({
+      id: cell.id,
+      type: "service",
+      position: { x: 0, y: 0 },
+      data: { label: archLabel(cell.label), icon: "", direction: "TB" },
+    } as unknown as ServiceNode);
     scale = Math.max(
       scale,
       natural.width / Math.max(1, cell.box.w),
@@ -252,6 +258,9 @@ export function buildArchitecture(
     // every one. Centred on where the box was, so growing it does not push
     // the arrangement to one side.
     if (cell.box) {
+      // Centred on the size *this* node draws at, which is the node just
+      // built rather than a stand-in for all of them.
+      const natural = measureNode(service);
       positions[id] = {
         x: (cell.box.x + cell.box.w / 2) * scale - natural.width / 2,
         y: (cell.box.y + cell.box.h / 2) * scale - natural.height / 2,

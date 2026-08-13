@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseDiagram, serializeDiagram } from "./diagram";
-import { LABEL_SIZE, defaultSize, estimateSize, labelSize, type ShapeNode } from "./types";
+import { LABEL_SIZE, defaultSize, labelSize, type ShapeNode } from "./types";
+import { measureNode } from "../measureNode";
 
 const WITH_IMAGE = `flowchart LR
   a@{ img: "https://api.iconify.design/logos/aws.svg", label: "AWS", pos: "t", w: 60, h: 60 }
@@ -78,8 +79,8 @@ describe("a node drawn with a picture", () => {
     // not silently make its node two thirds taller than its neighbours.
     const a = await shapeNode(WITH_IMAGE, "a");
     const b = await shapeNode(WITH_IMAGE, "b");
-    expect(estimateSize(a)).toEqual(estimateSize(b));
-    expect(estimateSize(a)).toEqual(defaultSize(a.data.shape));
+    expect(measureNode(a)).toEqual(measureNode(b));
+    expect(measureNode(a)).toEqual(defaultSize(a.data.shape));
   });
 
   it("but with the frame off it is the size of what it shows", async () => {
@@ -90,8 +91,8 @@ describe("a node drawn with a picture", () => {
     const a = await shapeNode(code, "a");
     const plain = defaultSize(a.data.shape);
     expect(a.data.styles).toEqual(["fill:none", "stroke:none"]);
-    expect(estimateSize(a).width).toBeLessThan(plain.width);
-    expect(estimateSize(a).height).toBeGreaterThan(plain.height);
+    expect(measureNode(a).width).toBeLessThan(plain.width);
+    expect(measureNode(a).height).toBeGreaterThan(plain.height);
   });
 
   it("and grows with the type size the node asks for", async () => {
@@ -100,15 +101,15 @@ describe("a node drawn with a picture", () => {
     // size of what it shows, is a bigger node for it.
     const off = "fill:none,stroke:none";
     const at = async (styles: string) =>
-      estimateSize(await shapeNode(`${WITH_IMAGE}  style a ${styles}\n`, "a"));
+      measureNode(await shapeNode(`${WITH_IMAGE}  style a ${styles}\n`, "a"));
 
     expect(labelSize([off, "font-size:24px"])).toBe(24);
     expect((await at(`${off},font-size:24px`)).height).toBeGreaterThan((await at(off)).height);
     // Width only follows once the label is the wider of the two: a three
     // letter name at 24px is still narrower than the 60px picture above it.
     const long = 'flowchart LR\n  a@{ img: "https://x/a.svg", label: "A long enough name" }\n';
-    const wide = estimateSize(await shapeNode(`${long}  style a ${off},font-size:24px\n`, "a"));
-    const narrow = estimateSize(await shapeNode(`${long}  style a ${off}\n`, "a"));
+    const wide = measureNode(await shapeNode(`${long}  style a ${off},font-size:24px\n`, "a"));
+    const narrow = measureNode(await shapeNode(`${long}  style a ${off}\n`, "a"));
     expect(wide.width).toBeGreaterThan(narrow.width);
   });
 
@@ -124,7 +125,7 @@ describe("a node drawn with a picture", () => {
     // A node with a border and no fill still has a frame to be fitted into.
     const code = `${WITH_IMAGE}  style a fill:none\n`;
     const a = await shapeNode(code, "a");
-    expect(estimateSize(a)).toEqual(defaultSize(a.data.shape));
+    expect(measureNode(a)).toEqual(defaultSize(a.data.shape));
   });
 
   it("hands back an `icon:` node unchanged rather than dropping it", async () => {

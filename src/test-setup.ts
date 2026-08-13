@@ -27,6 +27,26 @@ const storage: Storage = {
 
 Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
 
+/**
+ * A canvas that admits it has no context, quietly.
+ *
+ * `textMetrics()` asks for a 2D context to measure text with, and falls back to
+ * its approximation when there is none — which under jsdom there never is,
+ * because the optional `canvas` package is not installed and is not wanted for
+ * this. jsdom answers `null`, which is correct, but shouts "Not implemented:
+ * HTMLCanvasElement's getContext()" through the virtual console on the way,
+ * once per test file that measures anything. Fourteen lines of that in a green
+ * run reads like something is broken.
+ *
+ * So the answer is given directly. This changes nothing about what runs: `null`
+ * is what jsdom returns anyway, and the fallback engages exactly as it does in
+ * a real environment without a canvas.
+ */
+Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+  configurable: true,
+  value: () => null,
+});
+
 beforeEach(() => {
   store.clear();
 });

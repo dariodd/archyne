@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ViewportPortal } from "@xyflow/react";
 import { useGraphStore } from "../store";
 import { t } from "../i18n";
-import { estimateSize } from "../model/types";
+import { measureNode } from "../measureNode";
 import { SEQ_TOP, SEQ_SPACING, dropBlock, shiftedIndex, useSeqDrag } from "../seqLayout";
 
 interface Editing {
@@ -135,7 +135,7 @@ export function SequenceOverlay() {
   let maxX = -Infinity;
   for (const n of nodes) {
     if (n.type !== "participant") continue;
-    const w = n.measured?.width ?? estimateSize(n).width;
+    const w = n.measured?.width ?? measureNode(n).width;
     const cx = n.position.x + w / 2;
     centers.set(n.id, cx);
     actors.push(n.id);

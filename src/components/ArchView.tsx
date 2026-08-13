@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { type NodeProps } from "@xyflow/react";
-import type { JunctionNode, ServiceNode } from "../model/types";
+import { C4_TAGS, type JunctionNode, type ServiceNode } from "../model/types";
+import { ARCH_ICON_SIZE } from "../render/glyphSizes";
 import { getIconHtml } from "../icons";
 import { NodeResize } from "./NodeResize";
 import { SideHandles } from "./SideHandles";
@@ -54,7 +55,7 @@ export function ServiceNodeView({ id, data, selected }: NodeProps<ServiceNode>) 
       onDoubleClick={rename.begin}
     >
       <NodeResize id={id} visible={selected} />
-      {data.icon && <IconView name={data.icon} size={44} />}
+      {data.icon && <IconView name={data.icon} size={ARCH_ICON_SIZE} />}
       {/* The field goes inside the label rather than in place of it: that
           element carries the type size a service name is drawn at, and a
           field standing outside it is a field of a different size — six
@@ -72,23 +73,6 @@ export function JunctionNodeView({ selected }: NodeProps<JunctionNode>) {
     </div>
   );
 }
-
-const C4_TAGS: Record<string, string> = {
-  person: "Person",
-  external_person: "Person (ext)",
-  system: "System",
-  external_system: "System (ext)",
-  system_db: "System DB",
-  system_queue: "System Queue",
-  container: "Container",
-  external_container: "Container (ext)",
-  container_db: "Container DB",
-  container_queue: "Container Queue",
-  component: "Component",
-  external_component: "Component (ext)",
-  component_db: "Component DB",
-  component_queue: "Component Queue",
-};
 
 export function C4NodeView({ id, data, selected }: NodeProps<import("../model/types").C4Node>) {
   const external = data.c4Shape.startsWith("external_");

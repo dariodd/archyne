@@ -1,3 +1,4 @@
+import { ACTOR_GLYPH } from "../render/glyphSizes";
 /**
  * The stick figure that marks a sequence actor.
  *
@@ -17,8 +18,8 @@ export function ActorGlyph() {
   return (
     <svg
       className="actor-icon"
-      width={14}
-      height={17}
+      width={ACTOR_GLYPH.width}
+      height={ACTOR_GLYPH.height}
       viewBox="15 1 18 22"
       fill="none"
       stroke="currentColor"

@@ -15,6 +15,17 @@
   --accent-strong: #5e6ed4;
   --node-fill: #1c1f2b;
   --node-stroke: #7e8bdd;
+  /* Connections and their labels. Here rather than only in TypeScript because
+     they are theme colours like any other — and because `renderSvg` paints an
+     SVG that has no document to resolve a variable against, so the values are
+     extracted from these declarations at build time. See
+     `scripts/build-box-model.mjs`. */
+  --edge: #8b91a3;
+  --edge-label: #e6e9f0;
+  --edge-label-bg: #20242f;
+  /* What a hollow arrowhead is filled with, so the line under it does not
+     show through. The ground, in other words. */
+  --marker-hollow: #12141a;
   --error: #e06c6c;
   --checker-a: #1f2128;
   --checker-b: #16171d;
@@ -54,6 +65,10 @@
   --accent-strong: #384abc; /* already 7.3:1 against white */
   --node-fill: #ffffff;
   --node-stroke: #384abc;
+  --edge: #5f6673;
+  --edge-label: #1c2230;
+  --edge-label-bg: #ffffff;
+  --marker-hollow: #ffffff;
   --error: #c23c3c;
   --checker-a: #e6e7ee;
   --checker-b: #f3f4f8;
@@ -664,7 +679,19 @@ body.resizing-side {
   stroke-width: 1.5;
 }
 
-/* ---------- canvas / nodes ---------- */
+/* ---------- canvas / nodes ----------
+
+   The padding, borders, min-widths and type sizes in this section have a second
+   reader: `src/measureNode.ts` works out how big a node is *before* anything is
+   drawn, which is what a renderer outside the editor needs and what the browser
+   is not there to answer. It restates these numbers, naming each selector it
+   took one from.
+
+   There is no way to make one of the two read the other — these rules are
+   applied by a browser and that file has to run where there may not be one — so
+   changing a number here means changing it there. A tolerance test comparing
+   the two against real diagrams is planned; until it exists, this comment is
+   the link. */
 .react-flow {
   background: var(--bg);
 }

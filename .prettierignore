@@ -8,5 +8,8 @@ package-lock.json
 extensions/*/out
 extensions/*/media/app
 src/icon-names.generated.json
+# Written by scripts/build-box-model.mjs and compared byte for byte by
+# `npm run boxmodel:check`, so it must be exactly what the script emits.
+src/render/boxModel.generated.ts
 THIRD-PARTY-NOTICES.md
 *.tsbuildinfo

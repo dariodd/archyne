@@ -1,7 +1,8 @@
 import type { ElkNode } from "elkjs/lib/elk-api";
 import type ELKType from "elkjs/lib/elk-api";
 import type { AnyNode, Direction, FlowEdge } from "../model/types";
-import { estimateSize, isGroup } from "../model/types";
+import { isGroup } from "../model/types";
+import { measureNode } from "../measureNode";
 import type { PositionMap } from "../model/positions";
 
 type Elk = InstanceType<typeof ELKType>;
@@ -133,10 +134,16 @@ export async function autoLayout(
         layoutOptions: { "elk.padding": "[top=40,left=16,bottom=16,right=16]" },
       };
     }
-    const size = estimateSize(n);
+    // The width the node already has, if it has one — so a node given a width
+    // but no height is measured at that width rather than at its natural one.
+    // This is the site where sizes decide the picture: ELK reserves exactly the
+    // room it is told to, so a number that is wrong here is a diagram that is
+    // wrong everywhere.
+    const stated = n.measured?.width ?? n.width;
+    const size = measureNode(n, undefined, stated);
     return {
       id: n.id,
-      width: n.measured?.width ?? n.width ?? size.width,
+      width: stated ?? size.width,
       height: n.measured?.height ?? n.height ?? size.height,
     };
   };

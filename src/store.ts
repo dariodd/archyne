@@ -27,7 +27,8 @@ import type {
   ShapeNode,
   StateNode,
 } from "./model/types";
-import { estimateSize, isGroup } from "./model/types";
+import { isGroup } from "./model/types";
+import { measureNode } from "./measureNode";
 import {
   defaultEdgeData,
   parseDiagram,
@@ -73,7 +74,6 @@ import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
 import { autoLayout } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
 import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
-import type { Box } from "./guides";
 import { carryWaypoints } from "./orthogonal";
 
 /** Smallest a group may be, whether dragged or typed. */
@@ -98,53 +98,19 @@ export function hasCustomSize(n: AnyNode): boolean {
 
 export type AlignEdge = "left" | "centerX" | "right" | "top" | "middleY" | "bottom";
 
-/**
- * A node's box in its parent's coordinates.
- *
- * The width can come from three places depending on how the node got here —
- * a typed group size, what the browser measured, or an estimate made before
- * anything was rendered — so it is resolved in one place rather than at each
- * call site.
- */
-function boxOf(n: AnyNode): Box {
-  const size = estimateSize(n);
-  return {
-    x: n.position.x,
-    y: n.position.y,
-    w: Number(n.style?.width ?? n.measured?.width ?? n.width ?? size.width),
-    h: Number(n.style?.height ?? n.measured?.height ?? n.height ?? size.height),
-  };
-}
-
-/**
- * Every node's box in canvas coordinates, with each group's offset folded in.
- *
- * React Flow stores a child's position relative to its parent, which is the
- * right thing for dragging a group and wrong for anything that compares two
- * nodes on screen. Resolved once for the whole graph rather than walking the
- * parent chain per node, since the callers ask about all of them at once.
- */
-export function absoluteBoxes(nodes: AnyNode[]): Map<string, Box> {
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  const out = new Map<string, Box>();
-  const resolve = (n: AnyNode, seen: Set<string>): Box => {
-    const cached = out.get(n.id);
-    if (cached) return cached;
-    const box = boxOf(n);
-    const parent = n.parentId ? byId.get(n.parentId) : undefined;
-    // `seen` guards against a parent cycle. Parsing cannot produce one, but
-    // this would hang rather than misbehave, which is the worse failure.
-    if (parent && !seen.has(parent.id)) {
-      const pb = resolve(parent, new Set(seen).add(n.id));
-      box.x += pb.x;
-      box.y += pb.y;
-    }
-    out.set(n.id, box);
-    return box;
-  };
-  for (const n of nodes) resolve(n, new Set([n.id]));
-  return out;
-}
+// `boxOf` and `absoluteBoxes` used to be defined here. They moved to
+// `./boxes` because they are arithmetic over the node list and nothing more,
+// while this module reaches the workspace, the file bindings and `window` —
+// which meant a renderer could not ask where a node was without booting the
+// editor. Re-exported so the components that reach for them here still can.
+export { absoluteBoxes } from "./boxes";
+// `annotateParallel` and `placeNodes` moved to `./graph` for the reason
+// `absoluteBoxes` did: they are pure functions of a parse, and a renderer has
+// to reach them without importing a module that touches `window` on its way
+// past the workspace. Re-exported so the callers here keep working.
+export { annotateParallel, placeNodes } from "./graph";
+import { absoluteBoxes, boxOf } from "./boxes";
+import { annotateParallel, placeNodes } from "./graph";
 
 /**
  * The selected nodes, but only when they can be reasoned about together.
@@ -192,95 +158,6 @@ export const NEW_DIAGRAM: Record<DiagramKind, string> = {
     "architecture-beta\n  group vpc(cloud)[VPC]\n  service web(internet)[Web] in vpc\n  service db(database)[Database] in vpc\n\n  web:R --> L:db\n",
   c4: 'C4Context\n  title System Context\n  Person(user, "User")\n  System(app, "Application")\n\n  Rel(user, app, "Uses")\n',
 };
-
-/**
- * Mark edges that share a node pair (and, for architecture, the same
- * handles) so the canvas can fan them out instead of overlapping them.
- */
-export function annotateParallel(kind: DiagramKind, edges: FlowEdge[]): FlowEdge[] {
-  if (kind === "sequence") return edges; // messages are stacked by order
-  const keyOf = (e: FlowEdge) =>
-    `${[e.source, e.target].sort().join("~")}|${e.sourceHandle ?? ""}|${e.targetHandle ?? ""}`;
-  const groups = new Map<string, string[]>();
-  for (const e of edges) {
-    const key = keyOf(e);
-    groups.set(key, [...(groups.get(key) ?? []), e.id]);
-  }
-  return edges.map((e) => {
-    // A hand-routed edge keeps its own route: bending one by hand is a more
-    // specific instruction than "these two overlap, spread them apart". The
-    // lane info goes with the fan-out, so it is dropped rather than left to
-    // reappear if the corners are removed later.
-    if (e.data?.points?.length) {
-      if (e.type === "routed" && !e.data.par) return e;
-      const data = { ...(e.data ?? { label: "" }) };
-      delete data.par;
-      return { ...e, type: "routed" as const, data };
-    }
-    const g = groups.get(keyOf(e))!;
-    if (g.length < 2) {
-      // No longer parallel (siblings deleted): strip the stale lane info
-      // so the edge snaps back to a plain centered path.
-      if (e.type !== "parallel" && !e.data?.par) return e;
-      const data = { ...(e.data ?? { label: "" }) };
-      delete data.par;
-      return { ...e, type: "routed", data };
-    }
-    return {
-      ...e,
-      type: "parallel",
-      data: {
-        ...(e.data ?? { label: "" }),
-        // s normalizes the perpendicular offset for opposite-direction
-        // edges so they land on distinct lanes, not the same one.
-        par: { i: g.indexOf(e.id), n: g.length, s: e.source <= e.target ? 1 : -1 },
-      },
-    };
-  });
-}
-
-/** Assign stored/cascade positions to bare nodes. */
-export function placeNodes(
-  nodes: AnyNode[],
-  positions: PositionMap,
-  kind: DiagramKind,
-): AnyNode[] {
-  if (kind === "sequence") {
-    // Participants live on a single top row; x order = participant order.
-    let col = 0;
-    return nodes.map((n) => {
-      const p = positions[n.id];
-      const x = p?.x ?? col * 220;
-      col++;
-      return { ...n, position: { x, y: 0 } };
-    });
-  }
-  const placed = Object.values(positions);
-  let cascadeX = placed.length > 0 ? Math.max(...placed.map((p) => p.x)) + 260 : 0;
-  let cascadeY = 0;
-  return nodes.map((n) => {
-    const p = positions[n.id];
-    if (!p) {
-      const pos = { x: cascadeX, y: cascadeY };
-      cascadeY += 110;
-      if (cascadeY > 660) {
-        cascadeY = 0;
-        cascadeX += 260;
-      }
-      return { ...n, position: pos };
-    }
-    return {
-      ...n,
-      position: { x: p.x, y: p.y },
-      // React Flow reads the explicit dimensions off both places, and the
-      // node views read `width`/`height` to draw themselves at the right
-      // size, so both are set rather than one being derived later.
-      ...(p.w !== undefined && p.h !== undefined
-        ? { style: { ...n.style, width: p.w, height: p.h }, width: p.w, height: p.h }
-        : {}),
-    };
-  });
-}
 
 export interface GraphState {
   code: string;
@@ -978,7 +855,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
         };
         const node = byId.get(dragged.id);
         if (node && !isGroup(node)) {
-          const size = estimateSize(node);
+          const size = measureNode(node);
           const w = node.measured?.width ?? size.width;
           const h = node.measured?.height ?? size.height;
           const abs = { ...absOf(node) };
@@ -1206,7 +1083,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
           let best = Infinity;
           for (const n of get().nodes) {
             if (n.type !== "participant") continue;
-            const w = n.measured?.width ?? estimateSize(n).width;
+            const w = n.measured?.width ?? measureNode(n).width;
             const d = Math.abs(n.position.x + w / 2 - position.x);
             if (d < best) {
               best = d;
@@ -1546,7 +1423,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
       const PAD = 28;
       const TITLE = 34;
       const boxes = selected.map((n) => {
-        const s = estimateSize(n);
+        const s = measureNode(n);
         // A container is as big as it was drawn, which is in its style; only
         // a leaf can be estimated from its contents. `Number(undefined)` is
         // NaN rather than nullish, so the fallback has to be explicit.
