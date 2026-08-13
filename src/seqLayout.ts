@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import type { SeqItem } from "./model/types";
 
-/** Vertical rhythm of the sequence lane, in flow coordinates. */
-export const SEQ_HEADER = 48;
-export const SEQ_TOP = 100;
-export const SEQ_SPACING = 44;
+// The rhythm moved to `./seqMetrics`, which holds no store: three constants
+// here meant Zustand — and React behind it — in anything that drew a sequence
+// diagram, including the published renderer. Re-exported so the components
+// that reach for them here are unchanged.
+export { SEQ_HEADER, SEQ_TOP, SEQ_SPACING } from "./seqMetrics";
 
 /**
  * The row a message is being dragged to, shared for the length of the gesture.

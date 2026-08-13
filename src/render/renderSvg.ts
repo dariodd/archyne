@@ -17,11 +17,9 @@
  *
  * ## What it does not do yet
  *
- * Flowcharts, states, ER, classes and C4. The two that are missing are missing
- * for reasons rather than for want of typing, and `SUPPORTED` below records
- * both: an architecture service is an icon and icons resolve asynchronously; a
- * sequence diagram's geometry is not routed at all. Either would be a half-drawn
- * picture if forced through here, so both are refused instead.
+ * Every family Archyne edits: flowchart, state, ER, class, C4, architecture and
+ * sequence. A kind it does not know is refused rather than half-drawn — see
+ * `SUPPORTED`.
  *
  * Labels are real `<text>`, wrapped and positioned here from measured widths
  * and baselines. They were `<foreignObject>` first — Mermaid's own default —
@@ -40,19 +38,22 @@ import {
   type DiagramKind,
   type ClassDefs,
   type FlowEdge,
+  type SeqItem,
   type ShapeNodeData,
 } from "../model/types";
 import { absoluteBoxes } from "../boxes";
 import { allRoutes } from "../routes";
-import { roundedPolyline } from "../routing";
+import { roundedPolyline, type Point } from "../routing";
 import {
   NODE_FONT,
+  measureBlock,
   textMetrics,
   wrapText,
   type FontSpec,
   type TextMetrics,
 } from "../textMetrics";
 import {
+  ACTOR_GLYPH_BOX,
   ARCH_ICON,
   BORDER_WIDTH as BOX_MODEL_BORDER,
   BOXES,
@@ -67,23 +68,25 @@ import {
   TABLE_TITLE,
   face,
 } from "./boxModel";
+import { ACTOR_PATH } from "./actorPath";
 import { markerDefs } from "./markers";
+import { blockFrames, messageRows, sequenceGeometry } from "./sequence";
 import { pointsAttr, shapeGeometry } from "./shapes";
 
 /**
  * The families that have a drawing here.
  *
- * `sequence` is the one still missing, and not for want of typing: its geometry
- * is not routed at all. Messages are ordered rows against lifelines, which
- * `seqLayout` decides and `allRoutes` never sees, so it needs its own placement
- * rather than another case in `nodeInner`. It is a step in
- * `RENDERER.local.md` rather than half a picture returned from here.
+ * All seven. The two that arrived last did so for reasons rather than for want
+ * of typing, and both are settled: an architecture service is an icon, and
+ * icons now come in resolved through `RenderOptions.icons` so the emitter stays
+ * pure and sync; a sequence diagram is not routed at all, and has its own
+ * geometry in `render/sequence.ts`.
  *
- * `architecture` used to be here too, because a service is an icon and icons
- * resolve asynchronously. That is settled: `RenderOptions.icons` takes them
- * already resolved, so the emitter stays pure and sync.
+ * The guard stays for a kind this build does not know — Mermaid grows families,
+ * and one parsed but not drawn should say so rather than come back empty.
  */
 const SUPPORTED = new Set<DiagramKind>([
+  "sequence",
   "flowchart",
   "state",
   "er",
@@ -120,6 +123,14 @@ export interface RenderOptions {
    * `parseDiagram` returns them; `render()` passes them on.
    */
   classDefs?: ClassDefs;
+  /**
+   * The ordered statement stream a sequence diagram is made of.
+   *
+   * Its rows *are* its layout — a message, a note, a block, a divider, each at
+   * its position in the stream — so without this a sequence diagram has
+   * participants and nothing else. `parseDiagram` returns it as `items`.
+   */
+  seqItems?: SeqItem[];
   /**
    * Icon markup by name, for the families that draw one.
    *
@@ -625,6 +636,28 @@ function nodeInner(
         );
       return tableMarkup(w, h, title, groups, paint);
     }
+    case "participant": {
+      // The head only. Its lifeline belongs to the diagram rather than to the
+      // node — its length is how many rows there are — so `sequenceMarkup`
+      // draws it, which is also why `measureNode` answers for the head alone.
+      const head = labelFace(custom, FONTS.state);
+      const glyph = node.data.ptype === "actor" ? ACTOR_GLYPH_MARKUP(h) : "";
+      return (
+        `<rect class="sf" x="0.75" y="0.75" width="${n(w - 1.5)}" height="${n(h - 1.5)}" rx="10"${paint}/>` +
+        glyph +
+        textStack(
+          [{ text: node.data.label, font: head.font, align: "middle", attrs: head.attrs }],
+          {
+            x: node.data.ptype === "actor" ? ACTOR_GLYPH_BOX.width + TABLE_ROWS.gap : 0,
+            width:
+              w - (node.data.ptype === "actor" ? ACTOR_GLYPH_BOX.width + TABLE_ROWS.gap : 0),
+            top: 0,
+            height: h,
+            place: "centre",
+          },
+        )
+      );
+    }
     case "service":
       return serviceMarkup(node, w, h, icons);
     case "junction":
@@ -637,6 +670,22 @@ function nodeInner(
       // diagram through, so it is a bug in that list rather than in the data.
       return "";
   }
+}
+
+/**
+ * The stick figure marking a sequence actor.
+ *
+ * The path is `ActorGlyph`'s, shared rather than redrawn — the palette entry,
+ * the canvas and this all trace the same figure, which is the point of it being
+ * a constant.
+ */
+function ACTOR_GLYPH_MARKUP(h: number): string {
+  const x = BOXES.participant.padX / 2 - 2;
+  const y = (h - ACTOR_GLYPH_BOX.height) / 2;
+  return (
+    `<svg x="${n(x)}" y="${n(y)}" width="${ACTOR_GLYPH_BOX.width}" height="${ACTOR_GLYPH_BOX.height}" viewBox="15 1 18 22">` +
+    `<path class="glyph" d="${ACTOR_PATH}" fill="none" stroke-width="1.6" stroke-linecap="round"/></svg>`
+  );
 }
 
 /** A group's frame and its title, which sits above the children. */
@@ -669,6 +718,40 @@ function edgeLabelMarkup(text: string, at: { x: number; y: number }): string {
   );
 }
 
+/**
+ * The markers and dash an edge already carries.
+ *
+ * `presentEdge` works these out at parse time and puts them on the edge: a
+ * class diagram's extension triangle, an ER relationship's crow's foot, a
+ * sequence message's open head, and a dashed line for anything the syntax drew
+ * dashed. The emitter used to ignore all of it and end every edge in the plain
+ * arrowhead — the eleven markers shipped in `<defs>` and nothing referenced
+ * them, so an ER diagram came out with no cardinalities at all.
+ *
+ * React Flow's own marker is an object rather than a name; ours are names, and
+ * only a name can point at a definition in this document.
+ */
+function edgeAttrs(edge: FlowEdge): string {
+  const named = (m: unknown) => (typeof m === "string" && m ? m : null);
+  const end = named(edge.markerEnd);
+  const start = named(edge.markerStart);
+
+  // A class diagram's inheritance edge carries a triangle at its *start* and
+  // nothing at its end, and adding the plain arrowhead anyway would draw an
+  // arrow the canvas does not. So once an edge names a marker at either end,
+  // what it names is all it gets. An edge naming none — a flowchart's, whose
+  // `markerEnd` is React Flow's own object, or one a consumer built by hand —
+  // ends in the plain arrowhead.
+  const fallback = !end && !start ? "arch-arrow" : null;
+  const dash = (edge.style as { strokeDasharray?: string } | undefined)?.strokeDasharray;
+
+  return (
+    (end || fallback ? ` marker-end="url(#${end ?? fallback})"` : "") +
+    (start ? ` marker-start="url(#${start})"` : "") +
+    (dash ? ` stroke-dasharray="${esc(String(dash))}"` : "")
+  );
+}
+
 /** Where an edge's label goes: the middle of the route, by length. */
 function midpointOf(points: { x: number; y: number }[]): { x: number; y: number } {
   if (points.length === 0) return { x: 0, y: 0 };
@@ -695,6 +778,165 @@ function midpointOf(points: { x: number; y: number }[]): { x: number; y: number 
 }
 
 /**
+ * A sequence diagram, drawn row by row rather than routed.
+ *
+ * Everything about its geometry is in `render/sequence.ts`, which reads the
+ * same constants `SequenceView` and `SequenceOverlay` do. What is here is the
+ * markup: lifelines, message lines with the head their operator asks for, and
+ * the notes, blocks, dividers and activation tags the overlay draws.
+ */
+function sequenceMarkup(
+  nodes: AnyNode[],
+  edges: FlowEdge[],
+  boxes: Map<string, { x: number; y: number; w: number; h: number }>,
+  items: SeqItem[],
+  classDefs: ClassDefs,
+  icons: Record<string, string>,
+): { markup: string; bounds: { minX: number; maxX: number; maxY: number } } {
+  const rowCount = items.length || edges.length;
+  const geo = sequenceGeometry(nodes, boxes, rowCount);
+  const rows = messageRows(items, edges);
+  const parts: string[] = [];
+
+  /*
+   * The extent of what is actually drawn, accumulated as it is drawn.
+   *
+   * Deriving it from the lifelines was not enough: a `Note right of` hangs 190px
+   * past the rightmost one, and the note came back cropped by the document's
+   * own edge. Anything placed beside the diagram — a note, a block frame, a
+   * divider's tag — has to widen it.
+   */
+  let minX = geo.bounds.minX;
+  let maxX = geo.bounds.maxX;
+  const span_ = (left: number, right: number) => {
+    minX = Math.min(minX, left);
+    maxX = Math.max(maxX, right);
+  };
+
+  // Lifelines first, so every message and note sits over them.
+  for (const line of geo.lifelines) {
+    parts.push(
+      `<line class="lifeline" x1="${n(line.x)}" y1="${n(line.top)}" x2="${n(line.x)}" y2="${n(line.bottom)}"/>`,
+    );
+  }
+
+  // The blocks are frames behind their contents.
+  const span = { left: geo.bounds.minX - 60, width: geo.bounds.maxX - geo.bounds.minX + 120 };
+  for (const frame of blockFrames(items)) {
+    const top = geo.rowY(frame.start) - 6;
+    const height = geo.rowY(frame.end) - geo.rowY(frame.start) + 12;
+    span_(span.left, span.left + span.width);
+    parts.push(
+      `<rect class="seq-block" x="${n(span.left)}" y="${n(top)}" width="${n(span.width)}" height="${n(height)}" rx="4"/>`,
+    );
+    const tag = frame.label ? `${frame.op} [${frame.label}]` : frame.op;
+    parts.push(
+      textStack([{ text: tag, font: FONTS.c4Tag, align: "start" }], {
+        x: span.left + 8,
+        width: span.width - 16,
+        top: top + 4,
+      }),
+    );
+  }
+
+  items.forEach((item, i) => {
+    const y = geo.rowY(i);
+    if (item.kind === "note") {
+      const ax = geo.centres.get(item.a) ?? geo.bounds.minX;
+      const bx = item.b ? (geo.centres.get(item.b) ?? ax) : ax;
+      const width = item.placement === "over" ? Math.max(150, Math.abs(bx - ax) + 20) : 170;
+      const left =
+        item.placement === "left"
+          ? ax - width - 20
+          : item.placement === "right"
+            ? ax + 20
+            : (ax + bx) / 2 - width / 2;
+      const text = measureBlock(item.text, FONTS.note, width - 16);
+      const height = Math.ceil(text.height + 12);
+      span_(left, left + width);
+      parts.push(
+        `<rect class="seq-note" x="${n(left)}" y="${n(y - 14)}" width="${n(width)}" height="${n(height)}" rx="3"/>`,
+      );
+      parts.push(
+        textStack([{ text: item.text, font: FONTS.note, align: "middle" }], {
+          x: left + 8,
+          width: width - 16,
+          top: y - 14,
+          height,
+          place: "centre",
+        }),
+      );
+    } else if (item.kind === "divider") {
+      span_(geo.bounds.minX - 50, geo.bounds.maxX + 50);
+      parts.push(
+        `<line class="seq-divider" x1="${n(geo.bounds.minX - 50)}" y1="${n(y)}" x2="${n(geo.bounds.maxX + 50)}" y2="${n(y)}"/>`,
+      );
+      parts.push(
+        textStack(
+          [{ text: `${item.op} ${item.label}`.trim(), font: FONTS.c4Tag, align: "start" }],
+          {
+            x: geo.bounds.minX - 46,
+            width: 200,
+            top: y - 14,
+          },
+        ),
+      );
+    } else if (item.kind === "active") {
+      const x = geo.centres.get(item.actor);
+      if (x !== undefined) {
+        parts.push(
+          textStack(
+            [
+              {
+                text: `${item.on ? "activate" : "deactivate"} ${item.actor}`,
+                font: FONTS.c4Tag,
+                align: "start",
+                attrs: ' opacity="0.75"',
+              },
+            ],
+            { x: x + 8, width: 200, top: y - 8 },
+          ),
+        );
+      }
+    }
+  });
+
+  // The messages themselves.
+  for (const edge of edges) {
+    const from = geo.centres.get(edge.source);
+    const to = geo.centres.get(edge.target);
+    const row = rows.get(edge.id);
+    if (from === undefined || to === undefined || row === undefined) continue;
+    const y = geo.rowY(row);
+    // A message to the same participant is a small loop out and back, which is
+    // what a self-call looks like everywhere it is drawn.
+    const d =
+      from === to
+        ? `M ${n(from)},${n(y)} L ${n(from + 40)},${n(y)} L ${n(from + 40)},${n(y + 18)} L ${n(from)},${n(y + 18)}`
+        : `M ${n(from)},${n(y)} L ${n(to)},${n(y)}`;
+    parts.push(`<path class="e" d="${d}"${edgeAttrs(edge)}/>`);
+    parts.push(
+      edgeLabelMarkup(edge.data?.label ?? "", {
+        x: from === to ? from + 60 : (from + to) / 2,
+        y: from === to ? y + 9 : y - 10,
+      }),
+    );
+  }
+
+  // Participants last: their heads sit over the top of every lifeline.
+  for (const node of nodes) {
+    if (node.type !== "participant") continue;
+    const b = boxes.get(node.id);
+    if (!b) continue;
+    parts.push(
+      `<g transform="translate(${n(b.x)},${n(b.y)})">${nodeInner(node, b.w, b.h, icons, classDefs)}</g>`,
+    );
+  }
+
+  return { markup: parts.join(""), bounds: { ...geo.bounds, minX, maxX } };
+}
+
+/**
  * Draw `nodes` and `edges` as one SVG document.
  *
  * Positions are taken from the nodes as they stand — from the layout comment a
@@ -713,7 +955,21 @@ export function renderSvg(
   const pad = options.padding ?? 24;
   const c = PALETTE[theme];
   const boxes = absoluteBoxes(nodes);
-  const routes = allRoutes(nodes, edges, kind);
+  // A sequence diagram is not routed: its geometry is rows, not paths. Asking
+  // `allRoutes` for one would answer with the orthogonal router's idea of a
+  // connection between two boxes on a single top row, which is not a message.
+  const sequence =
+    kind === "sequence"
+      ? sequenceMarkup(
+          nodes,
+          edges,
+          boxes,
+          options.seqItems ?? [],
+          options.classDefs ?? {},
+          options.icons ?? {},
+        )
+      : null;
+  const routes = sequence ? new Map<string, Point[]>() : allRoutes(nodes, edges, kind);
 
   // The extent of everything drawn, nodes and routes both: an edge that loops
   // out around a node reaches past every box.
@@ -734,6 +990,10 @@ export function renderSvg(
     grow(b.x + b.w, b.y + b.h);
   }
   for (const points of routes.values()) for (const p of points) grow(p.x, p.y);
+  if (sequence) {
+    grow(sequence.bounds.minX - 10, 0);
+    grow(sequence.bounds.maxX + 10, sequence.bounds.maxY);
+  }
   if (!Number.isFinite(x1)) {
     x1 = 0;
     y1 = 0;
@@ -761,8 +1021,10 @@ export function renderSvg(
       const points = routes.get(edge.id);
       if (!points || points.length < 2) return "";
       const d = roundedPolyline(points);
-      const line = `<path class="e" d="${d}" marker-end="url(#arch-arrow)"/>`;
-      return line + edgeLabelMarkup(edge.data?.label ?? "", midpointOf(points));
+      return (
+        `<path class="e" d="${d}"${edgeAttrs(edge)}/>` +
+        edgeLabelMarkup(edge.data?.label ?? "", midpointOf(points))
+      );
     })
     .join("");
 
@@ -773,6 +1035,12 @@ export function renderSvg(
     `.e{fill:none;stroke:${c.edge};stroke-width:1.5}`,
     `.el{fill:${c.edgeLabel};font-family:${NODE_FONT.family};font-size:11px}`,
     `.el-bg{fill:${c.edgeLabelBg}}`,
+    // Sequence: the lifelines, the frames a block draws, and a note's plate.
+    `.lifeline{stroke:${c.nodeStroke};stroke-width:1;stroke-dasharray:4 4;opacity:0.7}`,
+    `.seq-block{fill:none;stroke:${c.nodeStroke};stroke-width:1;opacity:0.6}`,
+    `.seq-note{fill:${c.edgeLabelBg};stroke:${c.nodeStroke};stroke-width:1}`,
+    `.seq-divider{stroke:${c.nodeStroke};stroke-width:1;stroke-dasharray:2 3}`,
+    `.glyph{stroke:${c.text}}`,
     // State markers: a fork bar, a start disc and an end ring are all painted
     // in the text colour rather than the node's.
     `.bar{fill:${c.text}}`,
@@ -795,7 +1063,7 @@ export function renderSvg(
     // them for the canvas.
     `<defs>${markerDefs(c.edge, c.markerHollow)}</defs>` +
     (options.background === false ? "" : `<rect width="100%" height="100%" fill="${c.bg}"/>`) +
-    `<g transform="translate(${n(dx)},${n(dy)})">${edgeMarkup}${nodeMarkup}</g>` +
+    `<g transform="translate(${n(dx)},${n(dy)})">${sequence ? sequence.markup : edgeMarkup + nodeMarkup}</g>` +
     `</svg>`
   );
 }

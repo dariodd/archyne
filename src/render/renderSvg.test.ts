@@ -67,11 +67,11 @@ describe("the document it produces", () => {
   });
 
   it("refuses a family it cannot draw, rather than drawing half of one", () => {
-    // One left, with its reason recorded at `SUPPORTED`: a sequence diagram's
-    // geometry is not routed at all, so it needs its own placement rather than
-    // another case in the dispatcher.
-    expect(() => renderSvg([], [], "sequence")).toThrow(UnsupportedFamilyError);
-    expect(() => renderSvg([], [], "sequence")).toThrow(/not implemented/);
+    // Every family Archyne edits is drawn now, so this needs a name that is
+    // not one of them. The guard stays: it is what a diagram kind added
+    // upstream, and parsed before anybody draws it, would meet.
+    expect(() => renderSvg([], [], "gantt" as never)).toThrow(UnsupportedFamilyError);
+    expect(() => renderSvg([], [], "gantt" as never)).toThrow(/not implemented/);
   });
 
   it("has something to say about an empty diagram", () => {
@@ -279,6 +279,71 @@ describe("the other families", () => {
     const svg = renderSvg([service], [], "architecture");
     parse(svg);
     expect(svg).toContain("Cache");
+  });
+
+  it("draws a sequence diagram from its statement stream", () => {
+    // The rows *are* the layout: without `seqItems` there are participants and
+    // nothing else, which is why they travel with the graph.
+    const participant = (id: string, x: number, ptype = "participant") =>
+      ({
+        id,
+        type: "participant",
+        position: { x, y: 0 },
+        data: { label: id, ptype, direction: "TB" },
+      }) as unknown as AnyNode;
+    const nodes = [participant("U", 0, "actor"), participant("S", 220)];
+    const edges: FlowEdge[] = [
+      { id: "m1", source: "U", target: "S", data: { label: "chiedi" } },
+      { id: "m2", source: "S", target: "U", data: { label: "rispondi" } },
+    ];
+    const doc = parse(
+      renderSvg(nodes, edges, "sequence", {
+        seqItems: [
+          { kind: "message", edgeId: "m1" },
+          { kind: "block", op: "alt", label: "ok" },
+          { kind: "message", edgeId: "m2" },
+          { kind: "end" },
+          { kind: "note", placement: "right", a: "S", text: "una nota" },
+        ],
+      }),
+    );
+
+    expect(doc.querySelectorAll("line.lifeline")).toHaveLength(2);
+    expect(doc.querySelectorAll("path.e")).toHaveLength(2);
+    expect(doc.querySelectorAll("rect.seq-block")).toHaveLength(1);
+    expect(doc.querySelectorAll("rect.seq-note")).toHaveLength(1);
+    // The actor's stick figure, from the path the canvas draws.
+    expect(doc.querySelector("path.glyph")).not.toBeNull();
+  });
+
+  it("puts each message on the row its statement occupies", () => {
+    const participant = (id: string, x: number) =>
+      ({
+        id,
+        type: "participant",
+        position: { x, y: 0 },
+        data: { label: id, ptype: "participant", direction: "TB" },
+      }) as unknown as AnyNode;
+    const nodes = [participant("A", 0), participant("B", 220)];
+    const edges: FlowEdge[] = [
+      { id: "m1", source: "A", target: "B", data: { label: "" } },
+      { id: "m2", source: "B", target: "A", data: { label: "" } },
+    ];
+    // The second message is two rows below the first, because a note sits
+    // between them in the stream.
+    const doc = parse(
+      renderSvg(nodes, edges, "sequence", {
+        seqItems: [
+          { kind: "message", edgeId: "m1" },
+          { kind: "note", placement: "left", a: "A", text: "x" },
+          { kind: "message", edgeId: "m2" },
+        ],
+      }),
+    );
+    const ys = [...doc.querySelectorAll("path.e")].map((p) =>
+      Number(/M [\d.]+,([\d.]+)/.exec(p.getAttribute("d") ?? "")?.[1]),
+    );
+    expect(ys[1] - ys[0]).toBe(88); // two rows at SEQ_SPACING
   });
 
   it("brings every marker a family's edges might end in", () => {

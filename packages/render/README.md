@@ -70,9 +70,14 @@ by Mermaid will look different.
 
 ## Families
 
-Flowchart, state, ER, class, C4 and architecture. `canRender(kind)` says so, and
-`renderSvg` throws `UnsupportedFamilyError` rather than returning half a picture.
-Sequence diagrams are not drawn yet.
+All seven that Archyne edits: flowchart, state, ER, class, C4, architecture and
+sequence. `canRender(kind)` says so, and `renderSvg` throws
+`UnsupportedFamilyError` for a kind it does not know rather than returning half
+a picture.
+
+A sequence diagram needs its statement stream as well as its nodes and edges —
+its rows _are_ its layout. `render()` supplies it from the parse; a caller of
+`renderSvg` passes `seqItems`.
 
 ## Icons
 

@@ -1,4 +1,5 @@
 import { ACTOR_GLYPH } from "../render/glyphSizes";
+import { ACTOR_PATH } from "../render/actorPath";
 /**
  * The stick figure that marks a sequence actor.
  *
@@ -10,8 +11,7 @@ import { ACTOR_GLYPH } from "../render/glyphSizes";
  *
  * Laid out in the palette's 48×24 frame, where it occupies x 16..32, y 2..22.
  */
-export const ACTOR_PATH =
-  "M24,2 a4,4 0 1 1 0,8 a4,4 0 1 1 0,-8 M24,10 v6 M16,13 h16 M24,16 l-6,6 M24,16 l6,6";
+export { ACTOR_PATH } from "../render/actorPath";
 
 /** The figure alone, cropped out of that frame and inked in the text colour. */
 export function ActorGlyph() {

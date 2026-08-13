@@ -73,7 +73,12 @@ export async function render(
 
   const stored = readPositions(code);
   let nodes = placeNodes(parsed.nodes, stored ?? {}, parsed.kind);
-  if (!stored) {
+  // Everything but a sequence diagram. Its participants sit on one row at a
+  // fixed pitch, which `placeNodes` already does; handing them to ELK and
+  // feeding its answer back gave three lifelines crowded into the space of
+  // one, because the solver has no idea it is looking at a header row.
+  // `CanvasPreview` skips the layout for the same reason.
+  if (!stored && parsed.kind !== "sequence") {
     const laid = await autoLayout(nodes, parsed.edges, parsed.direction);
     nodes = placeNodes(parsed.nodes, laid, parsed.kind);
   }
@@ -84,6 +89,9 @@ export async function render(
   // back in the default palette.
   const svg = renderSvg(nodes, edges, parsed.kind, {
     classDefs: parsed.classDefs,
+    // A sequence diagram's rows are its layout; without the stream it has
+    // participants and nothing else.
+    seqItems: parsed.items,
     ...options,
   });
   return { svg, ...sizeOf(svg) };

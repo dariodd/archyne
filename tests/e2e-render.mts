@@ -171,10 +171,20 @@ check(
  * paint. What these add is that each family produces a document with its own
  * content in it, rather than an empty `<svg>` that happens to parse.
  */
-const node = (id: string, type: string, data: Record<string, unknown>, y: number): AnyNode =>
-  ({ id, type, position: { x: 0, y }, data }) as unknown as AnyNode;
+let column = 0;
+const node = (id: string, type: string, data: Record<string, unknown>, y: number): AnyNode => {
+  // Participants sit on one row at a fixed pitch, so they need distinct x.
+  const x = type === "participant" ? column++ * 220 : 0;
+  return { id, type, position: { x, y }, data } as unknown as AnyNode;
+};
 
-const FAMILIES: Array<{ kind: DiagramKind; nodes: AnyNode[]; wants: string }> = [
+const FAMILIES: Array<{
+  kind: DiagramKind;
+  nodes: AnyNode[];
+  edges?: FlowEdge[];
+  items?: unknown[];
+  wants: string;
+}> = [
   {
     kind: "state",
     nodes: [
@@ -226,6 +236,16 @@ const FAMILIES: Array<{ kind: DiagramKind; nodes: AnyNode[]; wants: string }> = 
     wants: "+close(): void",
   },
   {
+    kind: "sequence",
+    nodes: [
+      node("U", "participant", { label: "Utente", ptype: "actor", direction: "TB" }, 0),
+      node("S", "participant", { label: "Server", ptype: "participant", direction: "TB" }, 0),
+    ],
+    edges: [{ id: "m1", source: "U", target: "S", data: { label: "chiedi" } }],
+    items: [{ kind: "message", edgeId: "m1" }],
+    wants: "chiedi",
+  },
+  {
     kind: "c4",
     nodes: [
       node(
@@ -240,7 +260,9 @@ const FAMILIES: Array<{ kind: DiagramKind; nodes: AnyNode[]; wants: string }> = 
 ];
 
 for (const family of FAMILIES) {
-  const markup = renderSvg(family.nodes, [], family.kind);
+  const markup = renderSvg(family.nodes, family.edges ?? [], family.kind, {
+    seqItems: family.items as never,
+  });
   const path = join(tmpdir(), `archyne-render-${family.kind}-${process.pid}.svg`);
   await writeFile(path, markup, "utf8");
   await page.goto(pathToFileURL(path).href);
