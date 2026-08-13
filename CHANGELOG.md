@@ -22,6 +22,40 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [0.4.1-alpha.1] — 2026-08-13
+
+**Diagrams drawn outside a browser now measure their text properly.** If you
+pre-render Mermaid to `.svg` files in a build step, or rewrite a document
+server-side, this is the release that makes the words fit the boxes.
+
+### Fixed
+
+- **Text measured without a browser was a guess, and is now a measurement.**
+  With no canvas to ask — which is the case in Node, and in jsdom — each
+  character was sorted into one of four width classes. Across a sample of
+  labels that put the median 4.2% out and the worst case 36%: enough to break a
+  line in the wrong place and size a box visibly wrong. Widths now come from a
+  table measured from the fonts themselves, one advance per glyph, which is
+  exact for a typical label. What is left is kerning, on pairs like the "AV" in
+  "AVATAR", and it errs wide, so nothing clips.
+- **Bold labels were measured as though they were not bold.** The old width
+  classes had no notion of weight at all, so every semibold label came out
+  narrower than it draws. Measured faces cover both weights the stylesheet asks
+  for.
+
+### Documentation
+
+- **`archyne-render` explains the three ways to plug it in** — a preview that
+  runs your script, Node before the page is built, or files written ahead of
+  time. They are not three tools but three places the code can run, which is
+  what decides whether there is a DOM: VS Code's built-in preview and Markdown
+  Preview Enhanced are the same recipe. Each is executed by the test suite
+  rather than illustrated, so a recipe that stops working fails a build.
+- **What rendering a whole directory costs.** Mermaid keeps one parser database
+  per diagram family, so parsing is serialised: `Promise.all` over five hundred
+  diagrams is correct and no faster than a loop. The README says so, and says
+  that the unit to multiply is the process.
+
 ## [0.4.0-alpha.1] — 2026-08-13
 
 **Archyne's renderer is now a package you can install.** `archyne-render` draws
