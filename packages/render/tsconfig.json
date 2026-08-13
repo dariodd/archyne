@@ -1,0 +1,28 @@
+{
+  // Types only. The JavaScript is built by esbuild in `scripts/build.mjs`; this
+  // exists so consumers get declarations, emitted by the same compiler that
+  // already checks these files as part of the application.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "resolveJsonModule": true,
+    "rootDir": "../../src",
+    "outDir": "dist/types",
+    "types": []
+  },
+  // The ambient declarations too: `autoLayout.ts` imports ELK's worker through
+  // Vite's `?worker` suffix, which only resolves because `elkjs-bundled.d.ts`
+  // says what it is.
+  "include": [
+    "../../src/render/index.ts",
+    "../../src/render/mermaid.ts",
+    "../../src/*.d.ts",
+    "types/*.d.ts"
+  ]
+}

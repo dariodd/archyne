@@ -23,3 +23,8 @@ e2e-out
 
 # Personal working notes: kept beside the project, never published
 *.local.md
+
+# Copied from the repository root by `packages/render/scripts/build.mjs` so the
+# tarball carries it. Generated rather than kept, so that the package's licence
+# cannot drift from the project's.
+packages/render/LICENSE

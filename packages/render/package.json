@@ -1,0 +1,65 @@
+{
+  "name": "archyne-render",
+  "version": "0.3.2-alpha.1",
+  "description": "Render Mermaid diagrams to a self-contained SVG string, with orthogonal edge routing and ELK layout",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/render/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mermaid": {
+      "types": "./dist/types/render/mermaid.d.ts",
+      "import": "./dist/mermaid.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dariodd/archyne.git",
+    "directory": "packages/render"
+  },
+  "bugs": {
+    "url": "https://github.com/dariodd/archyne/issues"
+  },
+  "homepage": "https://github.com/dariodd/archyne/tree/main/packages/render",
+  "keywords": [
+    "mermaid",
+    "svg",
+    "renderer",
+    "diagram",
+    "flowchart",
+    "elk",
+    "layout"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "version:sync": "node scripts/sync-version.mjs",
+    "version:check": "node scripts/sync-version.mjs --check",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "peerDependencies": {
+    "mermaid": ">=11"
+  },
+  "peerDependenciesMeta": {
+    "mermaid": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "elkjs": "^0.12.0"
+  },
+  "author": {
+    "name": "dariodd",
+    "email": "57635667+dariodd@users.noreply.github.com",
+    "url": "https://github.com/dariodd"
+  }
+}
