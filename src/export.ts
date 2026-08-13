@@ -1,8 +1,11 @@
 import { toPng, toSvg } from "html-to-image";
 import type { AnyNode } from "./model/types";
-import { estimateSize, isGroup } from "./model/types";
+import { isGroup, type ClassDefs, type DiagramKind, type FlowEdge } from "./model/types";
+import { measureNode } from "./measureNode";
 import { stripPositions } from "./model/positions";
-import { renderWithMermaid } from "./model/fromMermaid";
+import { renderWithMermaid } from "./model/mermaidRender";
+import { canRender } from "./render/renderSvg";
+import { renderSvgWithIcons } from "./render/withIcons";
 import type { PageSize, PdfImage } from "./pdf";
 
 export interface ExportOptions {
@@ -67,7 +70,7 @@ function computeBounds(nodes: AnyNode[]) {
       y += pn.position.y;
       p = pn.parentId;
     }
-    const est = estimateSize(n);
+    const est = measureNode(n);
     const w = n.measured?.width ?? (isGroup(n) ? Number(n.style?.width ?? 320) : est.width);
     const h = n.measured?.height ?? (isGroup(n) ? Number(n.style?.height ?? 220) : est.height);
     x1 = Math.min(x1, x);
@@ -317,14 +320,44 @@ export async function buildExport(
   opts: ExportOptions,
   nodes: AnyNode[],
   code: string,
+  graph?: { edges: FlowEdge[]; kind: DiagramKind; classDefs?: ClassDefs },
 ): Promise<string> {
   if (opts.format === "pdf") {
-    return pdfFromPng(await buildExport(previewOptions(opts), nodes, code), opts);
+    return pdfFromPng(await buildExport(previewOptions(opts), nodes, code, graph), opts);
   }
   if (opts.source === "mermaid") return renderMermaid(opts, code);
   if (nodes.length === 0) return "";
+
+  // A vector export goes through the renderer when the renderer can draw this
+  // family. `captureCanvas` produces an SVG only in the loosest sense: it is
+  // html-to-image's serialisation of the live DOM, which is one enormous
+  // `<foreignObject>` full of HTML. That opens in a browser and nowhere else —
+  // not in an `<img>`, not on GitHub, not in Inkscape, not in a PDF tool — so
+  // the file people took away as "the vector one" was the least portable
+  // artifact the app produced. `renderSvg` emits real geometry and real text.
+  if (opts.format === "svg" && opts.source === "canvas" && graph && canRender(graph.kind)) {
+    // The icon-resolving wrapper, because this path is already async and an
+    // architecture diagram exported without its logos is a worse picture than
+    // the capture it replaces.
+    return svgDataUrl(
+      await renderSvgWithIcons(nodes, graph.edges, graph.kind, {
+        theme: opts.background === "light" ? "light" : "dark",
+        padding: opts.padding,
+        background: opts.background !== "transparent",
+        // Without these every `class a,b hot` in the document is ignored and
+        // the export comes back in the default palette.
+        classDefs: graph.classDefs,
+      }),
+    );
+  }
+
   const { width, height, viewport } = frameFor(nodes, opts.padding);
   return captureCanvas(opts.format, width, height, viewport, BG[opts.background], opts.scale);
+}
+
+/** An SVG string as the data URL every other export path here returns. */
+function svgDataUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
 /* ---------- clipboard ---------- */

@@ -9,6 +9,7 @@ import { SideResizer } from "./components/SideResizer";
 import { Inspector } from "./components/Inspector";
 import { StatusAnnouncer } from "./components/StatusAnnouncer";
 import { loadInitialCode, useGraphStore } from "./store";
+import { measureNode } from "./measureNode";
 import {
   buildExport,
   DEFAULT_EXPORT_OPTIONS,
@@ -106,7 +107,11 @@ export default function App() {
       /** Drive the real export pipeline, either source, from a browser test. */
       exportWith: (opts: Partial<ExportOptions>) => {
         const s = useGraphStore.getState();
-        return buildExport({ ...DEFAULT_EXPORT_OPTIONS, ...opts }, s.nodes, s.code);
+        return buildExport({ ...DEFAULT_EXPORT_OPTIONS, ...opts }, s.nodes, s.code, {
+          edges: s.edges,
+          kind: s.kind,
+          classDefs: s.classDefs,
+        });
       },
       store: useGraphStore,
       // The file binding and the workspace index, so a test can stand a
@@ -123,6 +128,23 @@ export default function App() {
           warning: s.warning,
         };
       },
+      /**
+       * What each node measures to on its own account, beside what the browser
+       * made of it.
+       *
+       * `measureNode` has to predict, without a browser, the box the browser
+       * would compute — that is the whole basis of rendering outside the
+       * editor. The only way to know whether it does is to ask both here,
+       * where the real answer exists. `tests/e2e-measure.mts` is the caller.
+       */
+      measured: () =>
+        useGraphStore.getState().nodes.map((n) => ({
+          id: n.id,
+          type: n.type,
+          sized: n.style?.width !== undefined,
+          predicted: measureNode(n),
+          actual: { width: n.measured?.width ?? 0, height: n.measured?.height ?? 0 },
+        })),
     };
   }, []);
 

@@ -17,6 +17,9 @@ import {
 export function ExportDialog({ onClose }: { onClose: () => void }) {
   const t = useT();
   const nodes = useGraphStore((s) => s.nodes);
+  const edges = useGraphStore((s) => s.edges);
+  const kind = useGraphStore((s) => s.kind);
+  const classDefs = useGraphStore((s) => s.classDefs);
   const code = useGraphStore((s) => s.code);
   const [opts, setOpts] = useState<ExportOptions>(DEFAULT_EXPORT_OPTIONS);
   const [preview, setPreview] = useState("");
@@ -36,7 +39,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       setError(null);
       // A PDF cannot go in an <img>, so the preview is the image that will be
       // placed on the page. The paper is applied when the button is pressed.
-      buildExport(previewOptions(opts), nodes, code)
+      buildExport(previewOptions(opts), nodes, code, { edges, kind, classDefs })
         .then((url) => {
           if (!alive) return;
           setPreview(url);
@@ -52,7 +55,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
       alive = false;
       clearTimeout(t);
     };
-  }, [opts, nodes, code]);
+  }, [opts, nodes, edges, kind, classDefs, code]);
 
   const failed = (err: unknown) => setError(err instanceof Error ? err.message : String(err));
 

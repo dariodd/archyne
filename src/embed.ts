@@ -161,7 +161,11 @@ export function initEmbedBridge(): void {
               ...DEFAULT_EXPORT_OPTIONS,
               ...((msg.options as Partial<ExportOptions>) ?? {}),
             };
-            const dataUrl = await buildExport(opts, s.nodes, s.code);
+            const dataUrl = await buildExport(opts, s.nodes, s.code, {
+              edges: s.edges,
+              kind: s.kind,
+              classDefs: s.classDefs,
+            });
             post({ type: "exported", format: opts.format, dataUrl });
             break;
           }
