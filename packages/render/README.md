@@ -50,6 +50,126 @@ globalThis.document = dom.window.document;
 const { render } = await import("archyne-render/mermaid");
 ```
 
+## Three ways to plug it in
+
+Whatever draws your Markdown — VS Code's built-in preview, Markdown Preview
+Enhanced, a static site generator, a build script — it is one of three shapes.
+The difference between them is not the tool: it is **where the code runs**, and
+therefore whether there is a DOM.
+
+The code below is not an illustration. `tests/e2e-recipes.mts` in the Archyne
+repository extracts these blocks from this file and runs them, so a recipe that
+stopped working fails a build rather than wasting your afternoon.
+
+### 1. In a preview that runs your script
+
+VS Code's built-in Markdown preview, MPE's preview, any Electron page. A webview
+is a real browser, so this is the easy one: Mermaid's parser has its DOM and the
+text measurement is exact.
+
+<!-- recipe:webview -->
+
+```js
+import { render } from "archyne-render/mermaid";
+
+// Inside a function, not at the top level. A preview script is injected as a
+// classic `<script>`, which cannot have top-level `await` — and bundling one to
+// `iife` fails outright rather than at run time.
+async function drawAll() {
+  // Whatever your host turns a mermaid fence into. In VS Code's preview a
+  // markdown-it plugin makes `<pre class="diagram">source</pre>`.
+  for (const el of document.querySelectorAll("pre.diagram")) {
+    const source = el.dataset.source ?? el.textContent ?? "";
+    if (el.dataset.done === source) continue; // previews redraw on every keystroke
+    el.dataset.source = source;
+    el.dataset.done = source;
+    const { svg } = await render(source, { theme: "dark", background: false });
+    el.innerHTML = svg;
+  }
+}
+
+// Previews swap their DOM in on every edit, so redraw when it changes.
+new MutationObserver(() => void drawAll()).observe(document.body, {
+  childList: true,
+  subtree: true,
+});
+void drawAll();
+```
+
+Bundle it: a webview has no module resolution, so Mermaid and ELK have to be in
+the file you ship. That is a few megabytes, and it is what drawing diagrams in a
+preview costs — Mermaid's own extension pays the same.
+
+### 2. In Node, before the page is built
+
+MPE's `~/.crossnote/parser.js`, a markdown-it plugin in a static site generator,
+anything that rewrites the document server-side. There is no DOM here, and
+Mermaid's parser wants one — so bring jsdom.
+
+The payoff is that the SVG is _in the HTML_: it survives export to HTML and PDF,
+which a preview-only script does not.
+
+<!-- recipe:node -->
+
+````js
+import { JSDOM } from "jsdom";
+
+const dom = new JSDOM("<!doctype html><html><body></body></html>");
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+
+const { render } = await import("archyne-render/mermaid");
+
+/** Replace every mermaid fence in a Markdown document with its picture. */
+export async function drawFences(markdown) {
+  const fences = [...markdown.matchAll(/```mermaid\n([\s\S]*?)```/g)];
+  let out = markdown;
+  for (const [whole, source] of fences) {
+    const { svg } = await render(source, { background: false });
+    out = out.replace(whole, svg);
+  }
+  return out;
+}
+````
+
+### 3. Rendered to files, ahead of time
+
+A build step or a file watcher that turns each fence into a `.svg` beside the
+document and rewrites the fence to an image. Ugly, and it works **everywhere** —
+GitHub, a wiki, a PDF pipeline, a preview that has never heard of Archyne. It
+asks nobody's permission.
+
+<!-- recipe:files -->
+
+````js
+import { writeFile } from "node:fs/promises";
+import { JSDOM } from "jsdom";
+
+const dom = new JSDOM("<!doctype html><html><body></body></html>");
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+
+const { render } = await import("archyne-render/mermaid");
+
+/** Write each fence to `<name>-<n>.svg` and point the document at it. */
+export async function extractFences(markdown, name, dir) {
+  const fences = [...markdown.matchAll(/```mermaid\n([\s\S]*?)```/g)];
+  let out = markdown;
+  for (const [i, [whole, source]] of fences.entries()) {
+    const file = `${name}-${i + 1}.svg`;
+    const { svg } = await render(source);
+    await writeFile(`${dir}/${file}`, svg, "utf8");
+    out = out.replace(whole, `![](${file})`);
+  }
+  return out;
+}
+````
+
+Note what this one needs that the others do not: the SVG has to render as an
+`<img>`, with no help from the page. It does — the labels are `<text>`, not a
+`<foreignObject>`, which is the difference between this working and coming back
+as boxes with no words in them.
+
 ## What the output is
 
 Geometry as `<rect>`, `<path>` and `<polygon>`; labels as `<text>` with the line

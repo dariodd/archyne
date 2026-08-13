@@ -185,6 +185,16 @@ jobs:
       - name: A rendered SVG stands on its own
         run: npm run test:e2e:render
 
+      # The package README tells a reader how to plug the renderer into their
+      # Markdown preview, their build step, or their file watcher. Instructions
+      # rot silently — the API moves, the snippet stops working, and nobody
+      # finds out until somebody has wasted an afternoon on it. This extracts
+      # those exact blocks from the README and runs them, against the packed
+      # tarball installed by name, outside the tree. It has already earned its
+      # keep: the webview recipe could not be bundled as written.
+      - name: Every recipe in the README runs
+        run: npm run test:e2e:recipes
+
       - name: Side panel and editor
         run: npm run test:e2e:panel
         env:
