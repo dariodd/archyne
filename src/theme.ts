@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { setResolvedTheme } from "./edgeTheme";
 
 export type ThemeChoice = "dark" | "light" | "system";
 type Resolved = "dark" | "light";
@@ -50,18 +51,17 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   sync: () => set({ resolved: resolve(get().choice) }),
 }));
 
-// Keep the DOM attribute in lockstep so CSS variables switch.
+// Keep the DOM attribute in lockstep so CSS variables switch, and tell
+// `edgeTheme` which palette is in force — it holds no store, so the store has
+// to push. Set once at module load as well, since the first parse can happen
+// before anything has changed.
+setResolvedTheme(useThemeStore.getState().resolved);
 useThemeStore.subscribe((s) => {
   document.documentElement.dataset.theme = s.resolved;
+  setResolvedTheme(s.resolved);
 });
 
-/**
- * Edge/marker colors must be explicit values (not CSS vars — captured
- * exports can't resolve custom properties on SVG), so they are derived from
- * the resolved theme here and re-applied when it changes.
- */
-export function edgeColors() {
-  return useThemeStore.getState().resolved === "light"
-    ? { stroke: "#5f6673", labelFill: "#1c2230", labelBg: "#ffffff", hollowFill: "#ffffff" }
-    : { stroke: "#8b91a3", labelFill: "#e6e9f0", labelBg: "#20242f", hollowFill: "#12141a" };
-}
+// `edgeColors` moved to `./edgeTheme`, which holds no store. It was reached by
+// `parseDiagram`, and a store in the parse path is Zustand in `archyne-render`.
+// The store still decides the answer — it pushes it now instead of being asked.
+export { edgeColors } from "./edgeTheme";

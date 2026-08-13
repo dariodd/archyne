@@ -1,4 +1,13 @@
-import { MarkerType } from "@xyflow/react";
+/**
+ * React Flow's own value for a filled arrowhead, as the string it is.
+ *
+ * Importing the enum pulls `@xyflow/react` — and React with it — into anything
+ * that parses a diagram, which in `archyne-render` is the difference between a
+ * library and half an application. The type still comes from there, so a
+ * change in React Flow is still a compile error here.
+ */
+const ARROW_CLOSED = "arrowclosed" as MarkerType.ArrowClosed;
+import type { MarkerType } from "@xyflow/react";
 import type {
   AnyNode,
   ClassDefs,
@@ -36,7 +45,7 @@ export class UnsupportedDiagramError extends Error {
     this.name = "UnsupportedDiagramError";
   }
 }
-import { edgeColors } from "../theme";
+import { edgeColors } from "../edgeTheme";
 
 export interface ParsedDiagram {
   kind: DiagramKind;
@@ -253,11 +262,11 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
       ...base,
       label: d.c4.techn ? `${d.label} [${d.c4.techn}]` : d.label || undefined,
       style: { stroke: pal.stroke, strokeWidth: 1.5, strokeDasharray: "6 4" },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: pal.stroke },
+      markerEnd: { type: ARROW_CLOSED, width: 18, height: 18, color: pal.stroke },
       ...(d.c4.relType === "birel"
         ? {
             markerStart: {
-              type: MarkerType.ArrowClosed,
+              type: ARROW_CLOSED,
               width: 18,
               height: 18,
               color: pal.stroke,
@@ -317,14 +326,14 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
     return {
       ...base,
       style: { stroke: pal.stroke, strokeWidth: 1.5 },
-      markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color: pal.stroke },
+      markerEnd: { type: ARROW_CLOSED, width: 18, height: 18, color: pal.stroke },
     };
   }
   // flowchart
   const flowMarker =
     d.arrow === "arrow_open"
       ? undefined
-      : { type: MarkerType.ArrowClosed, width: 18, height: 18, color: pal.stroke };
+      : { type: ARROW_CLOSED, width: 18, height: 18, color: pal.stroke };
   return {
     ...base,
     style: {

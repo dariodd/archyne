@@ -1,7 +1,7 @@
 import { getIconData, iconToSVG, iconToHTML, replaceIDs } from "@iconify/utils";
 import type { IconifyJSON } from "@iconify/types";
-import { CUSTOM, iconName, type IconLibrary } from "./model/iconLibrary";
-import { svgToIcon } from "./model/svg";
+import { CUSTOM, iconName } from "./model/iconLibrary";
+import { carriedIcons } from "./iconRefs";
 
 /**
  * mermaid architecture-beta's five built-in icon names, drawn as minimal
@@ -40,65 +40,17 @@ function loadCollection(name: string): Promise<IconifyJSON> | null {
   return loaded.get(name)!;
 }
 
-/**
- * The icons the open document carries, kept here so rendering an icon needs
- * nothing from the store — which imports this module, and would make a
- * circle of it. The store hands the library over whenever the document
- * changes.
- */
-let carried: IconLibrary = {};
-
-export function setCarriedIcons(library: IconLibrary): void {
-  carried = library;
-}
-
-/**
- * The carried icons as an icon pack, for handing to mermaid.
- *
- * The canvas renders `custom:` icons from the markup directly, but mermaid
- * only knows *packs* — so the preview drew its "?" box for every imported
- * icon while the canvas beside it drew the icon. One diagram, two answers.
- *
- * Memoised on the library object, which the store replaces whenever the
- * icons change, so this converts once per change rather than once per render.
- */
-let packed: { from: IconLibrary; pack: IconifyJSON } | null = null;
-
-export function carriedIconPack(): IconifyJSON {
-  if (packed?.from === carried) return packed.pack;
-  const icons: IconifyJSON["icons"] = {};
-  for (const [name, svg] of Object.entries(carried)) {
-    const icon = svgToIcon(svg);
-    if (icon) icons[name] = icon;
-  }
-  const pack: IconifyJSON = { prefix: CUSTOM, icons };
-  packed = { from: carried, pack };
-  return pack;
-}
-
-/**
- * Icon references rewritten to names the packs actually hold.
- *
- * Vendors number their icon files, and the number changes between releases:
- * a diagram written elsewhere may say `azure:02068-icon-service-virtual-networks`
- * where this build of the pack calls the same drawing `azure:virtual-networks`.
- * The canvas resolves that by falling back to the readable half of the name;
- * mermaid has no such fallback, so the preview showed a "?" for an icon the
- * canvas had just drawn.
- *
- * Only the vendor's catalogue shape is touched — four or more digits, then
- * their word for "icon" — and only in what is handed to the renderer. The
- * file keeps whatever it says.
- */
-const CATALOGUE_REF = /\b([a-z][a-z0-9-]*):(\d{4,}-icon-(?:service-)?[a-z0-9-]+)/gi;
-
-export function normaliseIconRefs(code: string): string {
-  // Only the collections this build actually has; a prefix it does not know
-  // is left exactly as the author wrote it.
-  return code.replace(CATALOGUE_REF, (all: string, prefix: string, name: string) =>
-    LOADERS[prefix.toLowerCase()] ? `${prefix}:${iconName(name)}` : all,
-  );
-}
+// `setCarriedIcons`, `carriedIconPack` and `normaliseIconRefs` moved to
+// `./iconRefs`. They are what the *parser* needs, and importing them from here
+// pulled the bundled collections in behind them — 1.8 MB of icon data in
+// anything that parsed a diagram. Re-exported so existing callers are
+// unchanged.
+export {
+  carriedIconPack,
+  normaliseIconRefs,
+  setCarriedIcons,
+  COLLECTION_PREFIXES,
+} from "./iconRefs";
 
 /**
  * Render an icon name: a built-in ("database"), one from a bundled
@@ -111,7 +63,7 @@ export async function getIconHtml(name: string): Promise<string> {
   if (name.startsWith(`${CUSTOM}:`)) {
     // Already sanitised on the way into the library; nothing unchecked
     // reaches the page.
-    return carried[name.slice(CUSTOM.length + 1)] ?? BUILTIN.server;
+    return carriedIcons()[name.slice(CUSTOM.length + 1)] ?? BUILTIN.server;
   }
   const collectionP = loadCollection(name.slice(0, sep));
   if (!collectionP) return BUILTIN.server;
@@ -250,7 +202,7 @@ export async function searchIcons(query: string, limit = 60): Promise<string[]> 
   // The diagram's own icons first. Somebody who imported an Azure pack is
   // looking for those, not for a glyph that happens to share the word, and
   // there are never many of them.
-  const out: string[] = Object.keys(carried)
+  const out: string[] = Object.keys(carriedIcons())
     // The same rule the collections are held to, rather than a bare
     // `includes`: an imported pack is hundreds of names, and it deserves the
     // multi-word and acronym handling more than the bundled sets do.

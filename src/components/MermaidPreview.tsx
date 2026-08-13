@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { renderWithMermaid } from "../model/fromMermaid";
+import { renderWithMermaid } from "../model/mermaidRender";
 import { t } from "../i18n";
 
 /**
