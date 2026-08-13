@@ -199,7 +199,9 @@ describe("the rest of the families", () => {
       text: "a note long enough that it has to wrap more than once to fit",
       direction: "TB",
     });
-    expect(measureNode(long, fixed).width).toBeLessThanOrEqual(220);
+    // Exactly the cap, not merely under it: the same max-content rule as the
+    // C4 element, and the same reason.
+    expect(measureNode(long, fixed).width).toBe(220);
   });
 });
 
@@ -218,6 +220,20 @@ describe("C4 elements", () => {
     const bare = measureNode(c4("system"), fixed);
     const described = measureNode(c4("system", "handles settlement"), fixed);
     expect(described.height).toBeGreaterThan(bare.height);
+  });
+
+  it("takes the cap when its content is wider than the cap", () => {
+    // A box with a `max-width` shrink-to-fits to its **max-content** width —
+    // the text on one line — and is then capped. It does not wrap first and
+    // measure what the wrap left, which is what this used to do: the answer
+    // then depended on where the wrap happened to fall. It agreed on Windows
+    // and was 12px short on a Linux runner, whose wider fonts pushed the same
+    // description past the cap. Fonts revealed it; the model was wrong anyway.
+    const wide = measureNode(
+      c4("system", "a description far longer than two hundred and thirty pixels allows"),
+      fixed,
+    );
+    expect(wide.width).toBe(230);
   });
 
   it("stays inside the stylesheet's floor and ceiling", () => {

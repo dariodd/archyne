@@ -294,24 +294,34 @@ function measureC4(
 ): { width: number; height: number } {
   const box = BOXES.c4;
   const chrome = box.padX + box.border;
-  const limit = width !== undefined ? Math.max(0, width - chrome) : box.maxWidth - chrome;
-
   const tag = C4_TAGS[data.c4Shape] ?? data.c4Shape;
-  const parts: TextSize[] = [
-    measureBlock(`«${tag}»`, FONTS.c4Tag, limit, metrics),
-    measureBlock(data.label, FONTS.c4Label, limit, metrics),
+  const lines = [
+    { text: `«${tag}»`, font: FONTS.c4Tag },
+    { text: data.label, font: FONTS.c4Label },
+    ...(data.descr ? [{ text: data.descr, font: FONTS.c4Descr }] : []),
   ];
-  if (data.descr) parts.push(measureBlock(data.descr, FONTS.c4Descr, limit, metrics));
 
-  const widest = Math.max(...parts.map((p) => p.width));
-  // `.c4-label` carries `margin: 2px 0`.
-  const stacked = parts.reduce((sum, p) => sum + p.height, 0) + 4;
+  // A box with a `max-width` shrink-to-fits to its **max-content** width — the
+  // text on one line — and is then capped. It does *not* wrap first and take
+  // the widest resulting line, which is what this used to compute: for a
+  // description whose natural width was over the cap, that gave whatever the
+  // wrap happened to leave rather than the cap itself. It agreed on Windows
+  // and was 12px short on a Linux runner, whose wider fonts pushed the same
+  // text past 230.
+  const maxContent = Math.max(...lines.map((l) => metrics.measure(l.text, l.font).width));
+  const resolved =
+    width ?? Math.min(box.maxWidth, Math.max(box.minWidth, Math.ceil(maxContent + chrome)));
+
+  // Height follows from the width actually settled on, not from the cap.
+  const inner = Math.max(0, resolved - chrome);
+  const stacked = lines.reduce(
+    (sum, l) => sum + measureBlock(l.text, l.font, inner, metrics).height,
+    // `.c4-label` carries `margin: 2px 0`.
+    4,
+  );
   const head = data.c4Shape.includes("person") ? C4_HEAD : 0;
 
-  return {
-    width: Math.min(box.maxWidth, Math.max(box.minWidth, Math.ceil(widest + chrome))),
-    height: Math.ceil(head + stacked + box.padY + box.border),
-  };
+  return { width: resolved, height: Math.ceil(head + stacked + box.padY + box.border) };
 }
 
 /* ---------- the answer ---------- */
@@ -371,17 +381,18 @@ export function measureNode(
     case "note": {
       const box = BOXES.note;
       const chrome = box.padX + box.border;
-      const limit = width !== undefined ? Math.max(0, width - chrome) : box.maxWidth - chrome;
+      // Same rule as the C4 element above: a `max-width` box takes its
+      // max-content width and is then capped, rather than wrapping first and
+      // measuring what the wrap left.
+      const maxContent = metrics.measure(n.data.text, FONTS.note).width;
+      const resolved =
+        width ?? Math.min(box.maxWidth, Math.max(box.minWidth, Math.ceil(maxContent + chrome)));
       // `.note-node` states `line-height: 1.45` rather than leaving it to the
       // font, so the lines are counted and multiplied instead of taking the
       // stacked height `measureBlock` returns.
-      const lines = wrapText(n.data.text, FONTS.note, limit, metrics);
-      const widest = lines.reduce(
-        (w, line) => Math.max(w, metrics.measure(line, FONTS.note).width),
-        0,
-      );
+      const lines = wrapText(n.data.text, FONTS.note, Math.max(0, resolved - chrome), metrics);
       return {
-        width: Math.min(box.maxWidth, Math.max(box.minWidth, Math.ceil(widest + chrome))),
+        width: resolved,
         height: Math.ceil(
           Math.max(1, lines.length) * FONTS.note.size * NOTE_LINE_HEIGHT + box.padY,
         ),
