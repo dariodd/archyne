@@ -1,0 +1,66 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the geometry it emits > places a C4 element the same way every time 1`] = `
+"rect width=100% height=100%
+g transform=translate(24,24)
+  g transform=translate(0,0)
+    rect class=c4 x=0.75 y=0.75 width=168.5 height=105.5 rx=8
+    circle class=c4-head cx=85 cy=25 r=13
+    text class=t text-anchor=middle
+      tspan x=85 y=52.4 font-size=10 "«Person»"
+      tspan x=85 y=68.82 font-size=13 "A person"
+      tspan x=85 y=84.03 font-size=11 "Uses the system""
+`;
+
+exports[`the geometry it emits > places a flowchart the same way every time 1`] = `
+"rect width=100% height=100%
+g transform=translate(24,24)
+  path class=e d=M 80,54 L 80,94.5 Q 80,97 77.5,97 L 77.5,97 Q 75,97 75,99.5 L 75,140
+  path class=e d=M 75,226 L 75,260.5 Q 75,263 77.5,263 L 77.5,263 Q 80,263 80,265.5 L 80,300
+  g transform=translate(63.92,253.69)
+    rect class=el-bg x=0 y=0 width=27.16 height=18.63 rx=3
+    text class=el x=13.58 y=9.32 text-anchor=middle "yes"
+  g transform=translate(0,0)
+    rect class=sf x=1 y=1 width=158 height=52 rx=26
+    text class=t text-anchor=middle
+      tspan x=80 y=31.5 font-size=12 "Start"
+  g transform=translate(0,140)
+    polygon class=sf points=75,1 149,43 75,85 1,43
+    text class=t text-anchor=middle
+      tspan x=75 y=47.5 font-size=12 "Valid?"
+  g transform=translate(0,300)
+    rect class=sf x=1 y=1 width=158 height=52
+    text class=t text-anchor=middle
+      tspan x=80 y=31.5 font-size=12 "Process the request""
+`;
+
+exports[`the geometry it emits > stacks a class's rows the same way every time 1`] = `
+"rect width=100% height=100%
+g transform=translate(24,24)
+  g transform=translate(0,0)
+    rect class=sf x=0.75 y=0.75 width=178.5 height=121.5 rx=8
+    text class=t text-anchor=middle
+      tspan x=90 y=17.4 font-size=10 "«interface»"
+      tspan x=90 y=32.78 font-size=12 "Account"
+    line class=rule x1=0 y1=43.26 x2=180 y2=43.26
+    text class=t text-anchor=start
+      tspan x=12 y=62.22 font-size=11.5 "+id: int"
+    text class=t text-anchor=start
+      tspan x=12 y=81.52 font-size=11.5 "+holder: String"
+    text class=t text-anchor=start
+      tspan x=12 y=108.81 font-size=11.5 "+close(): void""
+`;
+
+exports[`the geometry it emits > stacks an ER entity's attributes the same way every time 1`] = `
+"rect width=100% height=100%
+g transform=translate(24,24)
+  g transform=translate(0,0)
+    rect class=sf x=0.75 y=0.75 width=178.5 height=80.5 rx=8
+    text class=t text-anchor=middle
+      tspan x=90 y=19.48 font-size=12 "CUSTOMER"
+    line class=rule x1=0 y1=29.96 x2=180 y2=29.96
+    text class=t text-anchor=start
+      tspan x=12 y=49.44 font-size=12 "int id PK"
+    text class=t text-anchor=start
+      tspan x=12 y=69.4 font-size=12 "timestamptz created_at""
+`;

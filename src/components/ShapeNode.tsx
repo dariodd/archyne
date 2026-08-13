@@ -8,108 +8,50 @@ import { GROUP_MIN, useGraphStore } from "../store";
 import { NodeResize } from "./NodeResize";
 import { IconView } from "./ArchView";
 import { SideHandles } from "./SideHandles";
+import { pointsAttr, shapeGeometry } from "../render/shapes";
 
+/**
+ * The canvas's adapter over `render/shapes.ts`.
+ *
+ * The geometry itself lives there, so that the renderer which emits SVG as a
+ * string draws the same hexagon this does. All that is left here is turning a
+ * primitive into an element and hanging the right class on it.
+ */
 function shapeSvg(shape: Shape, w: number, h: number) {
-  const common = { className: "shape-fill", vectorEffect: "non-scaling-stroke" as const };
-  switch (shape) {
-    case "round":
-      return <rect x={1} y={1} width={w - 2} height={h - 2} rx={8} {...common} />;
-    case "stadium":
-      return <rect x={1} y={1} width={w - 2} height={h - 2} rx={(h - 2) / 2} {...common} />;
-    case "subroutine":
-      return (
-        <g>
-          <rect x={1} y={1} width={w - 2} height={h - 2} {...common} />
-          <line x1={9} y1={1} x2={9} y2={h - 1} className="shape-line" />
-          <line x1={w - 9} y1={1} x2={w - 9} y2={h - 1} className="shape-line" />
-        </g>
-      );
-    case "cylinder": {
-      const ry = 8;
-      return (
-        <g>
-          <path
-            d={`M1 ${ry} A ${(w - 2) / 2} ${ry} 0 0 1 ${w - 1} ${ry} L ${w - 1} ${h - ry} A ${(w - 2) / 2} ${ry} 0 0 1 1 ${h - ry} Z`}
-            {...common}
-          />
-          <path
-            d={`M1 ${ry} A ${(w - 2) / 2} ${ry} 0 0 0 ${w - 1} ${ry}`}
-            className="shape-line"
-            fill="none"
-          />
-        </g>
-      );
-    }
-    case "circle":
-      return <ellipse cx={w / 2} cy={h / 2} rx={w / 2 - 1} ry={h / 2 - 1} {...common} />;
-    case "doublecircle":
-      return (
-        <g>
-          <ellipse cx={w / 2} cy={h / 2} rx={w / 2 - 1} ry={h / 2 - 1} {...common} />
-          <ellipse
-            cx={w / 2}
-            cy={h / 2}
-            rx={w / 2 - 6}
-            ry={h / 2 - 6}
-            className="shape-line"
-            fill="none"
-          />
-        </g>
-      );
-    case "diamond":
-      return (
-        <polygon
-          points={`${w / 2},1 ${w - 1},${h / 2} ${w / 2},${h - 1} 1,${h / 2}`}
-          {...common}
-        />
-      );
-    case "hexagon": {
-      const c = Math.min(h / 2, w * 0.18);
-      return (
-        <polygon
-          points={`${c},1 ${w - c},1 ${w - 1},${h / 2} ${w - c},${h - 1} ${c},${h - 1} 1,${h / 2}`}
-          {...common}
-        />
-      );
-    }
-    case "odd":
-      return (
-        <polygon
-          points={`1,${h / 2} 14,1 ${w - 1},1 ${w - 1},${h - 1} 14,${h - 1}`}
-          {...common}
-        />
-      );
-    case "trapezoid":
-      return (
-        <polygon
-          points={`${w * 0.18},1 ${w * 0.82},1 ${w - 1},${h - 1} 1,${h - 1}`}
-          {...common}
-        />
-      );
-    case "inv_trapezoid":
-      return (
-        <polygon
-          points={`1,1 ${w - 1},1 ${w * 0.82},${h - 1} ${w * 0.18},${h - 1}`}
-          {...common}
-        />
-      );
-    case "lean_right":
-      return (
-        <polygon
-          points={`${w * 0.15},1 ${w - 1},1 ${w * 0.85},${h - 1} 1,${h - 1}`}
-          {...common}
-        />
-      );
-    case "lean_left":
-      return (
-        <polygon
-          points={`1,1 ${w * 0.85},1 ${w - 1},${h - 1} ${w * 0.15},${h - 1}`}
-          {...common}
-        />
-      );
-    case "square":
-      return <rect x={1} y={1} width={w - 2} height={h - 2} {...common} />;
-  }
+  return (
+    <g>
+      {shapeGeometry(shape, w, h).map((p, i) => {
+        // `.shape-fill` is the body and takes a node's custom colours;
+        // `.shape-line` is detail drawn over it and is never filled.
+        const common =
+          p.paint === "fill"
+            ? { className: "shape-fill", vectorEffect: "non-scaling-stroke" as const }
+            : { className: "shape-line", fill: "none" };
+        switch (p.kind) {
+          case "rect":
+            return (
+              <rect
+                key={i}
+                x={p.x}
+                y={p.y}
+                width={p.width}
+                height={p.height}
+                {...(p.rx !== undefined ? { rx: p.rx } : {})}
+                {...common}
+              />
+            );
+          case "ellipse":
+            return <ellipse key={i} cx={p.cx} cy={p.cy} rx={p.rx} ry={p.ry} {...common} />;
+          case "polygon":
+            return <polygon key={i} points={pointsAttr(p.points)} {...common} />;
+          case "path":
+            return <path key={i} d={p.d} {...common} />;
+          case "line":
+            return <line key={i} x1={p.x1} y1={p.y1} x2={p.x2} y2={p.y2} {...common} />;
+        }
+      })}
+    </g>
+  );
 }
 
 export function ShapeNodeView({ id, data, selected }: NodeProps<ShapeNodeType>) {

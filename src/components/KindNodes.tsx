@@ -3,10 +3,12 @@ import { Label } from "./Label";
 import type { ClassNode, EntityNode, StateNode } from "../model/types";
 import { NodeResize } from "./NodeResize";
 import { useSized } from "./useSized";
-import { useThemeStore } from "../theme";
+
 import { SideHandles } from "./SideHandles";
 import { useRename } from "./useRename";
 import { boxStyleOf, labelStyleOf, styleProps } from "../model/nodeStyle";
+import { edgeColors, useThemeStore } from "../theme";
+import { markerDefs } from "../render/markers";
 
 export function StateNodeView({ id, data, selected }: NodeProps<StateNode>) {
   if (data.stateType === "choice") {
@@ -166,154 +168,19 @@ export function ClassNodeView({ id, data, selected }: NodeProps<ClassNode>) {
  * edges via `url(#id)`. Rendered once inside the canvas.
  */
 export function MarkerDefs() {
-  const resolved = useThemeStore((s) => s.resolved);
-  const { stroke, hollowFill } =
-    resolved === "light"
-      ? { stroke: "#5f6673", hollowFill: "#ffffff" }
-      : { stroke: "#8b91a3", hollowFill: "#12141a" };
+  // Subscribed rather than read once: the markers are painted with literal
+  // colours, so they have to be redrawn when the theme flips.
+  useThemeStore((s) => s.resolved);
+  const { stroke, hollowFill } = edgeColors();
+  // The canvas adapter over `render/markers.ts`. The eleven definitions live
+  // there so the SVG renderer emits the same crow's foot this draws; all that
+  // is left here is handing them the theme's two colours and letting React
+  // insert the result. `dangerouslySetInnerHTML` is the only way to put an
+  // already-serialised SVG subtree into the tree, and what goes in is built
+  // from a table in this repository with no input from a document.
   return (
     <svg style={{ position: "absolute", width: 0, height: 0 }}>
-      <defs>
-        <marker
-          id="cls-extension"
-          viewBox="0 0 14 14"
-          refX="12"
-          refY="7"
-          markerWidth="14"
-          markerHeight="14"
-          orient="auto-start-reverse"
-        >
-          <path d="M1,1 L12,7 L1,13 Z" fill={hollowFill} stroke={stroke} strokeWidth="1.2" />
-        </marker>
-        <marker
-          id="cls-composition"
-          viewBox="0 0 16 12"
-          refX="14"
-          refY="6"
-          markerWidth="16"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M1,6 L8,1 L15,6 L8,11 Z" fill={stroke} stroke={stroke} strokeWidth="1" />
-        </marker>
-        <marker
-          id="cls-aggregation"
-          viewBox="0 0 16 12"
-          refX="14"
-          refY="6"
-          markerWidth="16"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path
-            d="M1,6 L8,1 L15,6 L8,11 Z"
-            fill={hollowFill}
-            stroke={stroke}
-            strokeWidth="1.2"
-          />
-        </marker>
-        <marker
-          id="cls-dependency"
-          viewBox="0 0 12 12"
-          refX="10"
-          refY="6"
-          markerWidth="12"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M2,1 L10,6 L2,11" fill="none" stroke={stroke} strokeWidth="1.4" />
-        </marker>
-        <marker
-          id="seq-arrow"
-          viewBox="0 0 12 12"
-          refX="10"
-          refY="6"
-          markerWidth="12"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M1,1 L11,6 L1,11 Z" fill={stroke} />
-        </marker>
-        <marker
-          id="seq-open"
-          viewBox="0 0 12 12"
-          refX="10"
-          refY="6"
-          markerWidth="12"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M2,1 L10,6 L2,11" fill="none" stroke={stroke} strokeWidth="1.4" />
-        </marker>
-        <marker
-          id="seq-cross"
-          viewBox="0 0 12 12"
-          refX="9"
-          refY="6"
-          markerWidth="12"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M3,2 L11,10 M11,2 L3,10" fill="none" stroke={stroke} strokeWidth="1.5" />
-        </marker>
-        <marker
-          id="er-one"
-          viewBox="0 0 12 12"
-          refX="10"
-          refY="6"
-          markerWidth="12"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M5,1 L5,11" fill="none" stroke={stroke} strokeWidth="1.5" />
-        </marker>
-        <marker
-          id="er-zero-one"
-          viewBox="0 0 16 12"
-          refX="14"
-          refY="6"
-          markerWidth="16"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <circle cx="4" cy="6" r="3" fill="none" stroke={stroke} strokeWidth="1.2" />
-          <path d="M10,1 L10,11" fill="none" stroke={stroke} strokeWidth="1.5" />
-        </marker>
-        <marker
-          id="er-zero-more"
-          viewBox="0 0 18 12"
-          refX="16"
-          refY="6"
-          markerWidth="18"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <circle cx="4" cy="6" r="3" fill="none" stroke={stroke} strokeWidth="1.2" />
-          <path
-            d="M9,6 L17,1 M9,6 L17,6 M9,6 L17,11"
-            fill="none"
-            stroke={stroke}
-            strokeWidth="1.2"
-          />
-        </marker>
-        <marker
-          id="er-one-more"
-          viewBox="0 0 18 12"
-          refX="16"
-          refY="6"
-          markerWidth="18"
-          markerHeight="12"
-          orient="auto-start-reverse"
-        >
-          <path d="M4,1 L4,11" fill="none" stroke={stroke} strokeWidth="1.5" />
-          <path
-            d="M8,6 L17,1 M8,6 L17,6 M8,6 L17,11"
-            fill="none"
-            stroke={stroke}
-            strokeWidth="1.2"
-          />
-        </marker>
-      </defs>
+      <defs dangerouslySetInnerHTML={{ __html: markerDefs(stroke, hollowFill) }} />
     </svg>
   );
 }
