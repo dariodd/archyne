@@ -243,10 +243,15 @@ export function presentEdge(kind: DiagramKind, e: FlowEdge): FlowEdge {
     // below: the overlay owns their geometry.
     type: "routed",
     label: d.label || undefined,
-    labelStyle: { fill: pal.labelFill },
-    labelBgStyle: { fill: pal.labelBg },
-    labelBgPadding: [6, 3],
-    labelBgBorderRadius: 4,
+    // Both markers are cleared here rather than left to each branch to
+    // remember. Presenting spreads the edge it is handed, so whatever the
+    // last pass drew is still on it, and a branch that adds a marker only
+    // when it wants one has no way to take one off: unticking "arrowheads at
+    // both ends" left the second head exactly where it was. Every branch
+    // below sets `markerEnd`, and the ones that want a head at the start set
+    // `markerStart` — so starting from nothing is enough.
+    markerStart: undefined,
+    markerEnd: undefined,
   };
 
   if (kind === "architecture" && d.arch) {

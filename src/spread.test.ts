@@ -119,3 +119,56 @@ describe("fanning out connections that share a corridor", () => {
     expect(segmentsOf(out.get("b")!).filter((r) => r.axis === "y").length).toBeGreaterThan(0);
   });
 });
+
+describe("what a corridor may not be moved into", () => {
+  const p = (x: number, y: number): Point => ({ x, y });
+
+  it("leaves an approach long enough for its arrowhead", () => {
+    // Out of a face, along, and in again — with the corridor sitting exactly
+    // one stub above the node it arrives at. Two of them, so one must move.
+    const one = [p(0, 0), p(0, 80), p(200, 80), p(200, 100)];
+    const two = [p(0, 20), p(0, 80), p(300, 80), p(300, 200)];
+    const out = spreadRuns(
+      new Map([
+        ["a", one],
+        ["b", two],
+      ]),
+    );
+    // `b`'s corridor may drop as far as it likes; `a`'s cannot come nearer
+    // than a stub to (200, 100) or the arrowhead ends up on the corner.
+    for (const [, route] of out) {
+      const last = route[route.length - 1];
+      const before = route[route.length - 2];
+      expect(Math.hypot(last.x - before.x, last.y - before.y)).toBeGreaterThanOrEqual(20);
+    }
+  });
+
+  it("pushes a connection off a frame's border", () => {
+    // A lone connection, running exactly along the bottom of a group.
+    const along = [p(0, 300), p(400, 300)];
+    const frame = { x: 0, y: 100, w: 500, h: 200 };
+    const out = spreadRuns(new Map([["a", along]]), [frame]);
+    // The two ends stay on the boxes they came from; the long run between
+    // them is what steps off the border.
+    const runs = segmentsOf(out.get("a")!).filter((r) => r.axis === "x");
+    expect(runs).toHaveLength(1);
+    expect(Math.abs(runs[0].from.y - 300)).toBe(GAP);
+  });
+
+  it("leaves a connection that only crosses a border alone", () => {
+    // Straight through the frame rather than along it: nothing to hide in.
+    const across = [p(250, 0), p(250, 400)];
+    const frame = { x: 0, y: 100, w: 500, h: 200 };
+    const out = spreadRuns(new Map([["a", across]]), [frame]);
+    expect(out.get("a")).toEqual(across);
+  });
+
+  it("moves the connection and never the border", () => {
+    const along = [p(0, 300), p(400, 300)];
+    const frame = { x: 0, y: 100, w: 500, h: 200 };
+    const out = spreadRuns(new Map([["a", along]]), [frame]);
+    // Only the one route comes back; a frame is not a route and cannot be
+    // returned as one.
+    expect([...out.keys()]).toEqual(["a"]);
+  });
+});

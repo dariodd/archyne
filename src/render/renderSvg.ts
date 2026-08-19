@@ -42,6 +42,7 @@ import {
   type ShapeNodeData,
 } from "../model/types";
 import { absoluteBoxes } from "../boxes";
+import { allLabels, plateSize } from "../labels";
 import { allRoutes } from "../routes";
 import { roundedPolyline, type Point } from "../routing";
 import {
@@ -703,16 +704,19 @@ function groupMarkup(node: AnyNode, w: number, h: number): string {
   );
 }
 
-/** An edge's label, on a plate so the line does not read through it. */
+/**
+ * An edge's label, on a plate so the line does not read through it.
+ *
+ * The plate is the one `labels.ts` reserved when it decided where the label
+ * could go, down to the padding: a label placed clear of a box and then drawn
+ * wider than the space claimed for it is back to overlapping the box.
+ */
 function edgeLabelMarkup(text: string, at: { x: number; y: number }): string {
   if (!text) return "";
-  const font = { family: NODE_FONT.family, size: 11 };
-  const size = textMetrics().measure(text, font);
-  const w = size.width + 10;
-  const h = size.height + 4;
+  const { w, h } = plateSize(text);
   return (
     `<g transform="translate(${n(at.x - w / 2)},${n(at.y - h / 2)})">` +
-    `<rect class="el-bg" x="0" y="0" width="${n(w)}" height="${n(h)}" rx="3"/>` +
+    `<rect class="el-bg" x="0" y="0" width="${n(w)}" height="${n(h)}" rx="4"/>` +
     `<text class="el" x="${n(w / 2)}" y="${n(h / 2)}" text-anchor="middle" dominant-baseline="central">${esc(text)}</text>` +
     `</g>`
   );
@@ -750,31 +754,6 @@ function edgeAttrs(edge: FlowEdge): string {
     (start ? ` marker-start="url(#${start})"` : "") +
     (dash ? ` stroke-dasharray="${esc(String(dash))}"` : "")
   );
-}
-
-/** Where an edge's label goes: the middle of the route, by length. */
-function midpointOf(points: { x: number; y: number }[]): { x: number; y: number } {
-  if (points.length === 0) return { x: 0, y: 0 };
-  if (points.length === 1) return points[0];
-  const lengths: number[] = [];
-  let total = 0;
-  for (let i = 1; i < points.length; i++) {
-    const d = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
-    lengths.push(d);
-    total += d;
-  }
-  let travelled = 0;
-  for (let i = 0; i < lengths.length; i++) {
-    if (travelled + lengths[i] >= total / 2) {
-      const t = lengths[i] === 0 ? 0 : (total / 2 - travelled) / lengths[i];
-      return {
-        x: points[i].x + (points[i + 1].x - points[i].x) * t,
-        y: points[i].y + (points[i + 1].y - points[i].y) * t,
-      };
-    }
-    travelled += lengths[i];
-  }
-  return points[points.length - 1];
 }
 
 /**
@@ -1020,11 +999,19 @@ export function renderSvg(
     .map((edge) => {
       const points = routes.get(edge.id);
       if (!points || points.length < 2) return "";
-      const d = roundedPolyline(points);
-      return (
-        `<path class="e" d="${d}"${edgeAttrs(edge)}/>` +
-        edgeLabelMarkup(edge.data?.label ?? "", midpointOf(points))
-      );
+      return `<path class="e" d="${roundedPolyline(points)}"${edgeAttrs(edge)}/>`;
+    })
+    .join("");
+
+  // Where the labels ended up is not each edge's own business — one that would
+  // land on a box or on its neighbour is slid clear, which can only be decided
+  // for all of them together. The canvas asks the same question of the same
+  // module, so a diagram exports with its labels where they were on screen.
+  const placed = sequence ? new Map() : allLabels(nodes, edges, kind);
+  const labelMarkup = edges
+    .map((edge) => {
+      const at = placed.get(edge.id);
+      return at ? edgeLabelMarkup(at.text, at.at) : "";
     })
     .join("");
 
@@ -1063,7 +1050,9 @@ export function renderSvg(
     // them for the canvas.
     `<defs>${markerDefs(c.edge, c.markerHollow)}</defs>` +
     (options.background === false ? "" : `<rect width="100%" height="100%" fill="${c.bg}"/>`) +
-    `<g transform="translate(${n(dx)},${n(dy)})">${sequence ? sequence.markup : edgeMarkup + nodeMarkup}</g>` +
+    // Labels last: a connection may run behind a box, but what it is called
+    // has to stay readable, which is also the order the canvas paints in.
+    `<g transform="translate(${n(dx)},${n(dy)})">${sequence ? sequence.markup : edgeMarkup + nodeMarkup + labelMarkup}</g>` +
     `</svg>`
   );
 }

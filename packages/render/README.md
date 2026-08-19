@@ -207,8 +207,12 @@ renderers do not paint. This does not.
 
 That is the point rather than an oversight. Edges are routed orthogonally, with
 stubs off each face, rounded corners, hops where two lines cross, and parallel
-edges spread apart. Nodes are sized and laid out by ELK. The same source drawn
-by Mermaid will look different.
+edges spread apart. Connections sharing a face are given berths along it rather
+than all meeting its centre, so five edges leaving one node's underside fan out
+instead of coinciding. Labels are placed knowing about one another, so one does
+not come to rest on a box's words, on another label, or on a line it does not
+name. Nodes are sized and laid out by ELK. The same source drawn by Mermaid will
+look different.
 
 ## Families
 

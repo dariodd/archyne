@@ -217,6 +217,25 @@ jobs:
         env:
           ARCHYNE_URL: http://localhost:5173
 
+      # The router and the label placer have unit tests, and those check the
+      # rules on cases written to exercise them. This checks the thing the
+      # rules exist for, on every diagram the repo ships: that nothing a
+      # reader needs — an arrowhead, a box's words, a label, a whole
+      # connection — ends up underneath something else.
+      - name: Nothing important is hidden under anything else
+        run: npm run test:e2e:legibility
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
+      # Taking hold of a connection and pulling it sideways, on every run of
+      # every connection in a real import. Three separate faults have made
+      # that gesture come back as a line folded over itself, and none of them
+      # showed on a diagram small enough to write out by hand.
+      - name: Dragging a connection moves it and nothing else
+        run: npm run test:e2e:slide
+        env:
+          ARCHYNE_URL: http://localhost:5173
+
       - name: Side panel and editor
         run: npm run test:e2e:panel
         env:

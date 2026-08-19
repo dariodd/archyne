@@ -65,6 +65,60 @@ describe("unsupported diagram families", () => {
   });
 });
 
+describe("code that does not parse", () => {
+  const BROKEN = "flowchart TD\n  a --> --> b\n";
+
+  it("keeps the last good picture while the code is being typed", async () => {
+    await load(FLOWCHART);
+    await useGraphStore.getState().applyCode(BROKEN, { editing: true });
+
+    // Half a line is broken code, and blanking the canvas on every keystroke
+    // that has not finished is what this exists to avoid.
+    const s = useGraphStore.getState();
+    expect(s.parseError).toBeTruthy();
+    expect(s.nodes.length).toBe(2);
+  });
+
+  it("drops the picture when the code came from somewhere else", async () => {
+    await load(FLOWCHART);
+    await load(BROKEN);
+
+    // Switching to a document that does not parse used to leave the previous
+    // diagram on the canvas: you were in Untitled 9 and looking at Untitled
+    // 10. A document that has no picture shows none.
+    const s = useGraphStore.getState();
+    expect(s.parseError).toBeTruthy();
+    expect(s.nodes).toEqual([]);
+    expect(s.edges).toEqual([]);
+  });
+
+  it("drops the picture for an empty document too", async () => {
+    await load(FLOWCHART);
+    await load("");
+
+    expect(useGraphStore.getState().parseError).toBeTruthy();
+    expect(useGraphStore.getState().nodes).toEqual([]);
+    expect(useGraphStore.getState().edges).toEqual([]);
+  });
+
+  it("clears a warning left over from the document before", async () => {
+    await load(FLOWCHART);
+    useGraphStore.setState({ warning: "something about the last one" });
+    await load(BROKEN);
+
+    expect(useGraphStore.getState().warning).toBeNull();
+  });
+
+  it("clears the read-only flag left over from an unsupported document", async () => {
+    await load(GANTT);
+    expect(useGraphStore.getState().unsupported).toBe("gantt");
+
+    await load(BROKEN);
+    expect(useGraphStore.getState().unsupported).toBeNull();
+    expect(useGraphStore.getState().parseError).toBeTruthy();
+  });
+});
+
 describe("history", () => {
   it("undoes and redoes a structural edit", async () => {
     await load(FLOWCHART);
@@ -323,5 +377,50 @@ describe("sequence message order", () => {
     const before = rowOf("last");
     useGraphStore.getState().moveMessage(edgeOf("last"), -1);
     expect(rowOf("last")).toBe(before - 1);
+  });
+});
+
+describe("rearranging the diagram", () => {
+  const BENT = `flowchart TD
+  a["One"] --> b["Two"]
+%% graph:positions {"a":{"x":40,"y":0},"b":{"x":40,"y":200}}
+%% graph:waypoints {"a>b":[[160,100]]}
+`;
+
+  it("drops the corners, which belonged to the old arrangement", async () => {
+    await load(BENT);
+    expect(useGraphStore.getState().edges[0].data?.points).toHaveLength(1);
+
+    await useGraphStore.getState().runAutoLayout();
+
+    // Kept, a corner stays where it was dropped while the nodes move out from
+    // under it, and the connection sets off sideways to a point that means
+    // nothing any more.
+    expect(useGraphStore.getState().edges[0].data?.points ?? []).toHaveLength(0);
+    expect(useGraphStore.getState().code).not.toContain("graph:waypoints");
+  });
+
+  it("gives them back on undo, with the arrangement they belonged to", async () => {
+    await load(BENT);
+    const before = useGraphStore.getState().code;
+
+    await useGraphStore.getState().runAutoLayout();
+    await useGraphStore.getState().undo();
+
+    expect(useGraphStore.getState().code).toBe(before);
+    expect(useGraphStore.getState().edges[0].data?.points).toHaveLength(1);
+  });
+
+  it("leaves a label where the user dragged it", async () => {
+    // A dragged label is stored as an offset from the middle of its route,
+    // not as a coordinate, so it follows the connection when everything moves
+    // and there is nothing to throw away.
+    await load(`flowchart TD
+  a["One"] -->|"why"| b["Two"]
+%% graph:edges {"a>b":{"label":[40,-12]}}
+`);
+    const offset = useGraphStore.getState().edges[0].data?.style?.label;
+    await useGraphStore.getState().runAutoLayout();
+    expect(useGraphStore.getState().edges[0].data?.style?.label).toEqual(offset);
   });
 });

@@ -29,6 +29,7 @@ import {
   type Side,
 } from "./orthogonal";
 import { blocked, routeAround, type Rect } from "./avoid";
+import { spreadBerths } from "./berths";
 import { spreadRuns } from "./spread";
 import type { Point } from "./routing";
 
@@ -163,9 +164,8 @@ function routeOf(
   edge: FlowEdge,
   nodes: AnyNode[],
   boxes: Map<string, Rect>,
-  kind: DiagramKind,
+  ends: Ends | null,
 ): Point[] {
-  const ends = endsOf(edge, boxes, kind);
   if (!ends) return [];
 
   // A loop back to the same node: out of one face, round the corner it shares
@@ -222,8 +222,26 @@ let cached: {
   nodes: AnyNode[];
   edges: FlowEdge[];
   kind: DiagramKind;
+  ends: Map<string, Ends>;
   routes: Map<string, Point[]>;
 } | null = null;
+
+/**
+ * Where every connection meets its two nodes, with the ones sharing a face
+ * given a place each along it.
+ *
+ * Separate from `allRoutes` because the canvas wants these on their own: the
+ * corner-dragging magnet lines a new corner up with the point a connection
+ * actually leaves from, and an edge working that out from `endsOf` alone would
+ * aim at the middle of a face its line no longer touches.
+ */
+export function allEnds(
+  nodes: AnyNode[],
+  edges: FlowEdge[],
+  kind: DiagramKind,
+): Map<string, Ends> {
+  return fill(nodes, edges, kind).ends;
+}
 
 /**
  * Every edge's route, by id.
@@ -237,15 +255,44 @@ export function allRoutes(
   edges: FlowEdge[],
   kind: DiagramKind,
 ): Map<string, Point[]> {
+  return fill(nodes, edges, kind).routes;
+}
+
+/** The whole pass: where the connections meet, and where they then go. */
+function fill(
+  nodes: AnyNode[],
+  edges: FlowEdge[],
+  kind: DiagramKind,
+): { ends: Map<string, Ends>; routes: Map<string, Point[]> } {
   if (cached && cached.nodes === nodes && cached.edges === edges && cached.kind === kind) {
-    return cached.routes;
+    return cached;
   }
   const boxes = absoluteBoxes(nodes);
+
+  // Faces first. Which face a connection uses depends only on the two boxes,
+  // but *where* along it depends on every other connection using the same
+  // face, so the two are settled one after the other and before any routing:
+  // a route drawn from the middle of a face and then moved would take its
+  // corners with it.
+  const meeting = new Map<string, Ends>();
+  for (const edge of edges) {
+    const at = endsOf(edge, boxes, kind);
+    if (at) meeting.set(edge.id, at);
+  }
+  const ends = spreadBerths(edges, meeting, boxes);
+
   const drawn = new Map<string, Point[]>();
-  for (const edge of edges) drawn.set(edge.id, routeOf(edge, nodes, boxes, kind));
+  for (const edge of edges) {
+    drawn.set(edge.id, routeOf(edge, nodes, boxes, ends.get(edge.id) ?? null));
+  }
   // Only now, with all of them in hand, can two that lie on top of each other
-  // be told apart and moved aside.
-  const routes = spreadRuns(drawn);
-  cached = { nodes, edges, kind, routes };
-  return routes;
+  // be told apart and moved aside. The group frames go in as lines that cannot
+  // move: a connection flush with a container's border vanishes into it.
+  const frames = nodes.filter(isGroup).map((n) => boxes.get(n.id));
+  const routes = spreadRuns(
+    drawn,
+    frames.filter((b): b is Rect => !!b),
+  );
+  cached = { nodes, edges, kind, ends, routes };
+  return cached;
 }

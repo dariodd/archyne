@@ -210,6 +210,72 @@ body,
   outline-offset: -1px;
 }
 
+/* A heading inside a panel — not an item, so it takes no focus and is not
+   one of the things the arrow keys walk through. */
+.menu-heading {
+  padding: 2px 9px 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* What an arrangement does, shown beside the list rather than under it: the
+   panel must not change height as the pointer moves down it, or the item
+   under the pointer slides out from under the pointer. Logical inset, so in
+   RTL it appears on the other side without a second rule. */
+.layout-menu .layout-hint {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: calc(100% + 6px);
+  width: 168px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+}
+
+.layout-hint p {
+  margin: 6px 2px 0;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--text-dim);
+}
+
+.layout-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg);
+  border-radius: var(--r);
+}
+
+/* The schematic speaks the canvas's own vocabulary — a filled box with a
+   border, a dashed frame for a group, a plain line for a connection — so that
+   what it promises is recognisably what arrives. */
+.lp-box {
+  fill: var(--panel-2);
+  stroke: var(--accent);
+  stroke-width: 1;
+}
+.lp-frame {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+.lp-link {
+  stroke: var(--text-dim);
+  stroke-width: 1.2;
+}
+
+/* The arrangement menu carries a word rather than the overflow glyph, so it
+   opts out of the square footprint the glyph-only triggers share. */
+.layout-menu > button {
+  width: auto;
+  padding: 0 10px !important;
+  font-size: 12.5px;
+}
+
 .menu-field {
   display: flex;
   align-items: center;
@@ -470,6 +536,8 @@ body,
   flex: 1;
   min-width: 0;
   min-height: 0;
+  /* So the "nothing to draw" note has something to be centred on. */
+  position: relative;
 }
 
 .corner-list {
@@ -1164,10 +1232,10 @@ body.resizing-side {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--r);
-  /* The default is a 200×150 slab; at this size it reads as a navigation
-     aid rather than a second diagram competing with the real one. */
-  width: 148px;
-  height: 104px;
+  /* The size is set on the component instead — React Flow draws the map from
+     the dimensions it is given rather than the ones it ends up with, so a box
+     resized here alone gets a drawing that hangs out of it. */
+  overflow: hidden;
 }
 
 .react-flow__minimap-mask {
@@ -1235,6 +1303,12 @@ body.resizing-side {
   padding: 4px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
+}
+
+/* The same strip over the preview, which has one control and puts it on the
+   trailing edge — the corner an expand affordance is looked for in. */
+.preview-bar {
+  justify-content: flex-end;
 }
 
 .editor-zoom {
@@ -1592,6 +1666,35 @@ body.resizing-side {
   font-size: 13px;
 }
 
+/* Why nothing is drawn. Centred over the canvas and inert: it explains, it
+   does not take the canvas over — panning, dropping a shape and the context
+   menu all still reach through it. */
+.canvas-blank {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  text-align: center;
+  max-width: min(360px, 80%);
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.canvas-blank strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
 .read-only-preview {
   flex: 1;
   display: flex;
@@ -1631,6 +1734,8 @@ body.resizing-side {
 
 /* …but the canvas's own overlay chrome should still follow the UI. */
 [dir="rtl"] .canvas-wrap .context-menu,
+[dir="rtl"] .canvas-wrap .canvas-blank,
+[dir="rtl"] .canvas-wrap .read-only-banner,
 [dir="rtl"] .canvas-wrap .seq-editor {
   direction: rtl;
 }
@@ -2397,6 +2502,36 @@ body.resizing-side {
   font-size: 12px;
 }
 
+/* The preview, out of the side panel and across the window. */
+.modal.preview-modal {
+  width: min(1400px, 96vw);
+  height: 92vh;
+  max-height: 92vh;
+}
+
+.preview-full {
+  flex: 1;
+  /* A flex child's floor is its content; without this the SVG below cannot
+     be told to fit a box that is itself sized by the SVG. */
+  min-height: 0;
+  padding: 16px;
+  /* As `.preview`: mermaid's artwork is dark on white in both themes. */
+  color-scheme: light;
+  background: #fff;
+  overflow: hidden;
+}
+
+/* Mermaid ships its SVG with `width="100%"` and an inline
+   `style="max-width: <natural>px"`, so a diagram stays at its drawn size
+   however much room it is given — which is the whole reason this view
+   exists. `!important` because that cap is an inline style and nothing else
+   beats one. The viewBox keeps the proportions, so nothing is stretched. */
+.preview-full svg {
+  max-width: none !important;
+  width: 100%;
+  height: 100%;
+}
+
 /* ---------- inspector ---------- */
 .inspector {
   padding-bottom: 12px;
@@ -2503,8 +2638,9 @@ body.resizing-side {
 
 /* ---------- document tabs ---------- */
 
-/* A slim strip under the toolbar. It is the one thing on screen that says
-   "there is more than one diagram here", which a menu on the name did not. */
+/* A slim strip along the foot of the canvas column. It is the one thing on
+   screen that says "there is more than one diagram here", which a menu on the
+   name did not. */
 .doc-tabs {
   display: flex;
   align-items: stretch;
@@ -2513,17 +2649,147 @@ body.resizing-side {
   height: 30px;
   background: var(--panel);
   border-top: 1px solid var(--border);
+  flex: 0 0 auto;
+  /* Not `overflow: hidden`, however tempting: the document list opens out of
+     this row and would be clipped to thirty pixels of itself. Nothing here
+     can spill anyway — everything but the scrolling strip and the hint is
+     fixed-width, and those two are the ones that give way. */
+  overflow: visible;
+}
+
+/* Only the tabs scroll. `+` and "close all" sit outside the scrolling box so
+   they stay where the hand left them instead of drifting off the end.
+
+   The wrapper exists to hang the chevrons off: they are positioned against
+   it rather than against the strip, which scrolls and would carry them away
+   with the tabs. It takes only the width the tabs need, so `+` stays beside
+   the last tab rather than being pushed to the far end of an empty strip,
+   and it is the only thing in the row that gives way when they stop
+   fitting. */
+.doc-tab-scroller {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* The scrollbar is hidden: a thirty-pixel strip has no eight pixels to give a
+   Windows scrollbar, and letting the strip grow when one appeared would shove
+   the canvas down as the sixth tab opened. */
+.doc-tab-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: thin;
-  flex: 0 0 auto;
+  scrollbar-width: none;
+}
+.doc-tab-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* What says there is more of the strip than fits: the edge that has more of
+   it fades out, and a chevron sits on the fade.
+
+   Three rules and not two: a mask is one image, so the case with both edges
+   fading has to be written out rather than accumulated. The flags are set as
+   `left` and `right` because that is what a gradient understands; which end
+   of the list each one is gets worked out before it gets here. */
+.doc-tab-strip[data-fade~="left"] {
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px);
+  mask-image: linear-gradient(to right, transparent 0, #000 24px);
+}
+.doc-tab-strip[data-fade~="right"] {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 24px);
+  mask-image: linear-gradient(to left, transparent 0, #000 24px);
+}
+.doc-tab-strip[data-fade~="left"][data-fade~="right"] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 24px,
+    #000 calc(100% - 24px),
+    transparent 100%
+  );
+}
+
+/* Over the tabs, not beside them. Laid out in the row it appeared only once
+   you had scrolled, and the 24px it took shunted every tab sideways at the
+   moment you were reaching for one — so it floats, and the strip underneath
+   never changes width.
+
+   24px square, which is the WCAG 2.5.8 floor, and as round as that allows.
+   `inset-inline`, so the end of the list it belongs to is the end it appears
+   at whichever way the text runs. Specificity has to beat `.doc-tabs button`,
+   which flattens every control in the strip. */
+.doc-tabs .doc-tab-scroll {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+/* 2px off the edge, to match the 3px the 24px circle leaves above and below
+   it in a 30px strip. Flush looked wedged in. */
+.doc-tabs .doc-tab-scroll.at-start {
+  inset-inline-start: 2px;
+}
+.doc-tabs .doc-tab-scroll.at-end {
+  inset-inline-end: 2px;
+}
+.doc-tabs .doc-tab-scroll:hover {
+  color: var(--text);
+  background: var(--panel);
+  border-color: var(--text-dim);
+}
+/* The chevrons point along the list, and the list runs the other way here. */
+[dir="rtl"] .doc-tab-scroll span {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 
 .doc-tab {
   display: flex;
   align-items: center;
-  min-width: 0;
+  /* Tabs give way to each other, but only this far. The floor is set from
+     what is left for the name once the badge and the close button have taken
+     theirs: about ten characters, enough to tell "billing-er" from
+     "billing-events". Below that a name is an ellipsis and half a letter,
+     which says no more than the tab being off-screen would — so past the
+     floor the strip scrolls rather than shrinking further. */
+  flex: 0 1 auto;
+  min-width: 132px;
   border-radius: 0 0 var(--r) var(--r);
+}
+/* One tab is one target to the eye, even though it is two buttons. The hover
+   used to be painted on each button, so the highlight came out the shape of
+   whichever half the pointer was over — most visibly a small block under the
+   × alone. It belongs on the tab. */
+.doc-tab:not(.active):hover {
+  background: var(--panel-2);
 }
 .doc-tab.active {
   background: var(--bg);
@@ -2544,19 +2810,50 @@ body.resizing-side {
 .doc-tab.active .doc-tab-name {
   color: var(--text);
 }
+/* The controls that stand alone in the strip — `+`, the count, "close all" —
+   each light up on their own. */
 .doc-tabs button:hover {
   color: var(--text);
-  background: var(--surface-2);
+  background: var(--panel-2);
+}
+/* The name is not one of them: the tab around it is already lit, and a second
+   fill over part of it is what made the highlight look like a fragment. */
+.doc-tabs .doc-tab-name:hover {
+  background: none;
+}
+/* The × does keep one, a step stronger than the tab under it, because it does
+   something different from the rest of the tab and has to say so before it is
+   clicked. Rounded, so it reads as a control on the tab rather than a slab
+   cut out of it. */
+.doc-tabs .doc-tab-close:hover {
+  background: var(--border);
+  border-radius: var(--r);
 }
 
 .doc-tab-name {
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
   max-width: 190px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* The name needs a box of its own: as a bare text node it is an anonymous
+   flex item, which `text-overflow` does not reach, so a squeezed tab used to
+   cut the name mid-letter with nothing to say it had been cut. */
+.doc-tab-label {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* The badge and the unsaved dot are already as small as they read at. */
+.doc-kind,
+.doc-tab .file-dirty {
+  flex: 0 0 auto;
 }
 
 /* Kept at 24px square so it clears the WCAG 2.5.8 target-size floor even
@@ -2572,6 +2869,193 @@ body.resizing-side {
 .doc-tab-add {
   flex: 0 0 auto;
 }
+.doc-tab-close {
+  flex: 0 0 auto;
+}
+
+/* Dragging a tab to a new place in the strip.
+
+   The marker is a pseudo-element and not a border or a box-shadow: the active
+   tab already spends its box-shadow on the accent line along its top edge,
+   and the two would have had to be written as one rule that knew about both.
+   Logical insets, so the "before" edge is the leading one in either
+   direction of text. */
+.doc-tab {
+  position: relative;
+}
+.doc-tab.dragging {
+  opacity: 0.45;
+}
+.doc-tab[data-drop]::after {
+  content: "";
+  position: absolute;
+  inset-block: 3px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+}
+.doc-tab[data-drop="before"]::after {
+  inset-inline-start: -2px;
+}
+.doc-tab[data-drop="after"]::after {
+  inset-inline-end: -2px;
+}
+
+/* ---------- the list of every open document ---------- */
+
+/* The count on its face, so it is answered even when the strip is showing
+   four tabs of twenty. */
+.doc-list {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+}
+.doc-tabs .doc-tab-list {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 32px;
+  margin-inline-start: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.doc-list-caret {
+  font-size: 9px;
+  line-height: 1;
+}
+
+/* Upwards, unlike every other panel in the app: this one hangs off a strip at
+   the *foot* of the canvas column, and `menu-popover`'s own `top` put it below
+   the bottom of the window — where the only way to see it was to scroll the
+   application itself off its own screen. */
+.doc-list-panel {
+  top: auto;
+  bottom: calc(100% + 6px);
+  min-width: 250px;
+  max-width: min(340px, 90vw);
+}
+
+.doc-list-sort {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.doc-list-sort button {
+  flex: 1 1 0;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.doc-list-sort button:hover {
+  color: var(--text);
+  background: var(--panel-2);
+}
+
+/* Capped and scrolling: twenty documents is a list, not a wall. The height is
+   about eight rows, which is where a list stops being scannable anyway. */
+.doc-list-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 264px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.doc-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: var(--r);
+}
+.doc-row:hover,
+.doc-row.active {
+  background: var(--panel-2);
+}
+/* Which one you are in, marked on the leading edge — the same accent line the
+   active tab wears along its top, so the two surfaces say it the same way.
+   It is what separates the current row from a merely hovered one. */
+.doc-row.active::before {
+  content: "";
+  position: absolute;
+  inset-block: 4px;
+  inset-inline-start: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.doc-row-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  text-align: start;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.doc-row.active .doc-row-name {
+  color: var(--text);
+}
+.doc-row-label {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Same 24px target as everything else that is a small glyph on a control. */
+.doc-row-move,
+.doc-row-close {
+  flex: 0 0 auto;
+  min-width: 24px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-dim);
+  background: none;
+  border: 0;
+  border-radius: var(--r);
+  cursor: pointer;
+}
+/* `--border` and not `--panel-2`: the row underneath is already that, so a
+   hovered control on it needs the next step, not the same one. */
+.doc-row-move:hover:not(:disabled),
+.doc-row-close:hover {
+  color: var(--text);
+  background: var(--border);
+}
+.doc-row-move:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* How to do this from the keyboard, said once at the foot of the panel: the
+   arrows on the rows are a pointer affordance and cannot say it themselves. */
+.doc-list-hint {
+  margin: 6px 2px 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-dim);
+}
 
 /* Says what the strip is, once, for anyone who has only ever had one
    diagram open and would otherwise read a lone tab as decoration. */
@@ -2586,12 +3070,11 @@ body.resizing-side {
      not from a filter over it. */
   color: var(--text-dim);
   white-space: nowrap;
-}
-/* Once a second diagram exists the strip explains itself, so the hint goes.
-   `display: none` rather than a transparent element: an invisible label is
-   still read aloud, and a hint about something already obvious is noise. */
-.doc-tab:nth-of-type(2) ~ .doc-tabs-hint {
-  display: none;
+  /* Last in line for space: a cramped window should spend its width on the
+     tab, which names a document, rather than on the label above it. */
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ---------- toasts ---------- */
@@ -3029,15 +3512,40 @@ body.resizing-side {
 
 /* The patch that takes a drag on an edge's label. Invisible: the label under
    it is React Flow's own, and this only has to catch the pointer. */
-.edge-label-grab {
-  fill: transparent;
-  /* Explicit: React Flow gives an edge's group `pointer-events: visibleStroke`,
-     and a rectangle with only a transparent fill has no stroke to be hit on. */
+/* React Flow stacks the label layer between the connections and the nodes, so
+   a label that lands on a box is painted behind it and simply disappears —
+   which is what a diagram imported from draw.io is full of. Lifted above the
+   lot: a connection may pass behind a box, but what it is called has to stay
+   readable. Above 1000 because that is what React Flow elevates a *selected*
+   node by, on top of its nesting depth. The viewport's transform boxes this
+   stacking context in, so it cannot reach past the editor's own chrome. */
+.react-flow__edgelabel-renderer {
+  z-index: 1100;
+}
+
+/* An edge's label, in the layer above the nodes. The padding and type size
+   are the plate `labels.ts` reserves for it and the emitter draws — the three
+   have to agree or a label is nudged clear of a box it then overlaps. */
+.edge-label {
+  position: absolute;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 3px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.edge-label.draggable {
   pointer-events: all;
   cursor: grab;
+  /* A drag that starts on the label must not select its text instead. */
+  user-select: none;
 }
-.edge-label-grab:active {
+.edge-label.draggable:active {
   cursor: grabbing;
+}
+.edge-label.selected {
+  color: var(--accent);
 }
 
 /* A service showing its icon alone, with the name beneath it — the stencil
@@ -3090,6 +3598,8 @@ body.resizing-side {
    destructive thing on the bar and should not draw the eye that a new-tab
    button does. */
 .doc-tab-close-all {
+  flex: 0 0 auto;
+  white-space: nowrap;
   margin-inline-start: 8px;
   padding: 3px 8px;
   font-size: 11.5px;

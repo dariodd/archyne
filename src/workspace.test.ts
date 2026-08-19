@@ -7,8 +7,10 @@ import {
   deleteDoc,
   documentList,
   duplicateDoc,
+  moveDoc,
   renameDoc,
   shouldOpenInNewDoc,
+  sortDocs,
   switchTo,
   unsavedDocuments,
 } from "./documents";
@@ -347,5 +349,77 @@ describe("the unsaved-changes guard", () => {
     await useGraphStore.getState().applyCode(OTHER, { record: false });
     await createDoc();
     expect(unsavedDocuments()).toHaveLength(0);
+  });
+});
+
+describe("the order of the strip", () => {
+  /** Three documents, named and dated so both orders are visible. */
+  async function three() {
+    await boot();
+    const [first] = useWorkspace.getState().docs;
+    renameDoc(first.id, "beta");
+    await createDoc();
+    renameDoc(useWorkspace.getState().activeId, "alpha");
+    await createDoc();
+    renameDoc(useWorkspace.getState().activeId, "Untitled 10");
+    // Distinct timestamps, oldest first, whatever order they were made in.
+    const ids = useWorkspace.getState().docs.map((d) => d.id);
+    useWorkspace.setState((state) => ({
+      docs: state.docs.map((d) => ({ ...d, updatedAt: 100 + ids.indexOf(d.id) })),
+    }));
+    return names();
+  }
+  const names = () => useWorkspace.getState().docs.map((d) => d.name);
+
+  it("moves a document to the slot asked for", async () => {
+    expect(await three()).toEqual(["beta", "alpha", "Untitled 10"]);
+    const id = useWorkspace.getState().docs[2].id;
+
+    expect(moveDoc(id, 0)).toBe(0);
+    expect(names()).toEqual(["Untitled 10", "beta", "alpha"]);
+  });
+
+  it("clamps a move past either end rather than losing the document", async () => {
+    await three();
+    const id = useWorkspace.getState().docs[1].id;
+
+    expect(moveDoc(id, -3)).toBe(0);
+    expect(names()).toEqual(["alpha", "beta", "Untitled 10"]);
+    expect(moveDoc(id, 99)).toBe(2);
+    expect(names()).toEqual(["beta", "Untitled 10", "alpha"]);
+  });
+
+  it("reports the slot a document is already in without touching the order", async () => {
+    await three();
+    const before = names();
+    const id = useWorkspace.getState().docs[1].id;
+    expect(moveDoc(id, 1)).toBe(1);
+    expect(names()).toEqual(before);
+  });
+
+  it("survives a reload, because the order is the index", async () => {
+    await three();
+    moveDoc(useWorkspace.getState().docs[2].id, 0);
+
+    useWorkspace.setState({ docs: [], activeId: "" });
+    const { state } = loadWorkspace(SAMPLE);
+    expect(state.docs.map((d) => d.name)).toEqual(["Untitled 10", "beta", "alpha"]);
+  });
+
+  it("sorts by name, counting the digits in a name as a number", async () => {
+    await three();
+    await createDoc();
+    renameDoc(useWorkspace.getState().activeId, "Untitled 2");
+
+    sortDocs("name");
+    // Not ["Untitled 10", "Untitled 2"], which is what a plain string sort
+    // gives for the names this app hands out by default.
+    expect(names()).toEqual(["alpha", "beta", "Untitled 2", "Untitled 10"]);
+  });
+
+  it("sorts by last used, most recent first", async () => {
+    await three();
+    sortDocs("recent");
+    expect(names()).toEqual(["Untitled 10", "alpha", "beta"]);
   });
 });

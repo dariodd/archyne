@@ -4,6 +4,7 @@ import { CodeEditor } from "./CodeEditor";
 import { formatActiveEditor } from "./editorCommands";
 import { MermaidPreview } from "./MermaidPreview";
 import { GraphOutline } from "./GraphOutline";
+import { Modal } from "./Modal";
 import { MAX_EDITOR_FONT_SIZE, MIN_EDITOR_FONT_SIZE, usePrefs } from "../prefs";
 import { useT } from "../i18n";
 
@@ -73,6 +74,7 @@ export function CodePanel() {
   const warning = useGraphStore((s) => s.warning);
   const setCodeFromEditor = useGraphStore((s) => s.setCodeFromEditor);
   const [tab, setTab] = useState<"code" | "preview" | "outline">("code");
+  const [expanded, setExpanded] = useState(false);
   const t = useT();
 
   return (
@@ -136,8 +138,35 @@ export function CodePanel() {
           aria-labelledby="tab-preview"
           className="tabpanel"
         >
+          {/* The panel is as narrow as the editor beside it, and Mermaid draws
+              at whatever size the diagram comes out — so a wide graph lands
+              here too small to read. This is the way out of the column. */}
+          <div className="editor-bar preview-bar">
+            <button
+              type="button"
+              className="editor-action"
+              title={t("panel.expandHint")}
+              onClick={() => setExpanded(true)}
+            >
+              <span aria-hidden="true">⤢</span> {t("panel.expand")}
+            </button>
+          </div>
           <MermaidPreview code={code} className="preview" />
         </div>
+      )}
+      {expanded && (
+        <Modal
+          title={t("panel.previewTitle")}
+          className="preview-modal"
+          onClose={() => setExpanded(false)}
+        >
+          {/* Drawn again rather than moved: the SVG in the panel is sized for
+              the panel, and this copy is sized to fill the dialog. */}
+          <MermaidPreview code={code} className="preview-full" />
+          <div className="modal-actions">
+            <button onClick={() => setExpanded(false)}>{t("common.close")}</button>
+          </div>
+        </Modal>
       )}
     </section>
   );

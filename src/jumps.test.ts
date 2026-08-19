@@ -72,4 +72,13 @@ describe("placing the hops along a run", () => {
   it("says nothing about a vertical run", () => {
     expect(jumpsAlong(p(0, 0), p(0, 200), [p(0, 100)])).toEqual([]);
   });
+
+  it("leaves out a crossing with no room for the hop itself", () => {
+    // The run ends at 200, and the arc of a hop centred at 198 would finish
+    // past it — after which the line travels back to pick up the corner, and
+    // a nub is drawn at the bend.
+    expect(jumpsAlong(p(0, 10), p(200, 10), [p(198, 10)])).toEqual([]);
+    expect(jumpsAlong(p(0, 10), p(200, 10), [p(2, 10)])).toEqual([]);
+    expect(jumpsAlong(p(0, 10), p(200, 10), [p(JUMP_RADIUS, 10)])).toEqual([JUMP_RADIUS]);
+  });
 });

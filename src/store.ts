@@ -71,7 +71,7 @@ import { setCarriedIcons } from "./icons";
 import { useIconPack } from "./iconPack";
 import { removeSeqItemAt } from "./model/kinds/sequence";
 import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
-import { autoLayout } from "./layout/autoLayout";
+import { autoLayout, type LayoutStyle } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
 import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
 import { carryWaypoints } from "./orthogonal";
@@ -187,7 +187,20 @@ export interface GraphState {
   setCodeFromEditor: (code: string) => void;
   applyCode: (
     code: string,
-    opts?: { forceLayout?: boolean; record?: boolean },
+    opts?: {
+      forceLayout?: boolean;
+      record?: boolean;
+      /**
+       * This is the document already on screen, being typed into.
+       *
+       * Half a line is broken code, so the canvas would blank and come back
+       * on nearly every keystroke; with this the last picture that parsed
+       * stays up until the next one does. Every other caller is replacing
+       * the document — switching to another, opening a file, taking one from
+       * disk — and there the last picture belongs to something else.
+       */
+      editing?: boolean;
+    },
   ) => Promise<void>;
   /**
    * Resolves once the restored code has been re-parsed. The UI ignores the
@@ -282,7 +295,14 @@ export interface GraphState {
   updateEdgeData: (id: string, patch: Partial<FlowEdgeData>) => void;
   setDirection: (d: Direction) => void;
   setDiagramMeta: (patch: { title?: string; accTitle?: string; accDescr?: string }) => void;
-  runAutoLayout: () => Promise<void>;
+  /**
+   * Rearrange the whole diagram.
+   *
+   * The style is chosen at the moment it is asked for and is not remembered:
+   * Mermaid has syntax for a direction and none for an arrangement, so what
+   * the document keeps is the positions this produced.
+   */
+  runAutoLayout: (style?: LayoutStyle) => Promise<void>;
   newDiagram: (kind: DiagramKind) => void;
   /**
    * Stash the current undo history under `outgoingId` and adopt the one
@@ -577,6 +597,47 @@ export const useGraphStore = create<GraphState>((set, get) => {
     persist(code);
   };
 
+  /** Move every node to where a layout pass says it should be. */
+  const applyPositions = (positions: PositionMap, dropCorners: boolean) => {
+    if (Object.keys(positions).length === 0) return;
+    const { nodes, edges } = get();
+    set({
+      ...(dropCorners
+        ? {
+            edges: edges.map((e) =>
+              e.data?.points?.length ? { ...e, data: { ...e.data, points: [] } } : e,
+            ),
+          }
+        : {}),
+      nodes: nodes.map((n) => {
+        const p = positions[n.id];
+        if (!p) return n;
+        return {
+          ...n,
+          position: { x: p.x, y: p.y },
+          // A group's new size has to be written everywhere the size lives,
+          // not just into `style`. React Flow sizes the element it draws from
+          // `width`/`height` and only falls back to the style, so a frame
+          // whose style said 327 and whose `width` still said 920 was drawn
+          // at 920: every container came out at its imported size in its
+          // newly computed place, which is why the boxes spilled out of their
+          // groups and the groups overlapped each other. `measured` is
+          // dropped so React Flow takes the new size from the DOM rather than
+          // keeping what it had measured of the old one.
+          ...(isGroup(n) && p.w !== undefined
+            ? {
+                style: { ...n.style, width: p.w, height: p.h },
+                width: p.w,
+                height: p.h,
+                measured: undefined,
+              }
+            : {}),
+        };
+      }),
+    });
+    repatchPositions();
+  };
+
   const freshId = (prefix: string): string => {
     let max = 0;
     const re = new RegExp(`^${prefix}(\\d+)$`);
@@ -614,7 +675,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
       set({ code });
       persist(code);
       clearTimeout(parseTimer);
-      parseTimer = setTimeout(() => void get().applyCode(code), 400);
+      parseTimer = setTimeout(() => void get().applyCode(code, { editing: true }), 400);
     },
 
     applyCode: async (code, opts) => {
@@ -720,7 +781,21 @@ export const useGraphStore = create<GraphState>((set, get) => {
           });
           persist(code);
         } else {
-          set({ parseError: err instanceof Error ? err.message : String(err), code });
+          set({
+            parseError: err instanceof Error ? err.message : String(err),
+            code,
+            // Both belong to the parse that last succeeded, and it was not
+            // this one: a warning about the previous code reads as a warning
+            // about this, and a read-only family left set would put the
+            // canvas into a preview of a document that is no longer here.
+            warning: null,
+            unsupported: null,
+            // Nothing to show, unless this is the document already on screen
+            // and the code is mid-keystroke. Switching from a diagram that
+            // parses to one that does not used to leave the first one on the
+            // canvas: you were in Untitled 9, looking at Untitled 10.
+            ...(opts?.editing ? {} : { nodes: [], edges: [], seqItems: [] }),
+          });
         }
       } finally {
         if (!get().booted) set({ booted: true });
@@ -1283,7 +1358,7 @@ export const useGraphStore = create<GraphState>((set, get) => {
       regenerate();
     },
 
-    runAutoLayout: async () => {
+    runAutoLayout: async (style) => {
       const { nodes, edges, direction, kind } = get();
       if (kind === "sequence") {
         set({
@@ -1292,21 +1367,15 @@ export const useGraphStore = create<GraphState>((set, get) => {
         repatchPositions();
         return;
       }
-      const positions = await autoLayout(nodes, edges, direction);
-      set({
-        nodes: nodes.map((n) => {
-          const p = positions[n.id];
-          if (!p) return n;
-          return {
-            ...n,
-            position: { x: p.x, y: p.y },
-            ...(isGroup(n) && p.w !== undefined
-              ? { style: { ...n.style, width: p.w, height: p.h } }
-              : {}),
-          };
-        }),
-      });
-      repatchPositions();
+      const positions = await autoLayout(nodes, edges, direction, style);
+      // Corners go. A corner is layout — the store patches it back into the
+      // document through `repatchPositions` for that very reason — and
+      // rearranging replaces the layout. Kept, they stay at the coordinates
+      // they were dropped at while every node moves out from under them, so a
+      // connection sets off sideways to a point that means nothing any more
+      // and comes back: a visible spur to nowhere. Undo brings them back with
+      // the arrangement they belonged to.
+      applyPositions(positions, true);
     },
 
     swapHistory: (outgoingId, incomingId) => {

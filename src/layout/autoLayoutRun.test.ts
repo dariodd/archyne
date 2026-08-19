@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoLayout } from "./autoLayout";
+import { autoLayout, LAYOUT_STYLES } from "./autoLayout";
 import type { AnyNode, FlowEdge } from "../model/types";
 
 /**
@@ -117,5 +117,46 @@ describe("autoLayout, run for real", () => {
   it("coordinates the disconnected as well as the connected", async () => {
     const positions = await autoLayout([node("lonely", 160, 54)], [], "TB");
     expect(positions.lonely).toBeDefined();
+  });
+});
+
+describe("the arrangements on offer", () => {
+  /** A group with two children and one connection between them. */
+  const graph = (): [AnyNode[], FlowEdge[]] => [
+    [group("g"), node("a", 120, 60, "g"), node("b", 120, 60, "g")],
+    [edge("a", "b")],
+  ];
+
+  it.each(LAYOUT_STYLES)("keeps a group's children inside its frame — %s", async (style) => {
+    const [nodes, edges] = graph();
+    const out = await autoLayout(nodes, edges, "TB", style);
+    const frame = out.g;
+    expect(frame.w).toBeGreaterThan(0);
+    for (const id of ["a", "b"]) {
+      expect(out[id].x).toBeGreaterThanOrEqual(0);
+      expect(out[id].y).toBeGreaterThanOrEqual(0);
+      expect(out[id].x + 120).toBeLessThanOrEqual(frame.w!);
+      expect(out[id].y + 60).toBeLessThanOrEqual(frame.h!);
+    }
+  });
+
+  it("lays the same graph out differently depending on the style", async () => {
+    // Not asserting *which* is which — that is ELK's business and would pin
+    // its version — only that the choice reaches the solver at all. A style
+    // that silently fell back to the default would place them identically.
+    const seen = new Set<string>();
+    for (const style of LAYOUT_STYLES) {
+      const [nodes, edges] = graph();
+      const out = await autoLayout(nodes, edges, "TB", style);
+      seen.add(JSON.stringify([out.a, out.b, out.g]));
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
+  it("arranges hierarchically when no style is asked for", async () => {
+    const [nodes, edges] = graph();
+    const asked = await autoLayout(nodes, edges, "TB", "layered");
+    const silent = await autoLayout(nodes, edges, "TB");
+    expect(silent).toEqual(asked);
   });
 });

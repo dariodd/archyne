@@ -20,7 +20,9 @@ import { AboutDialog } from "./AboutDialog";
 import { TemplateDialog } from "./TemplateDialog";
 import { PendingImport } from "./ImportDialog";
 import { MenuButton, MenuItem } from "./MenuButton";
+import { LayoutPreview } from "./LayoutPreview";
 import type { DiagramKind, Direction } from "../model/types";
+import type { LayoutStyle } from "../layout/autoLayout";
 
 /** What the fallback `<input type=file>` offers, per action. */
 const MERMAID_ACCEPT = ".mmd,.mermaid,.txt,.md";
@@ -134,8 +136,58 @@ export function Toolbar() {
       </select>
     ) : null;
 
+  /**
+   * The arrangements, in the order they are offered.
+   *
+   * A menu rather than a second dropdown beside the direction: the direction
+   * is a property of the document that Mermaid itself writes down, and this is
+   * an action you ask for once. Nothing about the choice is kept — what the
+   * file ends up holding is the positions it produced.
+   */
+  const layoutStyles = [
+    ["layered", "toolbar.layoutLayered", "toolbar.layoutLayeredHint"],
+    ["bands", "toolbar.layoutBands", "toolbar.layoutBandsHint"],
+    ["rectpacking", "toolbar.layoutCompact", "toolbar.layoutCompactHint"],
+    ["mrtree", "toolbar.layoutTree", "toolbar.layoutTreeHint"],
+    ["force", "toolbar.layoutOrganic", "toolbar.layoutOrganicHint"],
+  ] as const;
+
+  /**
+   * Which arrangement the pointer is over, so the panel can show what it does.
+   *
+   * A name alone does not tell you what "Banded" will do to your diagram, and
+   * the only way to find out was to press it and undo. The picture is the
+   * answer to a question asked in half a second, so it is a drawing of the
+   * shape rather than a rendering of the open document — see `LayoutPreview`.
+   */
+  const [pointedAt, setPointedAt] = useState<LayoutStyle | null>(null);
+  const pointedHint = layoutStyles.find(([s]) => s === pointedAt);
+
   const autoLayoutButton = !unsupported ? (
-    <button onClick={() => void runAutoLayout()}>{t("toolbar.autoLayout")}</button>
+    <MenuButton
+      label={t("toolbar.autoLayout")}
+      className="layout-menu"
+      trigger={t("toolbar.autoLayout")}
+    >
+      <>
+        <div className="menu-heading">{t("toolbar.layoutAs")}</div>
+        {layoutStyles.map(([style, key]) => (
+          <MenuItem
+            key={style}
+            onSelect={() => void runAutoLayout(style)}
+            onPointAt={() => setPointedAt(style)}
+          >
+            {t(key)}
+          </MenuItem>
+        ))}
+        {pointedHint && (
+          <div className="layout-hint">
+            <LayoutPreview style={pointedHint[0]} />
+            <p>{t(pointedHint[2])}</p>
+          </div>
+        )}
+      </>
+    </MenuButton>
   ) : null;
 
   // Hidden rather than disabled: a greyed-out Save invites you to work out
@@ -264,10 +316,18 @@ export function Toolbar() {
               )}
               <MenuItem onSelect={() => void open("import")()}>{t("toolbar.import")}</MenuItem>
               {!hosted && <MenuItem onSelect={runSave(saveFile)}>{t("toolbar.save")}</MenuItem>}
+              {/* Flattened rather than nested: a menu inside a menu is a
+                  panel that opens behind the one that opened it. On a phone
+                  the arrangements are simply items in this list. */}
               {autoLayoutButton && (
-                <MenuItem onSelect={() => void runAutoLayout()}>
-                  {t("toolbar.autoLayout")}
-                </MenuItem>
+                <>
+                  <div className="menu-heading">{t("toolbar.layoutAs")}</div>
+                  {layoutStyles.map(([style, key]) => (
+                    <MenuItem key={style} onSelect={() => void runAutoLayout(style)}>
+                      {t(key)}
+                    </MenuItem>
+                  ))}
+                </>
               )}
               {!hosted && (
                 <label className="menu-field">

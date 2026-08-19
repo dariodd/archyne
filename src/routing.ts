@@ -84,6 +84,62 @@ export function roundedPolyline(
   return d + straight(pen, points[points.length - 1], over, JUMP_RADIUS);
 }
 
+/**
+ * The line `roundedPolyline` draws, as points.
+ *
+ * The corners are the reason this exists. A route is a list of corners, and
+ * anything reasoning about where the line *is* — which is `labels.ts`, so it
+ * can keep a plate off it — will reason about the wrong thing if it takes that
+ * list literally: the drawing cuts each corner off, so the line passes several
+ * units inside every one of them, through space the corner list says is empty.
+ * A label placed against a corner then sits on top of the line, and worse, on
+ * top of the arrowhead when the corner is the last one.
+ *
+ * So the cut is made here, beside the code that draws it, from the same
+ * numbers. Hops are left out: a hop is a half-circle a few units high drawn
+ * where two lines cross, and a crossing is already the busiest point on both
+ * of them — nothing is gained by keeping labels off it as well.
+ */
+export function drawnPoints(points: Point[], radius = CORNER_RADIUS, step = 3): Point[] {
+  if (points.length < 2) return [...points];
+
+  const out: Point[] = [];
+  const run = (from: Point, to: Point) => {
+    const n = Math.max(1, Math.ceil(distance(from, to) / step));
+    for (let i = 0; i < n; i++) {
+      out.push({
+        x: from.x + ((to.x - from.x) * i) / n,
+        y: from.y + ((to.y - from.y) * i) / n,
+      });
+    }
+  };
+
+  let pen = points[0];
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = points[i - 1];
+    const corner = points[i];
+    const next = points[i + 1];
+    const r = Math.min(radius, distance(prev, corner) / 2, distance(corner, next) / 2);
+    const start = towards(corner, prev, r);
+    const end = towards(corner, next, r);
+    run(pen, start);
+    // The quadratic `roundedPolyline` emits, walked rather than drawn.
+    const arc = Math.max(2, Math.ceil((r * 2) / step));
+    for (let k = 0; k < arc; k++) {
+      const t = k / arc;
+      const u = 1 - t;
+      out.push({
+        x: u * u * start.x + 2 * u * t * corner.x + t * t * end.x,
+        y: u * u * start.y + 2 * u * t * corner.y + t * t * end.y,
+      });
+    }
+    pen = end;
+  }
+  run(pen, points[points.length - 1]);
+  out.push(points[points.length - 1]);
+  return out;
+}
+
 /** How far `at` is from the segment `a`–`b`, measuring to its ends. */
 function distanceToSegment(at: Point, a: Point, b: Point): number {
   const dx = b.x - a.x;

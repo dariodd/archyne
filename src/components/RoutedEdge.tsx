@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { BaseEdge, useReactFlow, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, useReactFlow, type EdgeProps } from "@xyflow/react";
 import type { FlowEdge } from "../model/types";
 import {
   CORNER_RADIUS,
@@ -12,8 +12,10 @@ import {
 import { absoluteBoxes, useGraphStore } from "../store";
 import { useGraphView } from "./useGraphView";
 import { prune, segmentsOf, slideRun, type Axis } from "../orthogonal";
-import { allRoutes, endsOf } from "../routes";
+import { allEnds, allRoutes } from "../routes";
+import { allLabels, midpointOf } from "../labels";
 import { crossings } from "../jumps";
+import { edgeColors } from "../theme";
 import { clearGuides, computeSnap, GRID, setGuides, type Box } from "../guides";
 import { useT } from "../i18n";
 
@@ -56,11 +58,6 @@ export function RoutedEdge({
   selected,
   data,
   label,
-  labelStyle,
-  labelShowBg,
-  labelBgStyle,
-  labelBgPadding,
-  labelBgBorderRadius,
 }: EdgeProps<FlowEdge>) {
   const { screenToFlowPosition, getZoom } = useReactFlow();
   const addWaypoint = useGraphStore((s) => s.addWaypoint);
@@ -101,7 +98,10 @@ export function RoutedEdge({
   // unmounts. Insisting the edge is there threw, and took the whole
   // application down with it — an edge that has gone simply draws nothing.
   const edge = edges.find((e) => e.id === id);
-  const ends = edge ? endsOf(edge, absoluteBoxes(nodes), kind) : null;
+  // The berth this connection was given, not the middle of the face: several
+  // connections can share a face, and a corner lined up with the middle of one
+  // would be lining up with a point this line does not touch.
+  const ends = edge ? (allEnds(nodes, edges, kind).get(id) ?? null) : null;
   const fromAxis = ends?.from ?? "x";
   const toAxis = ends?.to ?? "x";
   const startAt = ends?.start ?? { x: sourceX, y: sourceY };
@@ -128,23 +128,15 @@ export function RoutedEdge({
 
   // The label goes on the middle of the route, not the midpoint of a straight
   // line between the endpoints — for a bent edge that is often nowhere near
-  // the edge itself.
-  const half = drawn.length / 2;
-  const middle =
-    drawn.length === 0
-      ? { x: sourceX, y: sourceY }
-      : drawn.length % 2 === 0
-        ? {
-            x: (drawn[half - 1].x + drawn[half].x) / 2,
-            y: (drawn[half - 1].y + drawn[half].y) / 2,
-          }
-        : drawn[Math.floor(half)];
-  // The label sits in the middle of the route unless it has been dragged off
-  // it, and the offset is what the file remembers — the middle moves when the
-  // nodes do, and the label should move with it rather than stay behind.
-  const labelAt = data?.style?.label ?? { x: 0, y: 0 };
-  const labelX = middle.x + labelAt.x;
-  const labelY = middle.y + labelAt.y;
+  // the edge itself. That is only where it *starts*: `allLabels` then slides
+  // the ones that would land on a node or on each other, which no edge can
+  // decide alone. What the file remembers is the offset from the middle, so
+  // a label the user placed follows its route when the nodes move.
+  const middle = drawn.length === 0 ? { x: sourceX, y: sourceY } : midpointOf(drawn);
+  const shown = allLabels(nodes, edges, kind).get(id)?.at ?? middle;
+  const labelX = shown.x;
+  const labelY = shown.y;
+  const pal = edgeColors();
 
   /** How far a press has to travel before it counts as dragging a corner out. */
   const SLOP = 3;
@@ -237,11 +229,29 @@ export function RoutedEdge({
    * Visio are built around: the run follows the pointer on one axis only, and
    * the path stays square.
    *
-   * The index is re-found on every move rather than trusted. Sliding the run
-   * at either end inserts a corner beside the node — the endpoint cannot come
-   * along — and that shifts every index after it.
+   * One drag is one edit. The corners and the path are taken once, when the
+   * pointer goes down, and every move recomputes the whole answer from them —
+   * rather than editing the result of the move before it. Chaining the edits
+   * looks equivalent and is not: pinning a run takes two corners, so a move
+   * that fails to recognise the corners the previous move left behind adds
+   * two more, and the ones already there are now corners the route has to
+   * visit. A single upward drag came out as a dozen corners and a line that
+   * zigzagged over itself several times. Recomputing from the state at
+   * pointerdown cannot accumulate: drag out and back and the route is exactly
+   * what it was.
+   *
+   * It also settles the index question. Sliding a run at either end inserts a
+   * corner beside the node — the endpoint cannot come along — which shifts
+   * every index after it, so an index into a path that keeps changing has to
+   * be re-found on each move. Against a path that is frozen for the length of
+   * the gesture, the index taken at pointerdown stays the right one.
    */
-  const slide = useRef<{ index: number; axis: Axis; at: number } | null>(null);
+  const slide = useRef<{
+    index: number;
+    axis: Axis;
+    corners: Point[];
+    path: Point[];
+  } | null>(null);
 
   const onSlide = (e: React.PointerEvent<SVGElement>) => {
     const held = slide.current;
@@ -249,20 +259,7 @@ export function RoutedEdge({
     e.stopPropagation();
     const at = screenToFlowPosition({ x: e.clientX, y: e.clientY }, { snapToGrid: false });
     const value = held.axis === "x" ? at.y : at.x;
-
-    // Find the run again by where it was last put, rather than trusting the
-    // index: sliding the run at either end inserts a corner beside the node,
-    // and that shifts every index after it.
-    const now = segmentsOf(drawn);
-    const found = now.findIndex(
-      (r) =>
-        r.axis === held.axis &&
-        Math.abs((held.axis === "x" ? r.from.y : r.from.x) - held.at) < 0.5,
-    );
-    const index = found >= 0 ? found : held.index;
-
-    setWaypoints(id, slideRun(points, drawn, index, value), false);
-    slide.current = { index, axis: held.axis, at: value };
+    setWaypoints(id, slideRun(held.corners, held.path, held.index, value), false);
   };
 
   /**
@@ -337,15 +334,67 @@ export function RoutedEdge({
         markerEnd={markerEnd}
         markerStart={markerStart}
         interactionWidth={14}
-        label={label}
-        labelX={labelX}
-        labelY={labelY}
-        labelStyle={labelStyle}
-        labelShowBg={labelShowBg}
-        labelBgStyle={labelBgStyle}
-        labelBgPadding={labelBgPadding}
-        labelBgBorderRadius={labelBgBorderRadius}
       />
+      {/* Not `BaseEdge`'s own label, which is drawn inside the connections
+          layer — and React Flow paints that layer *under* the nodes, so a
+          label that lands on a box disappeared behind it. `EdgeLabelRenderer`
+          is the layer above them, which is where a label naming a connection
+          belongs: the line may pass behind a box, but what it is called has
+          to stay readable. Being real DOM, it can also take the drag itself,
+          in place of the transparent patch that used to be laid over it. */}
+      {label != null && label !== "" && (
+        <EdgeLabelRenderer>
+          <div
+            className={`edge-label${editable ? " draggable" : ""}${selected ? " selected" : ""}`}
+            style={{
+              transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+              background: pal.labelBg,
+              color: selected ? undefined : pal.labelFill,
+            }}
+            title={editable ? t("edge.moveLabel") : undefined}
+            onPointerDown={(e) => {
+              if (!editable || e.button !== 0) return;
+              e.stopPropagation();
+              const at = screenToFlowPosition(
+                { x: e.clientX, y: e.clientY },
+                { snapToGrid: false },
+              );
+              // Measured from where the label is *drawn*, not from the offset
+              // the file holds: an untouched label may have been slid clear of
+              // a box, and taking hold of it must not jump it back first.
+              labelDrag.current = {
+                x: at.x - (labelX - middle.x),
+                y: at.y - (labelY - middle.y),
+              };
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              const held = labelDrag.current;
+              if (!held) return;
+              e.stopPropagation();
+              const at = screenToFlowPosition(
+                { x: e.clientX, y: e.clientY },
+                { snapToGrid: false },
+              );
+              setEdgeStyle(id, { label: { x: at.x - held.x, y: at.y - held.y } }, false);
+            }}
+            onPointerUp={(e) => {
+              if (!labelDrag.current) return;
+              e.stopPropagation();
+              labelDrag.current = null;
+              commitWaypoints();
+            }}
+            onDoubleClick={(e) => {
+              if (!editable) return;
+              // Back to the middle, which is otherwise fiddly to hit by hand.
+              e.stopPropagation();
+              setEdgeStyle(id, { label: { x: 0, y: 0 } });
+            }}
+          >
+            {String(label)}
+          </div>
+        </EdgeLabelRenderer>
+      )}
       {/* Pull the line anywhere and the run under the pointer slides, which
           is the gesture in draw.io and Visio: a connector is not a rubber
           band with points pulled out of it, it is a run of pipes you shift.
@@ -363,11 +412,7 @@ export function RoutedEdge({
           );
           const run = runs[nearestSegment(drawn, at)];
           if (!run) return;
-          slide.current = {
-            index: run.index,
-            axis: run.axis,
-            at: run.axis === "x" ? run.from.y : run.from.x,
-          };
+          slide.current = { index: run.index, axis: run.axis, corners: points, path: drawn };
           e.currentTarget.setPointerCapture(e.pointerId);
         }}
         onPointerMove={onSlide}
@@ -376,54 +421,6 @@ export function RoutedEdge({
       />
       {/* Every affordance below edits the document, so none of them belongs
           on a canvas that is only showing one. */}
-      {editable && label && (
-        /* React Flow draws the label itself, from inside `BaseEdge`, and
-           there is no way to hand it a pointer handler through the props.
-           So a transparent patch is laid over it and takes the drag: the
-           label follows, and what is stored is the offset from the middle of
-           the route, so it keeps its place when the nodes move. */
-        <rect
-          className="edge-label-grab"
-          x={labelX - 26}
-          y={labelY - 11}
-          width={52}
-          height={22}
-          rx={4}
-          onPointerDown={(e) => {
-            if (e.button !== 0) return;
-            e.stopPropagation();
-            const at = screenToFlowPosition(
-              { x: e.clientX, y: e.clientY },
-              { snapToGrid: false },
-            );
-            labelDrag.current = { x: at.x - labelAt.x, y: at.y - labelAt.y };
-            e.currentTarget.setPointerCapture(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            const held = labelDrag.current;
-            if (!held) return;
-            e.stopPropagation();
-            const at = screenToFlowPosition(
-              { x: e.clientX, y: e.clientY },
-              { snapToGrid: false },
-            );
-            setEdgeStyle(id, { label: { x: at.x - held.x, y: at.y - held.y } }, false);
-          }}
-          onPointerUp={(e) => {
-            if (!labelDrag.current) return;
-            e.stopPropagation();
-            labelDrag.current = null;
-            commitWaypoints();
-          }}
-          onDoubleClick={(e) => {
-            // Back to the middle, which is otherwise fiddly to hit by hand.
-            e.stopPropagation();
-            setEdgeStyle(id, { label: { x: 0, y: 0 } });
-          }}
-        >
-          <title>{t("edge.moveLabel")}</title>
-        </rect>
-      )}
       {editable && selected && (
         <g className="edge-handles">
           {/* Hollow: drags a new corner out of this segment. On a straight
@@ -442,7 +439,8 @@ export function RoutedEdge({
                   slide.current = {
                     index: s.index,
                     axis: s.axis,
-                    at: s.axis === "x" ? s.from.y : s.from.x,
+                    corners: points,
+                    path: drawn,
                   };
                   e.currentTarget.setPointerCapture(e.pointerId);
                 }}

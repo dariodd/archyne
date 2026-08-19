@@ -69,15 +69,24 @@ export function crossings(route: Point[], others: Point[][]): Point[] {
 /**
  * The hops that fall on one horizontal run, in the order they are met.
  *
- * `from` and `to` are the run's ends; the crossings are returned as the x
+ * `from` and `to` are the run's ends — already trimmed back by whatever the
+ * corners at either end cut off. The crossings are returned as the x
  * positions to interrupt it at, sorted along the direction of travel and
  * dropped when two are too close together to draw separately.
+ *
+ * A hop needs its own width of run to sit on, not just a point inside it. A
+ * crossing within half a hop of the end has the arc finishing past where the
+ * run stops, and the line then travels back those two or three units to pick
+ * up the corner: a nub at the bend, small but drawn, and unmistakably wrong
+ * once you have seen it.
  */
 export function jumpsAlong(from: Point, to: Point, points: Point[]): number[] {
   if (Math.abs(from.y - to.y) >= 0.5) return [];
   const forwards = to.x >= from.x;
+  const lo = Math.min(from.x, to.x) + JUMP_RADIUS;
+  const hi = Math.max(from.x, to.x) - JUMP_RADIUS;
   const xs = points
-    .filter((p) => Math.abs(p.y - from.y) < 0.5 && between(p.x, from.x, to.x))
+    .filter((p) => Math.abs(p.y - from.y) < 0.5 && p.x >= lo && p.x <= hi)
     .map((p) => p.x)
     .sort((m, n) => (forwards ? m - n : n - m));
 

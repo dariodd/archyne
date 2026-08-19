@@ -114,12 +114,23 @@ function buildCommands(t: Translate, nodes: AnyNode[], close: () => void): Comma
 
   // Layout only means anything when there is a graph behind the canvas.
   if (!useGraphStore.getState().unsupported) {
-    commands.push({
-      id: "autoLayout",
-      group: "palette.groupCommands",
-      label: t("toolbar.autoLayout"),
-      run: wrap(() => void graph().runAutoLayout()),
-    });
+    // One entry per arrangement rather than one for the default: the palette
+    // is where a keyboard user reaches everything the toolbar offers, and a
+    // choice that only exists behind a mouse is not offered.
+    for (const [style, key] of [
+      ["layered", "toolbar.layoutLayered"],
+      ["bands", "toolbar.layoutBands"],
+      ["rectpacking", "toolbar.layoutCompact"],
+      ["mrtree", "toolbar.layoutTree"],
+      ["force", "toolbar.layoutOrganic"],
+    ] as const) {
+      commands.push({
+        id: `autoLayout-${style}`,
+        group: "palette.groupCommands",
+        label: `${t("toolbar.autoLayout")}: ${t(key)}`,
+        run: wrap(() => void graph().runAutoLayout(style)),
+      });
+    }
   }
 
   for (const [choice, key] of THEMES) {

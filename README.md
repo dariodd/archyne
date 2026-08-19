@@ -405,7 +405,7 @@ names the five hosts that makes possible and nothing else — never
 Untrusted diagram text is held by two independent layers — Mermaid's
 sanitizer and the CSP — each verified separately in a real browser on every
 pull request. Accessibility is checked the same way: `axe` reports no WCAG
-2.2 AA violations across sixteen interface surfaces, in both themes.
+2.2 AA violations across seventeen interface surfaces, in both themes.
 
 Two things stated up front rather than discovered later: the desktop
 installers are **not yet code-signed**, and the accessibility work is a

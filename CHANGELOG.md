@@ -22,6 +22,71 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [Unreleased]
+
+### Added
+
+- **Every open diagram in one list, in the order you put them.** The tab strip
+  shows the tabs that fit; past that it was a scroll and a hunt. There is now a
+  list of all of them beside the `+`, with each diagram's family, its unsaved
+  mark and the one you are in. Drag a tab along the strip to move it, or reach
+  the same thing from the list with Alt and the arrow keys, and the order is
+  kept. Or sort the lot by name — numerically, so `Untitled 2` comes before
+  `Untitled 10` rather than after it — or by which you used last.
+
+### Changed
+
+- **Connections leaving the same side of a box fan out instead of coinciding.**
+  A connection used to meet a box in the middle of whichever face pointed at
+  the other end, which is right for one connection and wrong for the second:
+  five edges leaving a node's underside all set off from the same point, so
+  five lines lay on top of each other and five arrowheads landed in the same
+  place. The picture said one connection where there were five, and no amount
+  of routing afterwards separates lines that never cross. The face is now
+  shared out along its length, in the order the far ends lie, so the lines
+  spread without crossing on the way — and a single connection still meets the
+  face dead centre.
+
+- **A label moves along its own line rather than sitting on top of something.**
+  Put a label in the middle of every route and, on a diagram with a few
+  connections, that is the end of it. Import a real drawing and the middle of
+  one route is the middle of a box, or of the route beside it, and the label's
+  plate hides a node's words or another label. Labels now slide along the line
+  they name, which is the one direction that never leaves you wondering which
+  connection they belong to; stepping off to the side is a last resort. On a
+  crowded diagram there is often nowhere clean at all, so the least bad
+  placement wins rather than the first one tried.
+
+- **Tab names stop being squeezed down to nothing.** Past about eight
+  documents a tab was a badge, one letter and a close button — the strip
+  answered "how many are open" while refusing to say which. Tabs now stop
+  shrinking while there is still a name to read, and the strip scrolls
+  instead: with the wheel, by dragging a tab to its edge, or with the chevron
+  that appears over the end that has more behind it.
+
+### Fixed
+
+- **Switching to a diagram that does not parse no longer shows you the last
+  one.** Moving from a diagram that draws to one that is broken or empty left
+  the previous picture on the canvas: you were in one document, looking at
+  another. Keeping the last good picture is right only while you are typing
+  into the diagram already on screen, which is now the only place it happens.
+  Everywhere else the canvas says which of empty and broken it is.
+
+- **Unticking "arrowheads at both ends" takes the second arrowhead off.** It
+  went on and would not come off again, and the file was right the whole time
+  — only the picture disagreed, until the next time the source was re-read.
+  The same fault took the back arrow off a C4 birel and cleaned up markers
+  left over when a document changes family.
+
+- **The light theme colours Mermaid source the way the dark theme does.** It
+  had one colour where the dark theme had five: the keyword naming the diagram
+  was green and everything else was plain text.
+
+- **Hovering a tab highlights the tab.** The highlight used to take the shape
+  of whichever half of the tab the pointer was over, most visibly a small
+  block under the × alone.
+
 ## [0.4.1-alpha.1] — 2026-08-13
 
 **Diagrams drawn outside a browser now measure their text properly.** If you

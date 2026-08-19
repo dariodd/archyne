@@ -360,6 +360,15 @@ export function moveSegment(points: Point[], index: number, value: number): Poin
  * So the stored list is edited rather than replaced. A run that already has a
  * corner of the user's on it moves that corner; a run made only of the
  * router's own corners gains the two that pin it, and nothing else changes.
+ *
+ * The slide is bounded by the faces at either end. A run dragged past the
+ * face it leaves from cannot be drawn as asked: the line still has to come
+ * out of that face, so it goes out, turns, and comes back over the node —
+ * and what appears is not a moved corridor but a fold, drawn as a stack of
+ * segments doubling over each other with a cusp at each turn. `STUB` is the
+ * same straight stretch the router reserves so an arrowhead has something to
+ * sit on; the gesture stops there rather than being allowed to ask for a path
+ * that cannot exist.
  */
 export function slideRun(
   stored: Point[],
@@ -375,6 +384,14 @@ export function slideRun(
   const pinned: Axis = run.axis === "x" ? "y" : "x";
   const along: Axis = run.axis;
   const was = pinned === "x" ? run.from.x : run.from.y;
+
+  for (const anchor of [
+    index - 1 === 0 ? drawn[0][pinned] : null,
+    index + 1 === runs.length - 1 ? drawn[drawn.length - 1][pinned] : null,
+  ]) {
+    if (anchor === null) continue;
+    value = was >= anchor ? Math.max(value, anchor + STUB) : Math.min(value, anchor - STUB);
+  }
   const lo = Math.min(run.from[along], run.to[along]);
   const hi = Math.max(run.from[along], run.to[along]);
 
@@ -395,7 +412,53 @@ export function slideRun(
     ).length;
   const set = (q: Point): Point =>
     pinned === "x" ? { x: value, y: q.y } : { x: q.x, y: value };
-  return tidy([...moved.slice(0, before), set(run.from), set(run.to), ...moved.slice(before)]);
+
+  /**
+   * Pinning corners, held clear of the points the route hangs from.
+   *
+   * A corner that shares a coordinate with the point on a node's face is the
+   * one that draws a spur. It looks harmless — the line passes through there
+   * on its way out — but which face a route leaves by is worked out *from*
+   * its corners, so adding one can move the exit round to another side, and
+   * against the new side that corner sits behind the line rather than on it.
+   * The route then leaves the face, turns, comes back to collect the corner,
+   * and sets off again: one drag, three extra lines. It is not only the run
+   * at the very end of a route that does this — a route often turns a few
+   * units off a node before its first real corridor, so the run *after* the
+   * first one carries the node's coordinate too.
+   *
+   * The clearance is a whole `STUB` and not some fraction of the run,
+   * because `STUB` is exactly what the router reserves for itself: a corner
+   * any nearer to a face than that is a corner the route's own leg steps
+   * straight past, and the line goes out, back to collect it, and out again.
+   */
+  const dir = run.to[along] >= run.from[along] ? 1 : -1;
+  const startsAt = drawn[0][along];
+  const endsAt = drawn[drawn.length - 1][along];
+  const clear = (v: number, face: number, side: number): number =>
+    Math.abs(v - face) < STUB ? face + side * STUB : v;
+
+  const first = clear(run.from[along], startsAt, dir);
+  const second = clear(run.to[along], endsAt, -dir);
+
+  // Held clear of both faces, the two corners have met or swapped over: this
+  // run is shorter than the two legs the route needs at its ends, so there is
+  // no path that does what the drag asks — a straight hop between two boxes
+  // forty units apart cannot be bowed around anything, since the legs alone
+  // use up the whole gap. Leaving the corners alone makes the gesture do
+  // nothing, which is the honest answer; the alternative on offer is the
+  // spike out and back that made a drag look like it had shattered the line.
+  if ((second - first) * dir <= 0) return stored;
+
+  const on = (v: number, q: Point): Point =>
+    along === "x" ? { x: v, y: q.y } : { x: q.x, y: v };
+
+  return tidy([
+    ...moved.slice(0, before),
+    set(on(first, run.from)),
+    set(on(second, run.to)),
+    ...moved.slice(before),
+  ]);
 }
 
 /**

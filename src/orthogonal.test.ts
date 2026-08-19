@@ -10,6 +10,7 @@ import {
   prune,
   segmentsOf,
   slideRun,
+  STUB,
   tidy,
   withStubs,
 } from "./orthogonal";
@@ -332,6 +333,46 @@ describe("what gets stored when a run is slid", () => {
   it("keeps corners that are nowhere near the run", () => {
     const many = [p(100, 200), p(400, 500)];
     expect(slideRun(many, drawn, 1, 160)).toEqual([p(160, 200), p(400, 500)]);
+  });
+
+  it("stops the run at the face it leaves from rather than folding over it", () => {
+    // Dragged back past the source at x = 0. The line still has to come out
+    // of that face, so a path through x = 5 would leave, turn, and come back
+    // over the node — a fold drawn as segments doubling over each other.
+    expect(slideRun(stored, drawn, 1, 5)).toEqual([p(STUB, 200)]);
+  });
+
+  it("stops it at the face it arrives at, too", () => {
+    expect(slideRun(stored, drawn, 1, 295)).toEqual([p(300 - STUB, 200)]);
+  });
+
+  it("holds a pinning corner clear of the point the route hangs from", () => {
+    // A route that turns nine units off its node before its first corridor.
+    // Pinning that corridor at the corner it starts from puts a corner on the
+    // node's own x — and since the face a route leaves by is worked out from
+    // its corners, adding one there can move the exit to another side, with
+    // the corner now behind the line. The route then leaves, comes back to
+    // collect it, and leaves again.
+    const off = [p(0, 0), p(0, 9), p(-300, 9), p(-300, 100)];
+    const next = slideRun([], off, 1, 60);
+    expect(next).toEqual([p(-STUB, 60), p(-300 + STUB, 60)]);
+    expect(next.every((q) => q.x !== 0 && q.x !== -300)).toBe(true);
+  });
+
+  it("does nothing to a run too short to be pinned clear of both ends", () => {
+    // Two boxes forty units apart, joined by one straight hop. Both legs are
+    // `STUB` long, so they use up the whole gap: there is no path that bows
+    // this line around anything, and the drag has to be refused rather than
+    // answered with a spike out and straight back.
+    const hop = [p(0, 0), p(2 * STUB, 0)];
+    expect(slideRun([], hop, 0, -70)).toEqual([]);
+  });
+
+  it("still lets a run cross a face it is not attached to", () => {
+    // A run in the middle of a longer path touches neither face, so it can
+    // be taken anywhere — the fold the bound guards against cannot happen.
+    const long = [p(0, 0), p(100, 0), p(100, 200), p(300, 200), p(300, 400), p(500, 400)];
+    expect(slideRun([p(100, 200), p(300, 200)], long, 2, 5)).toEqual([p(100, 5), p(300, 5)]);
   });
 });
 

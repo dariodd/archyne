@@ -178,6 +178,49 @@ export async function reloadFromDisk(): Promise<boolean> {
   return true;
 }
 
+/**
+ * Move a document to another slot in the strip.
+ *
+ * The array *is* the order — the tab strip and the document list both render
+ * it as it stands — so a move is a splice and a write of the index. Returns
+ * where the document ended up, which is what the caller announces; a move
+ * that changes nothing returns the slot it was already in.
+ */
+export function moveDoc(id: string, to: number): number {
+  const docs = [...useWorkspace.getState().docs];
+  const from = docs.findIndex((d) => d.id === id);
+  if (from < 0) return -1;
+  const at = Math.max(0, Math.min(docs.length - 1, to));
+  if (at === from) return from;
+
+  const [doc] = docs.splice(from, 1);
+  docs.splice(at, 0, doc);
+  useWorkspace.setState({ docs });
+  writeIndex(useWorkspace.getState());
+  return at;
+}
+
+/** The orders the document list offers. */
+export type DocOrder = "name" | "recent";
+
+/**
+ * Reorder every document at once.
+ *
+ * By name is `numeric`, so "Untitled 2" comes before "Untitled 10" rather
+ * than after it — the one place a plain string sort visibly gets it wrong for
+ * the names this app hands out by default. By last used is the order the
+ * command palette has always shown, made permanent.
+ */
+export function sortDocs(by: DocOrder): void {
+  const docs = [...useWorkspace.getState().docs].sort((a, b) =>
+    by === "name"
+      ? a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+      : b.updatedAt - a.updatedAt,
+  );
+  useWorkspace.setState({ docs });
+  writeIndex(useWorkspace.getState());
+}
+
 /** Documents for a picker: most recently edited first, active one marked. */
 export function documentList(): Array<DocMeta & { active: boolean }> {
   const { docs, activeId } = useWorkspace.getState();

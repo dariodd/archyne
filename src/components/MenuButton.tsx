@@ -26,9 +26,18 @@ const MenuCloseContext = createContext<(() => void) | null>(null);
  */
 export function MenuItem({
   onSelect,
+  onPointAt,
   children,
 }: {
   onSelect: () => void;
+  /**
+   * The item has come under the pointer or taken focus.
+   *
+   * Both, and not just hover: an item a keyboard reaches with the arrow keys
+   * has to show whatever a mouse would have shown it, or the panel is two
+   * different menus depending on how you opened it.
+   */
+  onPointAt?: () => void;
   children: ReactNode;
 }) {
   const close = useContext(MenuCloseContext);
@@ -39,6 +48,8 @@ export function MenuItem({
         onSelect();
         close?.();
       }}
+      onMouseEnter={onPointAt}
+      onFocus={onPointAt}
     >
       {children}
     </button>

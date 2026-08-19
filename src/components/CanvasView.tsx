@@ -50,6 +50,19 @@ const edgeTypes: EdgeTypes = {
   routed: RoutedEdge,
 };
 
+/**
+ * The size of the minimap, passed as inline style rather than set in CSS.
+ *
+ * The default is a 200×150 slab; at this size it reads as a navigation aid
+ * rather than a second diagram competing with the real one. It has to be
+ * given here because React Flow sizes its `<svg>` and lays out its viewBox
+ * from `style.width`/`style.height`, falling back to that 200×150 default —
+ * shrinking the box in the stylesheet alone leaves the drawing at its
+ * original size and aspect, so the viewport rectangle spills out of the box
+ * as soon as the canvas is panned.
+ */
+const MINIMAP_SIZE = { width: 148, height: 104 };
+
 const DEFAULT_SEED: Record<DiagramKind, NodeSeed> = {
   flowchart: { type: "shape", shape: "square" },
   state: { type: "state", stateType: "normal" },
@@ -104,6 +117,7 @@ export function CanvasView() {
   const dragGuides = useDragGuides();
   const coarse = useCoarsePointer();
   const unsupported = useGraphStore((s) => s.unsupported);
+  const parseError = useGraphStore((s) => s.parseError);
   const code = useGraphStore((s) => s.code);
   const t = useT();
   /** True when the pointer moved the viewport since the last mousedown —
@@ -272,9 +286,28 @@ export function CanvasView() {
         <GuideLines />
         {kind === "sequence" && <SequenceOverlay />}
         <Controls />
-        <MiniMap pannable zoomable />
+        <MiniMap pannable zoomable style={MINIMAP_SIZE} />
       </ReactFlow>
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+
+      {/* Why the canvas is bare.
+          Code that does not parse leaves nothing to draw — and since a
+          document that has just been switched to no longer keeps the
+          previous one's picture, "nothing to draw" now means an empty
+          canvas. Without this it is an empty canvas that says nothing, and
+          an empty document and a broken one look identical.
+
+          Laid over the canvas rather than replacing it, and inert, so
+          everything the canvas still does — panning, dropping a shape,
+          the context menu — goes on working underneath. Not a live region
+          either: `StatusAnnouncer` already announces the parse error, and
+          two of them would say it twice. */}
+      {parseError && nodes.length === 0 && (
+        <div className="canvas-blank" aria-hidden="true">
+          <strong>{t(code.trim() ? "canvas.brokenTitle" : "canvas.emptyTitle")}</strong>
+          <span>{t(code.trim() ? "canvas.brokenBody" : "canvas.emptyBody")}</span>
+        </div>
+      )}
       {/* How to drive the canvas without a pointer. Visible to screen
           readers only; sighted users have the palette and drag handles. */}
       {/* What is on the canvas, before how to drive it. A screen reader

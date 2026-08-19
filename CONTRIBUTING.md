@@ -46,14 +46,14 @@ The Vitest suite runs under jsdom, which has no layout engine and no real
 rendering — so contrast, target size, RTL geometry, export rasterization,
 pointer gestures and mermaid's sanitizer are all invisible to it. Those live
 in `tests/e2e-*.mts` and drive a real browser through Playwright. **CI runs
-all fourteen** on every pull request.
+all twenty-one** on every pull request.
 
 Run one against a dev server (`npm run dev` in another terminal):
 
 | Script                  | What it drives                                       |
 | ----------------------- | ---------------------------------------------------- |
 | `test:e2e:csp`          | mermaid's sanitizer and the Content Security Policy  |
-| `test:e2e:a11y`         | WCAG 2.2 AA over sixteen surfaces, in both themes    |
+| `test:e2e:a11y`         | WCAG 2.2 AA over seventeen surfaces, in both themes  |
 | `test:e2e:rtl`          | the chrome stays usable right-to-left                |
 | `test:e2e:export`       | the PNG/SVG/PDF export pipelines                     |
 | `test:e2e:i18n`         | non-Latin labels survive both export paths           |
@@ -66,6 +66,13 @@ Run one against a dev server (`npm run dev` in another terminal):
 | `test:e2e:import`       | the six foreign formats, end to end                  |
 | `test:e2e:panel`        | the source panel: resize, zoom, format, folding      |
 | `test:e2e:watch`        | a file edited outside the app reaches the canvas     |
+| `test:e2e:measure`      | the canvas and the emitted SVG agree on geometry     |
+| `test:e2e:paint`        | …and on the colours a browser ends up painting       |
+| `test:e2e:render`       | the exported SVG stands up outside the app           |
+| `test:e2e:metrics`      | the committed width table matches what a browser has |
+| `test:e2e:recipes`      | the package README's snippets, run as written        |
+| `test:e2e:legibility`   | nothing a reader needs is hidden under anything else |
+| `test:e2e:slide`        | dragging a connection moves it and nothing else      |
 
 Two environment variables (`tests/env.mts`) steer them:
 
@@ -193,9 +200,9 @@ is handled.
 Accessibility is a first-class workstream, not polish.
 `eslint-plugin-jsx-a11y` runs in CI **as errors**,
 `src/components/a11y.test.tsx` runs `axe` over the dialog primitives, and
-`npm run test:e2e:a11y` audits ten interface surfaces in both themes against
-WCAG 2.2 AA in a real browser. A criterion-by-criterion conformance report is
-maintained outside the repository.
+`npm run test:e2e:a11y` audits seventeen interface surfaces in both themes
+against WCAG 2.2 AA in a real browser. A criterion-by-criterion conformance
+report is maintained outside the repository.
 
 Ground rules for new UI:
 

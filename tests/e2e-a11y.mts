@@ -260,6 +260,19 @@ for (const theme of ["dark", "light"] as const) {
     .waitFor({ state: "visible", timeout: 30000 });
   await page.waitForTimeout(TRANSITION_MS);
   report(`${theme} / import preview`, await audit(page));
+  await page.keyboard.press("Escape");
+  await page.locator(".import-canvas").waitFor({ state: "hidden", timeout: 15000 });
+
+  // The list of every open document. It only exists with more than one, and
+  // a `?code=` load replaces the current document rather than adding to it,
+  // so the second one has to be made here — last, because it moves off the
+  // architecture diagram the surfaces above needed.
+  await page.getByRole("button", { name: "New diagram" }).click();
+  await page.locator(".doc-tab-list").waitFor({ state: "visible", timeout: 15000 });
+  await page.locator(".doc-tab-list").click();
+  await page.locator(".doc-list-panel").waitFor({ state: "visible", timeout: 15000 });
+  await page.waitForTimeout(TRANSITION_MS);
+  report(`${theme} / document list`, await audit(page));
 
   await page.close();
 }

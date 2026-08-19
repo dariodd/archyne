@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { nearestSegment, roundedPolyline, segmentMidpoints, type Point } from "./routing";
+import {
+  drawnPoints,
+  nearestSegment,
+  roundedPolyline,
+  segmentMidpoints,
+  type Point,
+} from "./routing";
 
 const p = (x: number, y: number): Point => ({ x, y });
 
@@ -127,5 +133,43 @@ describe("hopping over what crosses the line", () => {
     const d = roundedPolyline([p(0, 0), p(100, 0), p(100, 80)], 10, [p(50, 0)]);
     expect(d).toContain("Q 100,0");
     expect(d.match(/A /g)).toHaveLength(1);
+  });
+});
+
+describe("the line as it is actually drawn", () => {
+  it("passes inside a corner, where the corner list says nothing is", () => {
+    // A right angle. The corner list claims the line reaches (100, 0); the
+    // drawing cuts it off and passes several units short of that.
+    const drawn = drawnPoints([p(0, 0), p(100, 0), p(100, 100)]);
+    const atCorner = drawn.some((q) => Math.hypot(q.x - 100, q.y - 0) < 1);
+    expect(atCorner).toBe(false);
+    // …and it does pass through the cut, which is what a label has to avoid.
+    const inside = drawn.some((q) => q.x > 92 && q.x < 100 && q.y > 0 && q.y < 8);
+    expect(inside).toBe(true);
+  });
+
+  it("keeps both ends exactly", () => {
+    const drawn = drawnPoints([p(0, 0), p(100, 0), p(100, 100)]);
+    expect(drawn[0]).toEqual({ x: 0, y: 0 });
+    expect(drawn[drawn.length - 1]).toEqual({ x: 100, y: 100 });
+  });
+
+  it("leaves a straight line straight", () => {
+    const drawn = drawnPoints([p(0, 0), p(60, 0)]);
+    expect(drawn.every((q) => q.y === 0)).toBe(true);
+    expect(drawn[drawn.length - 1]).toEqual({ x: 60, y: 0 });
+  });
+
+  it("cuts a short corner by less than a long one", () => {
+    // The radius is capped at half the shorter neighbouring segment, so a
+    // corner between two stubs is barely rounded at all.
+    const tight = drawnPoints([p(0, 0), p(6, 0), p(6, 6)]);
+    expect(tight.every((q) => Math.hypot(q.x - 6, q.y) >= 0)).toBe(true);
+    expect(tight.some((q) => q.x > 4)).toBe(true);
+  });
+
+  it("has nothing to walk for a route that is one point or none", () => {
+    expect(drawnPoints([])).toEqual([]);
+    expect(drawnPoints([p(3, 4)])).toEqual([p(3, 4)]);
   });
 });
