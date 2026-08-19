@@ -22,7 +22,24 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [Unreleased]
+## [0.5.0-alpha.1] — 2026-08-19
+
+**A crowded diagram is legible again, and so is the strip of tabs under it.**
+Five connections leaving one node's underside used to leave from the same
+point, so five lines lay on top of each other and the picture said there was
+one. Labels sat wherever the middle of a route happened to be, which on an
+imported drawing is very often on top of a box's words. Both are now decided
+knowing about every other connection on the diagram, and both change what
+`archyne-render` draws as well as what the canvas shows — the minor moves for
+that, not for anything about the file format.
+
+What Archyne writes has not changed. Nothing under `src/model/kinds/` was
+touched and the round-trip suite is unchanged and green: this release moves
+where lines are drawn, not what is saved.
+
+Alongside it, the workspace stops hiding itself. Past about eight documents a
+tab was a badge and one letter, and the only way to reach the ninth was to go
+looking. There is now a list of all of them, and an order you choose.
 
 ### Added
 
