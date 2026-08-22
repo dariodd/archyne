@@ -22,7 +22,11 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [0.5.1-alpha.1] — 2026-08-22
+## [0.5.2-alpha.1] — 2026-08-22
+
+Supersedes `0.5.1-alpha.1`, which carries exactly these changes and was
+withdrawn for a packaging mistake of its own. Either one has the fix below;
+this is the one with a release page.
 
 ### Fixed
 
