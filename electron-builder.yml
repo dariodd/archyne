@@ -7,6 +7,13 @@ files:
   - desktop/**
   - build/icon.png
 
+# Ad-hoc signs the macOS bundle before electron-builder's own signing step,
+# so that a build without a certificate still produces a signature that
+# *verifies*. Without it the mac app ships with the linker's stub signature,
+# which Gatekeeper rejects as "damaged" rather than merely unidentified — see
+# the file for the full account. A no-op on Windows and Linux.
+afterPack: scripts/mac-adhoc-sign.mjs
+
 # The Electron entry point, injected into the packaged app's package.json
 # rather than declared in the repository's own.
 #
@@ -58,8 +65,13 @@ mac:
   icon: build/icon.png
   category: public.app-category.developer-tools
   # The renderer is a local static build with no native modules; hardened
-  # runtime is required for notarisation and costs nothing here.
+  # runtime is required for notarisation and costs nothing here — but it does
+  # withdraw the memory permissions V8 needs, so it only works alongside the
+  # entitlements named below. Both the ad-hoc signature and a real one apply
+  # them.
   hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
   fileAssociations:
     - ext: mmd
       name: Mermaid diagram

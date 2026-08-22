@@ -22,6 +22,19 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [0.5.1-alpha.1] — 2026-08-22
+
+### Fixed
+
+- **The macOS app opens.** Every `.dmg` up to and including `v0.5.0-alpha.1`
+  was refused by macOS on launch, and nothing a user could do got past it. The
+  installers were being built without a valid signature; they now carry one.
+
+  macOS will still ask you to confirm an unidentified developer, because the
+  app is not signed with an Apple certificate — but that is a prompt you can
+  accept, and the download works. The instructions on the release page have
+  been corrected to match.
+
 ## [0.5.0-alpha.1] — 2026-08-19
 
 **A crowded diagram is legible again, and so is the strip of tabs under it.**

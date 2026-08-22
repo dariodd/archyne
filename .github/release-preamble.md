@@ -20,9 +20,9 @@ Stated up front rather than discovered at the download prompt:
 
 - **Windows** — SmartScreen will warn that the publisher is unknown. Choose
   _More info → Run anyway_.
-- **macOS** — Gatekeeper **refuses** to open the app, which is a refusal
-  rather than a warning. After moving it to Applications, run once:
-  `xattr -dr com.apple.quarantine /Applications/Archyne.app`
+- **macOS** — macOS will say it cannot verify the developer. Drag the app to
+  Applications, then right-click it and choose _Open_; on macOS 15 and newer,
+  approve it under _System Settings → Privacy & Security → Open Anyway_.
 - **Linux** — no signing is involved; AppImage and `.deb` install normally.
 
 Signing needs a purchased Windows certificate and an Apple Developer
