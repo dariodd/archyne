@@ -22,7 +22,7 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
-## [Unreleased]
+## [0.6.0-alpha.1] — 2026-08-29
 
 ### Added
 
