@@ -266,6 +266,33 @@ try {
     await page.locator(".react-flow").screenshot({ path: `${PREFIX}-vsdx.png` });
   }
 
+  console.log("\nLucidchart");
+  {
+    // A zip, like Visio — so this is a second format proving the bytes reach
+    // the importer intact rather than as UTF-8 that has destroyed them.
+    const { state, code, file } = await open(page, "order-flow.lucid", "order-flow.mmd");
+    const has = (needle: string) => code.includes(needle);
+
+    check("it opened as an editable flowchart", state.kind === "flowchart");
+    check("nothing failed to parse", state.parseError === null);
+    check(`every shape arrived (got ${state.nodes})`, state.nodes === 5);
+    check(`every connector arrived (got ${state.edges})`, state.edges === 4);
+    check("the decision kept its shape", has("In_stock{"));
+    check("the database kept its shape", has("Backorder[("));
+    check("the terminator became a stadium", has('Receive_order(["Receive order"])'));
+    check("edge labels came off their own lines", has('In_stock -->|"yes"| Ship_it'));
+    check("the dashed elbow stayed dashed", has('In_stock -.->|"no"| Backorder'));
+    check("the arrowless one stayed arrowless", has("Ship_it --- Backorder"));
+    check("a chosen fill got readable text", has("style Backorder fill:#dae8fc,color:#111111"));
+    check("the layout came across", has("%% graph:positions"));
+    check("the hand-routed corners came across", has("%% graph:waypoints"));
+    check("it is named as Mermaid", file.name === "order-flow.mmd");
+    check("it is not bound to the .lucid it came from", file.path === null);
+    check("it counts as unsaved work", file.savedCode === null);
+
+    await page.locator(".react-flow").screenshot({ path: `${PREFIX}-lucid.png` });
+  }
+
   console.log("\ndraw.io, forced to architecture");
   {
     // A real file somebody brought: nested swimlanes, twenty connections, no

@@ -327,6 +327,7 @@ function announceImport(imported: ImportSummary): void {
     excalidraw: "Excalidraw",
     plantuml: "PlantUML",
     vsdx: "Visio",
+    lucid: "Lucidchart",
   } as const;
   const source = SOURCE[imported.format];
   toast("toast.imported", "info", {

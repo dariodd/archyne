@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import type { LayoutStyle } from "../layout/autoLayout";
+import type { Arrangement } from "../layout/autoLayout";
 
 /**
  * A small drawing of what an arrangement does to a diagram.
@@ -18,7 +18,7 @@ import type { LayoutStyle } from "../layout/autoLayout";
  * else — and `aria-hidden`, because the name beside them already says which
  * is which and a screen reader gains nothing from the picture.
  */
-export function LayoutPreview({ style }: { style: LayoutStyle }) {
+export function LayoutPreview({ style }: { style: Arrangement }) {
   return (
     <svg
       className="layout-preview"
@@ -46,7 +46,22 @@ const link = (x1: number, y1: number, x2: number, y2: number, key?: string) => (
   <line key={key} className="lp-link" x1={x1} y1={y1} x2={x2} y2={y2} />
 );
 
-const SHAPES: Record<LayoutStyle, ReactElement> = {
+const SHAPES: Record<Arrangement, ReactElement> = {
+  // The arrangements as candidates at once: the reader says which wins. The
+  // small diamond is the winner's badge — one of the five settles it, and
+  // which one depends on the file.
+  auto: (
+    <g>
+      {frame(8, 6, 104, 26)}
+      {box(14, 11, 26, 16)}
+      {box(46, 11, 26, 16)}
+      {box(78, 11, 26, 16)}
+      {frame(8, 38, 104, 26)}
+      {box(14, 43, 26, 16)}
+      {box(46, 43, 26, 16)}
+      <polygon className="lp-box" points="96,17 100,21 96,25 92,21" />
+    </g>
+  ),
   // Ranks down the page, which is what a flowchart is.
   layered: (
     <g>

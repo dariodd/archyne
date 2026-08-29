@@ -71,7 +71,7 @@ import { setCarriedIcons } from "./icons";
 import { useIconPack } from "./iconPack";
 import { removeSeqItemAt } from "./model/kinds/sequence";
 import { SEQ_SPACING, SEQ_TOP } from "./seqLayout";
-import { autoLayout, type LayoutStyle } from "./layout/autoLayout";
+import { autoLayout, type Arrangement, type LayoutStyle } from "./layout/autoLayout";
 import { useIconPrefs } from "./iconPrefs";
 import { EMBEDDED, loadWorkspace, touchActive, useWorkspace, writeDocCode } from "./workspace";
 import { carryWaypoints } from "./orthogonal";
@@ -177,6 +177,21 @@ export interface GraphState {
   canRedo: boolean;
   /** False until the first diagram has been parsed and laid out. */
   booted: boolean;
+  /**
+   * True while the diagram is being rearranged. Arranging runs the layout
+   * engine, which takes its time on a large file — the canvas shows it as
+   * work in progress so a slow drawing does not look like a dead one.
+   */
+  arranging: boolean;
+  /**
+   * Which arrangement the canvas last rearranged with, when a real one was
+   * asked for. `auto` hides the winner, so the run records it here — the
+   * only place that knows. Cleared when a different document is loaded,
+   * because then it would be a claim about a picture that is no longer on
+   * screen; typed edits keep it, they happen after the arrangement, on top
+   * of it. Null until the first rearrange of the current document.
+   */
+  lastArranged: LayoutStyle | null;
   c4Flavor: string;
   title: string;
   accTitle: string;
@@ -302,7 +317,7 @@ export interface GraphState {
    * Mermaid has syntax for a direction and none for an arrangement, so what
    * the document keeps is the positions this produced.
    */
-  runAutoLayout: (style?: LayoutStyle) => Promise<void>;
+  runAutoLayout: (style?: Arrangement) => Promise<void>;
   newDiagram: (kind: DiagramKind) => void;
   /**
    * Stash the current undo history under `outgoingId` and adopt the one
@@ -661,6 +676,8 @@ export const useGraphStore = create<GraphState>((set, get) => {
     canUndo: false,
     canRedo: false,
     booted: false,
+    arranging: false,
+    lastArranged: null,
     c4Flavor: "C4Context",
     title: "",
     accTitle: "",
@@ -680,12 +697,16 @@ export const useGraphStore = create<GraphState>((set, get) => {
 
     applyCode: async (code, opts) => {
       if (opts?.record) record(get().code);
+      // This is a replacement only when it is not a re-parse of a half-typed
+      // line. A fresh document has not been rearranged, whatever the previous
+      // one was — see the note on `lastArranged`.
+      if (!opts?.editing) set({ lastArranged: null });
       try {
         const parsed = await parseDiagram(code);
         let positions = opts?.forceLayout ? null : readPositions(code);
         let nodes = placeNodes(parsed.nodes, positions ?? {}, parsed.kind);
         if (!positions && parsed.kind !== "sequence") {
-          positions = await autoLayout(nodes, parsed.edges, parsed.direction);
+          positions = (await autoLayout(nodes, parsed.edges, parsed.direction)).positions;
           nodes = placeNodes(parsed.nodes, positions, parsed.kind);
         }
         // Carry the selection across the re-parse.
@@ -1358,24 +1379,33 @@ export const useGraphStore = create<GraphState>((set, get) => {
       regenerate();
     },
 
-    runAutoLayout: async (style) => {
+    runAutoLayout: async (style = "auto") => {
       const { nodes, edges, direction, kind } = get();
-      if (kind === "sequence") {
-        set({
-          nodes: nodes.map((n, i) => ({ ...n, position: { x: i * 220, y: 0 } })),
-        });
-        repatchPositions();
-        return;
+      set({ arranging: true });
+      try {
+        if (kind === "sequence") {
+          set({
+            nodes: nodes.map((n, i) => ({ ...n, position: { x: i * 220, y: 0 } })),
+          });
+          repatchPositions();
+          // A sequence gets a column of participants, not one of the five
+          // arrangements — the menu's claim would be a lie, so none is made.
+          set({ lastArranged: null });
+          return;
+        }
+        const { positions, arranged } = await autoLayout(nodes, edges, direction, style, kind);
+        // Corners go. A corner is layout — the store patches it back into the
+        // document through `repatchPositions` for that very reason — and
+        // rearranging replaces the layout. Kept, they stay at the coordinates
+        // they were dropped at while every node moves out from under them, so a
+        // connection sets off sideways to a point that means nothing any more
+        // and comes back: a visible spur to nowhere. Undo brings them back with
+        // the arrangement they belonged to.
+        applyPositions(positions, true);
+        set({ lastArranged: arranged });
+      } finally {
+        set({ arranging: false });
       }
-      const positions = await autoLayout(nodes, edges, direction, style);
-      // Corners go. A corner is layout — the store patches it back into the
-      // document through `repatchPositions` for that very reason — and
-      // rearranging replaces the layout. Kept, they stay at the coordinates
-      // they were dropped at while every node moves out from under them, so a
-      // connection sets off sideways to a point that means nothing any more
-      // and comes back: a visible spur to nowhere. Undo brings them back with
-      // the arrangement they belonged to.
-      applyPositions(positions, true);
     },
 
     swapHistory: (outgoingId, incomingId) => {

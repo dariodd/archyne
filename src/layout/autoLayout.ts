@@ -1,9 +1,10 @@
 import type { ElkNode } from "elkjs/lib/elk-api";
 import type ELKType from "elkjs/lib/elk-api";
-import type { AnyNode, Direction, FlowEdge } from "../model/types";
+import type { AnyNode, DiagramKind, Direction, FlowEdge } from "../model/types";
 import { isGroup } from "../model/types";
 import { measureNode } from "../measureNode";
 import type { PositionMap } from "../model/positions";
+import { betterScore, layoutScore, placedNodes, type Score } from "./choose";
 
 type Elk = InstanceType<typeof ELKType>;
 
@@ -97,6 +98,14 @@ export const LAYOUT_STYLES = ["layered", "bands", "rectpacking", "mrtree", "forc
 export type LayoutStyle = (typeof LAYOUT_STYLES)[number];
 
 /**
+ * What `autoLayout` can be asked for. The five named arrangements, or `auto`,
+ * which draws the file in each of them and keeps the one that reads best —
+ * the whole point of arranging a *particular* drawing rather than satisfying
+ * the philosophy of arrangements in general.
+ */
+export type Arrangement = LayoutStyle | "auto";
+
+/**
  * What each style asks of ELK, at the root and inside a container.
  *
  * Four of the five are a single ELK algorithm run over the whole graph, so
@@ -141,6 +150,38 @@ const STACKED: Record<string, string> = {
   "elk.expandNodes": "true",
 };
 
+/**
+ * The `layered` arrangement, when the drawing nests containers.
+ *
+ * Flat `INCLUDE_CHILDREN` is right for a flowchart whose subgraphs sit in one
+ * level: a connection may run *through* a subgroup, and ranking the whole thing
+ * at once is what keeps the chain straight. It is the wrong model for an
+ * architecture drawing — a VPC holding subnets holding services — where a
+ * nested group is a boundary, not a corridor. Flattened, the VPC's inner ranks
+ * spread it across the whole page so the box ends up taller than the diagram,
+ * the boxes outside it hang in a corner, and a connection from one container
+ * to a service inside the next cuts straight through the subnet it should be
+ * passing next to.
+ *
+ * So when a container nests containers, the hierarchy is kept: the top level
+ * still ranks (`layered`), but each container lays out its own contents in its
+ * own frame (`SEPARATE_CHILDREN`), and a container that holds containers stacks
+ * them as bands in the order they were written. Edges between containers then
+ * meet at the boundary instead of dashing through a neighbouring subnet.
+ */
+const NESTED_LAYERED: {
+  root: (holdsGroups: boolean) => Record<string, string>;
+  group?: (holdsGroups: boolean, order: number, nested: boolean) => Record<string, string>;
+} = {
+  root: () => ({ "elk.hierarchyHandling": "SEPARATE_CHILDREN", "elk.algorithm": "layered" }),
+  group: (holdsGroups, order, nested): Record<string, string> => ({
+    // Only inside a container: the top level must keep ranking by its edges,
+    // and a priority here would pull a tier up to where the entry chain sits.
+    ...(nested ? { "elk.priority": String(1000 - order) } : {}),
+    ...(holdsGroups ? STACKED : { "elk.algorithm": "layered" }),
+  }),
+};
+
 const ELK_OPTIONS: Record<
   LayoutStyle,
   {
@@ -152,7 +193,7 @@ const ELK_OPTIONS: Record<
      */
     root: (holdsGroups: boolean) => Record<string, string>;
     /** `order` is the container's place among its siblings, first at zero. */
-    group?: (holdsGroups: boolean, order: number) => Record<string, string>;
+    group?: (holdsGroups: boolean, order: number, nested: boolean) => Record<string, string>;
   }
 > = {
   layered: {
@@ -230,13 +271,28 @@ export function statedDirection(edges: FlowEdge[]): Direction | null {
  *
  * The spacing options below are named for the layered algorithm and ignored
  * by the others, which is ELK's own convention for options that do not apply.
+ *
+ * `style` can be `auto`, which runs every arrangement on the file and keeps
+ * the one that reads best (see `choose.ts` for what "reads best" means, and
+ * the scanner it takes to decide). `kind` is only read when the decision is
+ * being made, and matters because routing — part of the scoring — is drawn
+ * differently by family.
+ *
+ * The return carries the arrangement that actually produced the positions,
+ * because `auto` hides it: asking who won is the only way the caller can tell
+ * the user what they are looking at.
  */
 export async function autoLayout(
   nodes: AnyNode[],
   edges: FlowEdge[],
   direction: Direction,
-  style: LayoutStyle = "layered",
-): Promise<PositionMap> {
+  style: Arrangement = "layered",
+  kind: DiagramKind = "flowchart",
+): Promise<{ positions: PositionMap; arranged: LayoutStyle }> {
+  if (style === "auto") {
+    const { positions, winner } = await chooseLayout(nodes, edges, direction, kind);
+    return { positions, arranged: winner };
+  }
   const childrenOf = new Map<string | undefined, AnyNode[]>();
   for (const n of nodes) {
     const list = childrenOf.get(n.parentId) ?? [];
@@ -248,6 +304,28 @@ export async function autoLayout(
   const order = new Map<string, number>();
   for (const list of childrenOf.values()) list.forEach((n, i) => order.set(n.id, i));
 
+  /**
+   * A container that holds containers is an architecture, not a flowchart, so
+   * it keeps its hierarchy instead of being ranked flat. The others — and
+   * `layered` on a plain flowchart — get the algorithm they always had.
+   */
+  const nested =
+    style === "layered" &&
+    // Stacked tiers are a vertical idea — the top edge enters the first tier
+    // and drops through the rest. In a drawing that reads sideways the same
+    // move would fight the author's stated direction: the containers would
+    // still stack as a column, boxing in whatever an LR file put east of them.
+    // Those stay flat, which is how they already sat before any of this.
+    ["DOWN", "UP"].includes(ELK_DIRECTION[statedDirection(edges) ?? direction]) &&
+    // A flowchart whose subgraphs nest — a VPC holding subnets. An
+    // architecture drawing nests too, but every one of its edges says which
+    // side meets which, and only flat ranking lets the engine honour that; the
+    // per-level pass would have to guess where a connection may leave, and a
+    // guess is a corner that shouldn't be there.
+    !edges.some((e) => e.data?.arch) &&
+    nodes.some((n) => isGroup(n) && (childrenOf.get(n.id) ?? []).some(isGroup));
+  const opts = nested ? NESTED_LAYERED : ELK_OPTIONS[style];
+
   const toElk = (n: AnyNode): ElkNode => {
     if (isGroup(n)) {
       const children = childrenOf.get(n.id) ?? [];
@@ -256,7 +334,7 @@ export async function autoLayout(
         children: children.map(toElk),
         layoutOptions: {
           "elk.padding": "[top=40,left=16,bottom=16,right=16]",
-          ...(ELK_OPTIONS[style].group?.(children.some(isGroup), order.get(n.id) ?? 0) ?? {}),
+          ...(opts.group?.(children.some(isGroup), order.get(n.id) ?? 0, !!n.parentId) ?? {}),
         },
       };
     }
@@ -271,6 +349,9 @@ export async function autoLayout(
       id: n.id,
       width: stated ?? size.width,
       height: n.measured?.height ?? n.height ?? size.height,
+      ...(nested && n.parentId
+        ? { layoutOptions: { "elk.priority": String(1000 - (order.get(n.id) ?? 0)) } }
+        : {}),
     };
   };
 
@@ -281,7 +362,7 @@ export async function autoLayout(
       "elk.direction": ELK_DIRECTION[statedDirection(edges) ?? direction],
       "elk.layered.spacing.nodeNodeBetweenLayers": "70",
       "elk.spacing.nodeNode": "40",
-      ...ELK_OPTIONS[style].root(top.some(isGroup)),
+      ...opts.root(top.some(isGroup)),
     },
     children: top.map(toElk),
     edges: edges.map((e, i) => ({
@@ -305,5 +386,38 @@ export async function autoLayout(
     for (const c of elkNode.children ?? []) collect(c, false);
   };
   collect(result, true);
-  return positions;
+  return { positions, arranged: style };
+}
+
+/**
+ * Draw the file in every arrangement and keep the one that reads best.
+ *
+ * The whole point of `auto` is that the shapes are all on the table, so every
+ * one of them runs and the winner is the one with the best score (see
+ * `choose.ts`). Each run is guarded: an arrangement the solver boggles at must
+ * not take the rest down with it, and the best that *did* run wins. Ties keep
+ * the first arrangement in the list, so the same file always picks the same
+ * arrangement — and, because ELK is deterministic, lands on the same
+ * positions every time.
+ */
+async function chooseLayout(
+  nodes: AnyNode[],
+  edges: FlowEdge[],
+  direction: Direction,
+  kind: DiagramKind,
+): Promise<{ positions: PositionMap; winner: LayoutStyle }> {
+  let winner: { score: Score; positions: PositionMap; style: LayoutStyle } | null = null;
+  for (const style of LAYOUT_STYLES) {
+    let positions: PositionMap;
+    try {
+      positions = (await autoLayout(nodes, edges, direction, style, kind)).positions;
+    } catch (err) {
+      console.warn(`auto arrangement skipped ${style}:`, err);
+      continue;
+    }
+    const score = layoutScore(placedNodes(nodes, positions), edges, kind);
+    if (!winner || betterScore(score, winner.score)) winner = { score, positions, style };
+  }
+  if (!winner) throw new Error("no arrangement produced a layout");
+  return { positions: winner.positions, winner: winner.style };
 }

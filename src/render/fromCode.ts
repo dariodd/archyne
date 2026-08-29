@@ -79,7 +79,7 @@ export async function render(
   // one, because the solver has no idea it is looking at a header row.
   // `CanvasPreview` skips the layout for the same reason.
   if (!stored && parsed.kind !== "sequence") {
-    const laid = await autoLayout(nodes, parsed.edges, parsed.direction);
+    const laid = (await autoLayout(nodes, parsed.edges, parsed.direction)).positions;
     nodes = placeNodes(parsed.nodes, laid, parsed.kind);
   }
   const edges = annotateParallel(parsed.kind, parsed.edges);

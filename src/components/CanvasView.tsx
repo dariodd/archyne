@@ -92,6 +92,7 @@ export function CanvasView() {
   const nodes = useGraphStore((s) => s.nodes);
   const edges = useGraphStore((s) => s.edges);
   const kind = useGraphStore((s) => s.kind);
+  const arranging = useGraphStore((s) => s.arranging);
   const accTitle = useGraphStore((s) => s.accTitle);
   const accDescr = useGraphStore((s) => s.accDescr);
   const onNodesChange = useGraphStore((s) => s.onNodesChange);
@@ -289,6 +290,17 @@ export function CanvasView() {
         <MiniMap pannable zoomable style={MINIMAP_SIZE} />
       </ReactFlow>
       {menu && <ContextMenu menu={menu} onClose={() => setMenu(null)} />}
+
+      {/* Arranging runs the layout engine, which takes its time on a large
+          drawing. Laid over the canvas and inert, so the drawing underneath
+          keeps panning and the gesture that asked for it stays answered —
+          a slow arrangement must not read as a dead one. */}
+      {arranging && (
+        <div className="canvas-arranging" role="status">
+          <span className="canvas-arranging-spinner" aria-hidden="true" />
+          <span>{t("canvas.arranging")}</span>
+        </div>
+      )}
 
       {/* Why the canvas is bare.
           Code that does not parse leaves nothing to draw — and since a

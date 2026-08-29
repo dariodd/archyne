@@ -53,7 +53,7 @@ function edge(source: string, target: string): FlowEdge {
 describe("autoLayout, run for real", () => {
   it("places every node it is given", async () => {
     const nodes = [node("a", 160, 54), node("b", 160, 54), node("c", 160, 54)];
-    const positions = await autoLayout(nodes, [edge("a", "b"), edge("b", "c")], "TB");
+    const { positions } = await autoLayout(nodes, [edge("a", "b"), edge("b", "c")], "TB");
 
     expect(Object.keys(positions).sort()).toEqual(["a", "b", "c"]);
     for (const p of Object.values(positions)) {
@@ -64,14 +64,14 @@ describe("autoLayout, run for real", () => {
 
   it("lays a chain out across the page when asked for LR", async () => {
     const nodes = [node("a", 160, 54), node("b", 160, 54)];
-    const positions = await autoLayout(nodes, [edge("a", "b")], "LR");
+    const { positions } = await autoLayout(nodes, [edge("a", "b")], "LR");
 
     expect(positions.b.x).toBeGreaterThan(positions.a.x);
   });
 
   it("lays the same chain down the page when asked for TB", async () => {
     const nodes = [node("a", 160, 54), node("b", 160, 54)];
-    const positions = await autoLayout(nodes, [edge("a", "b")], "TB");
+    const { positions } = await autoLayout(nodes, [edge("a", "b")], "TB");
 
     expect(positions.b.y).toBeGreaterThan(positions.a.y);
   });
@@ -80,16 +80,12 @@ describe("autoLayout, run for real", () => {
     // The point of Phase 2b in RENDERER.local.md: what is fed in here is what
     // decides the picture. A node twice as wide must push its successor twice
     // as far, or the sizes are decoration.
-    const narrow = await autoLayout(
-      [node("a", 100, 54), node("b", 100, 54)],
-      [edge("a", "b")],
-      "LR",
-    );
-    const wide = await autoLayout(
-      [node("a", 400, 54), node("b", 100, 54)],
-      [edge("a", "b")],
-      "LR",
-    );
+    const narrow = (
+      await autoLayout([node("a", 100, 54), node("b", 100, 54)], [edge("a", "b")], "LR")
+    ).positions;
+    const wide = (
+      await autoLayout([node("a", 400, 54), node("b", 100, 54)], [edge("a", "b")], "LR")
+    ).positions;
 
     expect(narrow.b.x - narrow.a.x).toBeGreaterThanOrEqual(100);
     expect(wide.b.x - wide.a.x).toBeGreaterThanOrEqual(400);
@@ -98,7 +94,7 @@ describe("autoLayout, run for real", () => {
 
   it("returns a group's children in the group's own frame", async () => {
     const nodes = [group("g"), node("a", 160, 54, "g"), node("b", 160, 54, "g")];
-    const positions = await autoLayout(nodes, [edge("a", "b")], "TB");
+    const { positions } = await autoLayout(nodes, [edge("a", "b")], "TB");
 
     // The group is sized by ELK and reported with `w`/`h`; a leaf is not.
     expect(positions.g.w).toBeGreaterThan(0);
@@ -115,8 +111,20 @@ describe("autoLayout, run for real", () => {
   });
 
   it("coordinates the disconnected as well as the connected", async () => {
-    const positions = await autoLayout([node("lonely", 160, 54)], [], "TB");
+    const { positions } = await autoLayout([node("lonely", 160, 54)], [], "TB");
     expect(positions.lonely).toBeDefined();
+  });
+
+  it("auto draws every arrangement and keeps a single winner, deterministically", async () => {
+    const [nodes, edges] = [
+      [group("g"), node("a", 120, 60, "g"), node("b", 120, 60, "g")],
+      [edge("a", "b")],
+    ];
+    const laid = await autoLayout(nodes, edges, "TB", "auto", "flowchart");
+    const first = laid.positions;
+    const again = (await autoLayout(nodes, edges, "TB", "auto", "flowchart")).positions;
+    expect(again).toEqual(first);
+    expect(Object.keys(first).sort()).toEqual(["a", "b", "g"]);
   });
 });
 
@@ -129,7 +137,7 @@ describe("the arrangements on offer", () => {
 
   it.each(LAYOUT_STYLES)("keeps a group's children inside its frame — %s", async (style) => {
     const [nodes, edges] = graph();
-    const out = await autoLayout(nodes, edges, "TB", style);
+    const out = (await autoLayout(nodes, edges, "TB", style)).positions;
     const frame = out.g;
     expect(frame.w).toBeGreaterThan(0);
     for (const id of ["a", "b"]) {
@@ -147,7 +155,7 @@ describe("the arrangements on offer", () => {
     const seen = new Set<string>();
     for (const style of LAYOUT_STYLES) {
       const [nodes, edges] = graph();
-      const out = await autoLayout(nodes, edges, "TB", style);
+      const out = (await autoLayout(nodes, edges, "TB", style)).positions;
       seen.add(JSON.stringify([out.a, out.b, out.g]));
     }
     expect(seen.size).toBeGreaterThan(1);
@@ -155,8 +163,8 @@ describe("the arrangements on offer", () => {
 
   it("arranges hierarchically when no style is asked for", async () => {
     const [nodes, edges] = graph();
-    const asked = await autoLayout(nodes, edges, "TB", "layered");
-    const silent = await autoLayout(nodes, edges, "TB");
+    const asked = (await autoLayout(nodes, edges, "TB", "layered")).positions;
+    const silent = (await autoLayout(nodes, edges, "TB")).positions;
     expect(silent).toEqual(asked);
   });
 });

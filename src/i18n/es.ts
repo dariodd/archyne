@@ -20,12 +20,15 @@ export const messages: Messages = {
   "toolbar.direction": "Dirección",
   "toolbar.dirTB": "Arriba → Abajo",
   "toolbar.layoutAs": "Disponer como",
+  "toolbar.layoutAutoHint":
+    "Dibuja el archivo en cada disposición y conserva la que mejor se lee.",
   "toolbar.layoutLayeredHint": "En niveles por la página, siguiendo las conexiones.",
   "toolbar.layoutBandsHint": "Niveles como franjas, con sus elementos en fila.",
   "toolbar.layoutCompactHint": "Compactado, con la menor página vacía posible.",
   "toolbar.layoutTreeHint": "Ramificado a partir de una raíz.",
   "toolbar.layoutOrganicHint": "Asentado como si las conexiones fueran muelles.",
   "toolbar.layoutLayered": "Jerárquico",
+  "toolbar.layoutAuto": "Automático",
   "toolbar.layoutBands": "Por franjas",
   "toolbar.layoutCompact": "Compacto",
   "toolbar.layoutTree": "Árbol",
@@ -45,6 +48,7 @@ export const messages: Messages = {
   "import.title": "Importar desde {source}",
   "import.becomes": "Se convierte en un {kind}",
   "import.readAs": "Leer como",
+  "import.readAsPage": "Página",
   "import.view": "Cómo verlo",
   "import.view.canvas": "Lienzo",
   "import.view.mermaid": "Render de Mermaid",
@@ -141,6 +145,7 @@ export const messages: Messages = {
   "item.subgraph": "Subgrafo",
 
   "canvas.label": "Lienzo del diagrama",
+  "canvas.arranging": "Ordenando el diagrama…",
   "canvas.brokenTitle": "Este diagrama no se puede dibujar",
   "canvas.brokenBody":
     "El código Mermaid no se analiza. La pestaña Mermaid del panel lateral indica dónde.",

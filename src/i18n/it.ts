@@ -21,12 +21,15 @@ export const messages: Messages = {
   "toolbar.direction": "Direzione",
   "toolbar.dirTB": "Dall'alto in basso",
   "toolbar.layoutAs": "Disponi come",
+  "toolbar.layoutAutoHint":
+    "Disegna il file in ogni disposizione e tiene quella in cui si legge meglio.",
   "toolbar.layoutLayeredHint": "A livelli lungo la pagina, seguendo i collegamenti.",
   "toolbar.layoutBandsHint": "Livelli a fasce, le cose di un livello affiancate.",
   "toolbar.layoutCompactHint": "Impacchettati, con meno pagina vuota possibile.",
   "toolbar.layoutTreeHint": "Ramificato a partire da una radice.",
   "toolbar.layoutOrganicHint": "Assestati come se i collegamenti fossero molle.",
   "toolbar.layoutLayered": "Gerarchico",
+  "toolbar.layoutAuto": "Automatico",
   "toolbar.layoutBands": "A fasce",
   "toolbar.layoutCompact": "Compatto",
   "toolbar.layoutTree": "Albero",
@@ -46,6 +49,7 @@ export const messages: Messages = {
   "import.title": "Importa da {source}",
   "import.becomes": "Diventa un {kind}",
   "import.readAs": "Interpreta come",
+  "import.readAsPage": "Pagina",
   "import.view": "Come guardarlo",
   "import.view.canvas": "Area di disegno",
   "import.view.mermaid": "Resa Mermaid",
@@ -142,6 +146,7 @@ export const messages: Messages = {
   "item.subgraph": "Sottografo",
 
   "canvas.label": "Area di disegno",
+  "canvas.arranging": "Disposizione in corso…",
   "canvas.brokenTitle": "Questo diagramma non si può disegnare",
   "canvas.brokenBody":
     "Il codice Mermaid non è valido. La scheda Mermaid nel pannello laterale dice dove.",

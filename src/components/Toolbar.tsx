@@ -22,12 +22,12 @@ import { PendingImport } from "./ImportDialog";
 import { MenuButton, MenuItem } from "./MenuButton";
 import { LayoutPreview } from "./LayoutPreview";
 import type { DiagramKind, Direction } from "../model/types";
-import type { LayoutStyle } from "../layout/autoLayout";
+import type { Arrangement } from "../layout/autoLayout";
 
 /** What the fallback `<input type=file>` offers, per action. */
 const MERMAID_ACCEPT = ".mmd,.mermaid,.txt,.md";
 const IMPORT_ACCEPT =
-  ".drawio,.xml,.vsdx,.dot,.gv,.sql,.ddl,.excalidraw,.puml,.plantuml,.iuml,.wsd";
+  ".drawio,.xml,.vsdx,.lucid,.dot,.gv,.sql,.ddl,.excalidraw,.puml,.plantuml,.iuml,.wsd";
 
 /** Diagram kinds in menu order; labels come from the catalogue. */
 const KINDS: DiagramKind[] = [
@@ -46,6 +46,7 @@ export function Toolbar() {
   const unsupported = useGraphStore((s) => s.unsupported);
   const setDirection = useGraphStore((s) => s.setDirection);
   const runAutoLayout = useGraphStore((s) => s.runAutoLayout);
+  const lastArranged = useGraphStore((s) => s.lastArranged);
   const undo = useGraphStore((s) => s.undo);
   const redo = useGraphStore((s) => s.redo);
   const canUndo = useGraphStore((s) => s.canUndo);
@@ -141,10 +142,13 @@ export function Toolbar() {
    *
    * A menu rather than a second dropdown beside the direction: the direction
    * is a property of the document that Mermaid itself writes down, and this is
-   * an action you ask for once. Nothing about the choice is kept — what the
-   * file ends up holding is the positions it produced.
+   * an action you ask for once. What the file ends up holding is the positions
+   * it produced — the choice itself is carried only until the next rearrange,
+   * in `lastArranged`, and the menu ticks whichever item now sits on the
+   * canvas, which is also how `auto` shows which arrangement won.
    */
   const layoutStyles = [
+    ["auto", "toolbar.layoutAuto", "toolbar.layoutAutoHint"],
     ["layered", "toolbar.layoutLayered", "toolbar.layoutLayeredHint"],
     ["bands", "toolbar.layoutBands", "toolbar.layoutBandsHint"],
     ["rectpacking", "toolbar.layoutCompact", "toolbar.layoutCompactHint"],
@@ -160,7 +164,7 @@ export function Toolbar() {
    * answer to a question asked in half a second, so it is a drawing of the
    * shape rather than a rendering of the open document — see `LayoutPreview`.
    */
-  const [pointedAt, setPointedAt] = useState<LayoutStyle | null>(null);
+  const [pointedAt, setPointedAt] = useState<Arrangement | null>(null);
   const pointedHint = layoutStyles.find(([s]) => s === pointedAt);
 
   const autoLayoutButton = !unsupported ? (
@@ -176,6 +180,7 @@ export function Toolbar() {
             key={style}
             onSelect={() => void runAutoLayout(style)}
             onPointAt={() => setPointedAt(style)}
+            current={lastArranged === style}
           >
             {t(key)}
           </MenuItem>
@@ -323,7 +328,11 @@ export function Toolbar() {
                 <>
                   <div className="menu-heading">{t("toolbar.layoutAs")}</div>
                   {layoutStyles.map(([style, key]) => (
-                    <MenuItem key={style} onSelect={() => void runAutoLayout(style)}>
+                    <MenuItem
+                      key={style}
+                      onSelect={() => void runAutoLayout(style)}
+                      current={lastArranged === style}
+                    >
                       {t(key)}
                     </MenuItem>
                   ))}

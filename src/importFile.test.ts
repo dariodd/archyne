@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { zipSync, strToU8 } from "fflate";
-import { isDot, isDrawio, isExcalidraw, isPlantuml, isSql, openAsMermaid } from "./importFile";
+import {
+  isDot,
+  isDrawio,
+  isExcalidraw,
+  isLucid,
+  isPlantuml,
+  isSql,
+  openAsMermaid,
+} from "./importFile";
 import type { PickedFile } from "./files";
 
 const picked = (name: string, content: string): PickedFile => ({
@@ -215,6 +223,105 @@ describe("opening an Excalidraw scene", () => {
 
   it("does not mistake other JSON for a scene", () => {
     expect(isExcalidraw('{"type":"module","name":"x"}')).toBe(false);
+  });
+});
+
+describe("opening a Lucid document", () => {
+  const LUCID = JSON.stringify({
+    version: 1,
+    pages: [
+      {
+        id: "p1",
+        title: "Flow",
+        shapes: [
+          { id: "s1", type: "process", boundingBox: { x: 0, y: 0, w: 100, h: 50 }, text: "A" },
+          {
+            id: "s2",
+            type: "database",
+            boundingBox: { x: 0, y: 120, w: 100, h: 50 },
+            text: "B",
+          },
+        ],
+        lines: [
+          {
+            id: "l1",
+            endpoint1: { type: "shapeEndpoint", style: "none", shapeId: "s1" },
+            endpoint2: { type: "shapeEndpoint", style: "arrow", shapeId: "s2" },
+          },
+        ],
+      },
+    ],
+  });
+
+  it("recognises a Standard Import document by its pages", () => {
+    expect(isLucid(LUCID)).toBe(true);
+    expect(isLucid('{"pages": []}')).toBe(false);
+    expect(isLucid('{"type":"module","name":"x"}')).toBe(false);
+  });
+
+  it("converts a bare document.json", async () => {
+    const { file, imported } = await openAsMermaid(picked("document.json", LUCID));
+    expect(file.name).toBe("document.mmd");
+    expect(imported).toMatchObject({ format: "lucid", nodes: 2, edges: 1 });
+  });
+
+  it("reconverts the same document for whichever page is picked", async () => {
+    const multi = JSON.stringify({
+      version: 1,
+      pages: [
+        {
+          id: "p1",
+          title: "First",
+          shapes: [
+            {
+              id: "s1",
+              type: "process",
+              boundingBox: { x: 0, y: 0, w: 100, h: 50 },
+              text: "A",
+            },
+          ],
+        },
+        {
+          id: "p2",
+          title: "Second",
+          shapes: [
+            { id: "s2", type: "circle", boundingBox: { x: 0, y: 0, w: 60, h: 60 }, text: "B" },
+          ],
+        },
+      ],
+    });
+
+    const first = await openAsMermaid(picked("book.lucid", multi));
+    expect(first.imported).toMatchObject({ format: "lucid", page: 0, nodes: 1 });
+    expect(first.file.content).toContain('A["A"]');
+
+    const second = await openAsMermaid(picked("book.lucid", multi), undefined, 1);
+    expect(second.imported).toMatchObject({ format: "lucid", page: 1, nodes: 1 });
+    expect(second.file.content).toContain('B(("B"))');
+  });
+
+  it("reads a .lucid zip out of the bytes", async () => {
+    const bytes = zipSync({ "document.json": strToU8(LUCID) });
+    const file: PickedFile = {
+      name: "flow.lucid",
+      content: "",
+      path: "C:/work/flow.lucid",
+      handle: null,
+      bytes,
+    };
+
+    const opened = await openAsMermaid(file);
+    expect(opened.file.name).toBe("flow.mmd");
+    expect(opened.imported).toMatchObject({ format: "lucid", nodes: 2, edges: 1 });
+    expect(opened.file.path).toBeNull();
+  });
+
+  it("lets a zip with no document.json fall through to the Visio reader", async () => {
+    // Both zips share a signature, so the dispatcher is told apart by what is
+    // inside: a package with no `document.json` is Visio's business.
+    const bytes = zipSync({ "hello.xml": strToU8("<a/>") });
+    const file: PickedFile = { name: "x.vsdx", content: "", path: null, handle: null, bytes };
+    await expect(openAsMermaid(file)).rejects.toThrow(/no Visio drawing/);
   });
 });
 

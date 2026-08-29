@@ -63,7 +63,7 @@ Run one against a dev server (`npm run dev` in another terminal):
 | `test:e2e:sequence`     | messages dragged between rows and into blocks        |
 | `test:e2e:architecture` | layout follows the sides an architecture file names  |
 | `test:e2e:icons`        | icon picking, importing and rendering                |
-| `test:e2e:import`       | the six foreign formats, end to end                  |
+| `test:e2e:import`       | the foreign formats, end to end                      |
 | `test:e2e:panel`        | the source panel: resize, zoom, format, folding      |
 | `test:e2e:watch`        | a file edited outside the app reaches the canvas     |
 | `test:e2e:measure`      | the canvas and the emitted SVG agree on geometry     |

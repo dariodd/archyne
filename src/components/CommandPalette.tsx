@@ -118,6 +118,7 @@ function buildCommands(t: Translate, nodes: AnyNode[], close: () => void): Comma
     // is where a keyboard user reaches everything the toolbar offers, and a
     // choice that only exists behind a mouse is not offered.
     for (const [style, key] of [
+      ["auto", "toolbar.layoutAuto"],
       ["layered", "toolbar.layoutLayered"],
       ["bands", "toolbar.layoutBands"],
       ["rectpacking", "toolbar.layoutCompact"],

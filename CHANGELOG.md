@@ -22,6 +22,65 @@ purposes:
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
 
+## [Unreleased]
+
+### Added
+
+- **Lucidchart files import as flowcharts — the seventh foreign format.** A
+  `.lucid` file is a zip holding a `document.json`, the interchange format
+  Lucid documents for its own import, and that document on its own is
+  accepted too. Shapes, text, colours, connections and their labels, line
+  styles, hand-routed corners and the original layout all come across, and a
+  file with several pages offers them in the preview and imports whichever
+  one is chosen. Lucid groups are selection-grouping rather than containment,
+  so their members arrive free; rotation, opacity and image fills have no
+  Mermaid counterpart and are counted out.
+- **An "Automatic" arrangement, which decides for the file.** Until now
+  Arrange spread the picture the way you named, and one named way cannot be
+  right for both a flowchart and a network of springs. But the reading of a
+  file already knows the answer: every arrangement in the menu is drawn on
+  the file, and the one that reads best is kept. "Best" is a ranked score of
+  what a reader recognises first — a node sticking out of its own container
+  outranks boxes covering each other, which outranks connections drawn on
+  top of each other, a line running flush with a border, connections
+  travelling across each other, a label lying on a connection it does not
+  name, a label hiding its own line, a label over someone's words — and,
+  only where two arrangements read equally well, the ground the drawing
+  stands on. The parts are ranked rather than weighted because they have no
+  honest exchange rate, and the score is arithmetic over what the router and
+  the label layers will actually draw, so the same file always picks the
+  same arrangement and settles on the same positions. The score lives in
+  `src/layout/choose.ts`.
+- **The arrangements menu shows its hand.** Each entry draws the shape it
+  makes beside the list, and the arrangement the canvas currently sits in is
+  ticked — which is how "Automatic" announces which arrangement won. The
+  tick is a claim a session makes, not a file's: a document that loads from
+  disk (or a sequence diagram, whose geometry it did not choose) ticks
+  nothing.
+- **The canvas says when it is being rearranged.** The layout engine takes
+  its time on a large file, so while it works the canvas carries a progress
+  notice — a busy picture coming together, rather than a frozen one.
+
+### Fixed
+
+- **An arrowhead is always at the end of a straight run.** A connection that
+  had approached its node from the wrong side used to turn and cut through
+  the box it was heading for, come straight back out, and leave its arrowhead
+  standing at the end of a spike on the node's border. The two boxes a
+  connection joins now count as obstacles like every other — it may touch
+  them at the faces it uses, but nothing draws through either box's middle —
+  and the legibility suite now _fails_ a diagram whose arrowhead sits on a
+  bend, instead of watching and waiting.
+- **A connection leaves a spread bunch square-on again.** When the separation
+  pass slides a whole corridor of connections sideways, the corner of a run
+  one of them _arrived_ on can land on the plane of the node's face; the
+  last few units then run along the face itself, and the arrowhead reads as
+  arriving sideways. After the corridors have been put back apart, such an
+  arrival is squared one more time — a corner slid onto the face's plane is
+  pushed back out to a full stub, and the straight run into the face is whole
+  again — but only where nothing stands where the stub would go, so a route
+  that cannot be rebuilt is left drawn sideways rather than gone.
+
 ## [0.5.2-alpha.1] — 2026-08-22
 
 Supersedes `0.5.1-alpha.1`, which carries exactly these changes and was

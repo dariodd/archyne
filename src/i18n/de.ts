@@ -20,12 +20,15 @@ export const messages: Messages = {
   "toolbar.direction": "Richtung",
   "toolbar.dirTB": "Oben → Unten",
   "toolbar.layoutAs": "Anordnen als",
+  "toolbar.layoutAutoHint":
+    "Zeichnet die Datei in jeder Anordnung und behält die, in der sie sich am besten liest.",
   "toolbar.layoutLayeredHint": "In Ebenen die Seite hinunter, den Verbindungen folgend.",
   "toolbar.layoutBandsHint": "Ebenen als Bänder, die Dinge einer Ebene nebeneinander.",
   "toolbar.layoutCompactHint": "Dicht gepackt, mit möglichst wenig leerer Seite.",
   "toolbar.layoutTreeHint": "Verzweigt sich von einer Wurzel aus.",
   "toolbar.layoutOrganicHint": "Eingependelt, als wären die Verbindungen Federn.",
   "toolbar.layoutLayered": "Hierarchisch",
+  "toolbar.layoutAuto": "Automatisch",
   "toolbar.layoutBands": "In Bändern",
   "toolbar.layoutCompact": "Kompakt",
   "toolbar.layoutTree": "Baum",
@@ -45,6 +48,7 @@ export const messages: Messages = {
   "import.title": "Aus {source} importieren",
   "import.becomes": "Wird ein {kind}",
   "import.readAs": "Lesen als",
+  "import.readAsPage": "Seite",
   "import.view": "Ansicht",
   "import.view.canvas": "Zeichenfläche",
   "import.view.mermaid": "Mermaid-Darstellung",
@@ -141,6 +145,7 @@ export const messages: Messages = {
   "item.subgraph": "Teilgraph",
 
   "canvas.label": "Diagrammfläche",
+  "canvas.arranging": "Das Diagramm wird angeordnet…",
   "canvas.brokenTitle": "Dieses Diagramm lässt sich nicht zeichnen",
   "canvas.brokenBody":
     "Der Mermaid-Quelltext lässt sich nicht lesen. Der Mermaid-Tab im Seitenbereich sagt, wo.",

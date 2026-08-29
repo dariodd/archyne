@@ -99,7 +99,7 @@ editable and the file untouched on save.
 
 ## Importing files that are not Mermaid
 
-**Import…** (in the overflow menu) takes six other formats and converts each
+**Import…** (in the overflow menu) takes seven other formats and converts each
 into the Mermaid diagram it most nearly is. It is deliberately not the same
 action as Open: opening a file means editing it and saving it back, and an
 import is never written back.
@@ -127,6 +127,7 @@ come across is counted rather than passed over in silence.
 | **SQL DDL** `.sql` `.ddl`        | ER diagram                 | Tables, columns, types, PK/FK/UK, and foreign keys whose cardinality is read off the constraints.                                                                    |
 | **draw.io** `.drawio` `.xml`     | flowchart, or architecture | Shapes, colours, containers, edge labels, geometry, hand-routed corners. An AWS, Azure, GCP or Kubernetes drawing becomes an architecture diagram, stencils and all. |
 | **Visio** `.vsdx`                | flowchart                  | Shapes by master, text, literal colours, connectivity, page geometry.                                                                                                |
+| **Lucidchart** `.lucid`          | flowchart                  | Shapes by type, text, colours, connections and labels, line styles, hand-routed corners, geometry.                                                                   |
 | **Excalidraw** `.excalidraw`     | flowchart                  | Boxes, ellipses, diamonds, bound text, bound arrows, frames, geometry.                                                                                               |
 
 ### Graphviz DOT
@@ -202,13 +203,14 @@ diagram, `[*] -->` produces a state diagram, and a DOT file drawn entirely
 with record labels produces a class diagram instead of boxes full of pipe
 characters.
 
-The three drawing formats do not say. draw.io, Visio and Excalidraw all put
-every kind of diagram on the same canvas, so a sequence diagram there is
-lifeline _shapes_ rather than a sequence _diagram_. Those import as
-flowcharts — but draw.io is checked for the tell-tale styles, and a drawing
-that looks like a sequence, ER or class diagram says so on import rather than
-leaving you to work out why it came across as boxes. Excalidraw has no
-semantic types at all, so there is nothing to read.
+The four drawing formats do not say. draw.io, Visio, Excalidraw and
+Lucidchart all put every kind of diagram on the same canvas, so a sequence
+diagram there is lifeline _shapes_ rather than a sequence _diagram_. Those
+import as flowcharts — but draw.io is checked for the tell-tale styles, and a
+drawing that looks like a sequence, ER or class diagram says so on import
+rather than leaving you to work out why it came across as boxes. Excalidraw
+has no semantic types at all, so there is nothing to read; Lucid's files are
+read as the flowcharts a `.lucid` so nearly always is.
 
 ### Visio and Excalidraw
 
@@ -224,6 +226,26 @@ Excalidraw scenes give up their boxes, ellipses and diamonds with the text
 bound to them, the arrows their bindings name, frames as containers, and the
 positions. Freehand strokes, images and loose text have no counterpart and
 are counted out.
+
+### Lucidchart
+
+A `.lucid` file is a zip holding a `document.json` — the interchange format
+Lucid documents for its own import. The document on its own is accepted too:
+it is the same thing, unzipped. What comes across is what the file can say:
+the boxes and their text, the shape each one is (Lucid's library matched as
+closely as Mermaid's fourteen allow), the colours somebody actually chose,
+the connections and their labels and line styles, hand-routed corners as
+waypoints, and the geometry — whose co-ordinates are the canvas's own, so the
+layout survives as `%% graph:positions` without any turning over. A file with
+several pages offers them in the preview, and the reader picks which one comes
+across.
+
+Not carried: rotation, opacity and image fills have no Mermaid counterpart,
+and Lucid's invisible hotspots are counted out. Lucid **groups** are
+selection-grouping — they make items move and resize together, which is not
+what a Mermaid subgraph is — so a group's members arrive as the free shapes
+they look like. Containers have no list of their members in the file, so each
+arrives as the box it looks like rather than as an empty subgraph.
 
 > Windows note: if `desktop:build` fails with `EPERM … rename win-unpacked`,
 > your project sits in a Defender-protected folder (e.g. Documents). Build

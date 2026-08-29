@@ -17,6 +17,7 @@ const SOURCE: Record<string, string> = {
   excalidraw: "Excalidraw",
   plantuml: "PlantUML",
   vsdx: "Visio",
+  lucid: "Lucidchart",
 };
 
 /**
@@ -46,19 +47,16 @@ export function ImportDialog({ opened }: { opened: OpenedFile }) {
   // taken on trust from the converter that wrote it.
   const kind = sniffKind(file.content);
   const choices = imported?.choices ?? [];
+  const pages = imported?.pages ?? [];
+  // A Lucid file can have several pages; the index that was imported lives
+  // on the summary so this selection and the conversion always agree.
+  const page = imported?.page ?? 0;
 
-  /**
-   * Convert again as a different family.
-   *
-   * Detection is a guess — a PlantUML file could be three things and a DOT
-   * file two — so the reader can overrule it and see the result before
-   * anything lands. A source that cannot be read that way says so instead of
-   * replacing the preview with nothing.
-   */
-  const convertAs = (as: DiagramKind) => {
+  /** Convert again, the reader's guess overruled or another page picked. */
+  const reconvert = (over: { as?: DiagramKind; page?: number }) => {
     setBusy(true);
     setError(null);
-    openAsMermaid(opened.source, as)
+    openAsMermaid(opened.source, over.as, over.page)
       .then((next) => usePendingImport.setState({ pending: next }))
       .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
       .finally(() => setBusy(false));
@@ -83,7 +81,7 @@ export function ImportDialog({ opened }: { opened: OpenedFile }) {
             <select
               value={kind ?? choices[0]}
               disabled={busy || choices.length < 2}
-              onChange={(e) => convertAs(e.target.value as DiagramKind)}
+              onChange={(e) => reconvert({ as: e.target.value as DiagramKind })}
             >
               {(choices.includes(kind as DiagramKind) || !kind
                 ? choices
@@ -95,6 +93,27 @@ export function ImportDialog({ opened }: { opened: OpenedFile }) {
               ))}
             </select>
           </label>
+
+          {/* A Lucid file is one page in the way a book is one chapter: the
+              first page is a guess at what was meant, and only some files
+              are one page. The reader picks, the conversion runs again, and
+              nothing lands until the confirm below. */}
+          {imported?.format === "lucid" && pages.length > 1 && (
+            <label>
+              {t("import.readAsPage")}
+              <select
+                value={String(page)}
+                disabled={busy}
+                onChange={(e) => reconvert({ page: Number(e.target.value) })}
+              >
+                {pages.map((title, i) => (
+                  <option key={i} value={String(i)}>
+                    {title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <p className="import-summary">
             {t("import.counts", {
               nodes: String(imported?.nodes ?? 0),
@@ -104,7 +123,7 @@ export function ImportDialog({ opened }: { opened: OpenedFile }) {
 
           {/* Everything the conversion could not do, stated here rather than
               in a toast that has gone by the time the diagram is on screen. */}
-          {imported && imported.pages.length > 1 && (
+          {imported && imported.pages.length > 1 && imported.format !== "lucid" && (
             <p className="field-hint">
               {t("import.onePage", {
                 page: imported.pages[0],

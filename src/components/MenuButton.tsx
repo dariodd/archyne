@@ -27,6 +27,7 @@ const MenuCloseContext = createContext<(() => void) | null>(null);
 export function MenuItem({
   onSelect,
   onPointAt,
+  current,
   children,
 }: {
   onSelect: () => void;
@@ -38,12 +39,21 @@ export function MenuItem({
    * different menus depending on how you opened it.
    */
   onPointAt?: () => void;
+  /**
+   * The choice this item offers is the one already in force.
+   *
+   * Tick and `aria-current`, so it reads the same to a screen reader — the
+   * arrangements menu marks which one the canvas currently sits in.
+   */
+  current?: boolean;
   children: ReactNode;
 }) {
   const close = useContext(MenuCloseContext);
   return (
     <button
       type="button"
+      className={current ? "current" : undefined}
+      aria-current={current ? "true" : undefined}
       onClick={() => {
         onSelect();
         close?.();
@@ -52,6 +62,11 @@ export function MenuItem({
       onFocus={onPointAt}
     >
       {children}
+      {current && (
+        <span className="menu-tick" aria-hidden="true">
+          ✓
+        </span>
+      )}
     </button>
   );
 }

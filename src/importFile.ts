@@ -77,9 +77,35 @@ export function isPlantuml(content: string): boolean {
   return /^\s*@start\w+/m.test(content.slice(0, 4096));
 }
 
+/**
+ * A Lucid Standard Import document.
+ *
+ * Usually a `.lucid` file — the zip holding `document.json` — but the
+ * document on its own is also a file somebody could have exported. There is
+ * no marker field to sniff, so the shape has to: a JSON object with a `pages`
+ * array whose first page carries `shapes`, `lines` or `groups` is something
+ * no other JSON Archyne opens has.
+ *
+ * Checked before SQL: a Lucid diagram can literally contain `CREATE TABLE`
+ * in a label, and then the two sniffers would disagree about what it is.
+ */
+export function isLucid(content: string): boolean {
+  // Cheap rejection before parsing the whole document.
+  if (!/^\s*\{/.test(content)) return false;
+  try {
+    const head = JSON.parse(content);
+    if (!Array.isArray(head?.pages) || head.pages.length === 0) return false;
+    const page = head.pages[0];
+    if (!page || typeof page !== "object") return false;
+    return ["shapes", "lines", "groups"].some((k) => Array.isArray(page[k]));
+  } catch {
+    return false;
+  }
+}
+
 /** What a conversion did, for the message shown afterwards. */
 export interface ImportSummary {
-  format: "drawio" | "dot" | "sql" | "excalidraw" | "plantuml" | "vsdx";
+  format: "drawio" | "dot" | "sql" | "excalidraw" | "plantuml" | "vsdx" | "lucid";
   nodes: number;
   edges: number;
   /** Every page in the source. Only the first is converted. */
@@ -100,6 +126,11 @@ export interface ImportSummary {
    * two, and detection is a guess that the reader can overrule.
    */
   choices: DiagramKind[];
+  /**
+   * Which page of a multi-page file came across, as an index. Only a Lucid
+   * file has pages worth choosing between; other formats leave it unset.
+   */
+  page?: number;
 }
 
 export interface OpenedFile {
@@ -119,14 +150,18 @@ export interface OpenedFile {
  * back. Save becomes Save-as, into a new `.mmd`, and the source file is left
  * exactly as it was found.
  */
-export async function openAsMermaid(file: PickedFile, as?: DiagramKind): Promise<OpenedFile> {
+export async function openAsMermaid(
+  file: PickedFile,
+  as?: DiagramKind,
+  page?: number,
+): Promise<OpenedFile> {
   const converted = file.bytes
-    ? await convertBinary(file.bytes)
-    : await convert(file.content, as);
+    ? await convertBinary(file.bytes, page)
+    : await convert(file.content, as, page);
   if (!converted) return { file, imported: null, source: file };
 
   const FOREIGN =
-    /\.(drawio\.xml|drawio|xml|vsdx|gv|dot|sql|ddl|excalidraw|puml|plantuml|iuml|wsd)$/i;
+    /\.(drawio\.xml|drawio|xml|vsdx|lucid|json|gv|dot|sql|ddl|excalidraw|puml|plantuml|iuml|wsd)$/i;
   return {
     file: {
       name: `${file.name.replace(FOREIGN, "")}.mmd`,
@@ -140,12 +175,31 @@ export async function openAsMermaid(file: PickedFile, as?: DiagramKind): Promise
 }
 
 /**
- * A file that is not text at all. Only Visio's package is one, and it has
- * already been recognised by the zip signature before it got here.
+ * A file that is not text at all. Two zips arrive here — a Visio package and
+ * a Lucid `.lucid` — both already recognised by the zip signature, so which
+ * reader gets the file is told by what is inside it.
  */
 async function convertBinary(
   bytes: Uint8Array,
+  page?: number,
 ): Promise<{ code: string; summary: ImportSummary } | null> {
+  const { isLucidZip, lucidToMermaid } = await import("./model/fromLucid");
+  if (isLucidZip(bytes)) {
+    const result = lucidToMermaid(bytes, page);
+    return {
+      code: result.code,
+      summary: {
+        format: "lucid",
+        choices: ["flowchart"],
+        nodes: result.nodes,
+        edges: result.edges,
+        pages: result.pages,
+        page: result.page,
+        dropped: result.dropped,
+      },
+    };
+  }
+
   const { vsdxToMermaid } = await import("./model/fromVsdx");
   const result = vsdxToMermaid(bytes);
   return {
@@ -165,6 +219,7 @@ async function convertBinary(
 async function convert(
   content: string,
   as?: DiagramKind,
+  page?: number,
 ): Promise<{ code: string; summary: ImportSummary } | null> {
   if (isDrawio(content)) {
     const { drawioToMermaid } = await import("./model/fromDrawio");
@@ -241,6 +296,23 @@ async function convert(
         nodes: result.nodes,
         edges: result.edges,
         pages: [],
+        dropped: result.dropped,
+      },
+    };
+  }
+
+  if (isLucid(content)) {
+    const { lucidJsonToMermaid } = await import("./model/fromLucid");
+    const result = lucidJsonToMermaid(content, page);
+    return {
+      code: result.code,
+      summary: {
+        format: "lucid",
+        choices: ["flowchart"],
+        nodes: result.nodes,
+        edges: result.edges,
+        pages: result.pages,
+        page: result.page,
         dropped: result.dropped,
       },
     };

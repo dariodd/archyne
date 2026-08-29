@@ -126,6 +126,21 @@ const NUDGES = [0.3, 0.6, 0.9];
 const LIFTS = [1, 2, 3];
 
 /**
+ * The farther hops, as multiples of the plate's thickness across the run.
+ *
+ * The lifts above stop at three plate-heights out, which is enough to clear a
+ * stray box that grazes a route — and not enough to clear what a *short* route
+ * is usually buried in: two boxes a hand's width apart, with the label caught
+ * in the twenty units between them. No position on that line fits the plate,
+ * and every position near it touches one of the boxes or the other, so the
+ * search pads out by a whole plate at a time until the label can stand clear
+ * of the pair. Still best-first — the hop a hundred units away only wins if
+ * nothing closer is acceptable — but a far clean corner now beats a near graze
+ * that hides someone else's words.
+ */
+const HOPS = [2, 3, 4];
+
+/**
  * How much of its own connection a label may cover before it goes beside the
  * line instead of on it.
  *
@@ -135,10 +150,14 @@ const LIFTS = [1, 2, 3];
  * between them is not an unusual arrangement; it is most of what an imported
  * drawing is made of.
  *
- * Seven tenths, so that a label still sits on the line wherever there is a
- * line left to see it on, which is the convention everywhere else.
+ * Half: a plate hiding more than half its connection is a plate the arrow
+ * disappears behind — the reader sees a name with no line, which is the very
+ * danger the on-the-line placements exist to avoid. Seven tenths drew the
+ * line too straight for the convention to protect: a short route whose name
+ * eats three fifths of it still kept the label on the line, and the short
+ * routes are precisely the ones whose names do that.
  */
-const SWALLOWS = 0.7;
+const SWALLOWS = 0.5;
 
 /**
  * Is the plate lying along this line, or does the line merely cross it?
@@ -319,6 +338,7 @@ function choices(points: Point[], size: { w: number; h: number }): Point[] {
     const offsets = [
       ...NUDGES.map((k) => (across / 2) * k),
       ...LIFTS.map((n) => across / 2 + CLEAR_OF_LINE * n),
+      ...HOPS.map((n) => across / 2 + CLEAR_OF_LINE * LIFTS.length + across * n),
     ];
     for (const off of offsets) {
       beside.push({

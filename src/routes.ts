@@ -159,6 +159,64 @@ export function endsOf(
   };
 }
 
+/**
+ * The arrowhead's arrival, squared up again.
+ *
+ * `spreadRuns` separates coincident corridors by sliding a whole run sideways.
+ * When the run it slides is the one a connection *arrives* on, the slide's
+ * pinned corner lands on the plane of the face the connection is heading for,
+ * and the line then runs the last few units along the face itself before it
+ * meets the box — an arrowhead on the end of that reads as arriving sideways.
+ * The router aimed square-on; the pass that separates the corridors slipped
+ * it. So after the runs have been put back apart, the arrival is straightened
+ * once more: a corner that has been slid onto the box's own plane is pushed
+ * back out to a full stub, and the straight run into the face is whole again.
+ *
+ * Only when nothing stands where the stub would go: a route whose own
+ * approach cannot be rebuilt squared is left as the slide left it, which is
+ * poor but drawn, and never drawn-and-gone.
+ */
+function dressArrival(
+  route: Point[],
+  ends: Ends | undefined,
+  boxes: Map<string, Rect>,
+  nodes: AnyNode[],
+  edge: FlowEdge,
+): Point[] {
+  if (!ends || route.length < 2) return route;
+  const at = route[route.length - 1];
+  const prev = route[route.length - 2];
+  const same = (a: Point, b: Point) => Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+  if (same(prev, at)) return route;
+
+  // The face plane is constant on one axis: x for a left/right face, y for a
+  // top/bottom one. A proper arrival ends a long way from the face on the
+  // other axis; a corner on the plane with a short tail is a slide victim.
+  const face: Axis = ends.to === "x" ? "x" : "y";
+  const along: Axis = ends.to === "x" ? "y" : "x";
+  if (Math.abs(prev[face] - at[face]) >= 0.5) return route;
+  if (Math.abs(prev[along] - at[along]) >= STUB) return route;
+
+  const out = outward(ends.toSide);
+  const away = { x: at.x + out.x * STUB, y: at.y + out.y * STUB };
+  // Carry the run that reached `prev` on to the stub column, then across it,
+  // then in: `prev` ↔ `projected` ↔ `away` ↔ `at`. A segment already in place
+  // is left alone, so a corner already at the stub column keeps its shape.
+  const projected = { ...prev, [face]: away[face] };
+
+  const obstacles = [...boxes.entries()]
+    .filter(([id]) => id !== edge.source && id !== edge.target)
+    .filter(([id]) => !isGroup(nodes.find((n) => n.id === id)!))
+    .map(([, b]) => b);
+  const pieces: Point[] = [prev];
+  if (!same(prev, projected)) pieces.push(projected);
+  if (!same(projected, away)) pieces.push(away);
+  pieces.push(at);
+  for (let i = 1; i < pieces.length; i++)
+    if (blocked(pieces[i - 1], pieces[i], obstacles)) return route;
+  return [...route.slice(0, route.length - 2), ...pieces];
+}
+
 /** One connection's route: squared off, and around whatever is in the way. */
 function routeOf(
   edge: FlowEdge,
@@ -205,11 +263,14 @@ function routeOf(
 
   const squared = orthogonalRoute(anchors, ends.from, ends.to);
 
-  // Every node except the two it joins, which it must be able to touch.
-  // Groups are left out — a connection between two members of one would
-  // otherwise be walled in by its own container.
+  // Every node but the groups. The two a connection joins stay in — it may
+  // touch them at the faces it uses, which is the one allowance the obstacle
+  // tolerance makes, but nothing draws through either box's middle. Leave
+  // them out and a route that approaches its face from the wrong side cuts
+  // across the node it is heading for and comes straight back out, leaving
+  // the arrowhead on a spike. Groups are dropped so a connection between two
+  // members of one is not walled in by its own container.
   const obstacles = [...boxes.entries()]
-    .filter(([id]) => id !== edge.source && id !== edge.target)
     .filter(([id]) => !isGroup(nodes.find((n) => n.id === id)!))
     .map(([, b]) => b);
 
@@ -293,6 +354,12 @@ function fill(
     drawn,
     frames.filter((b): b is Rect => !!b),
   );
+  for (const edge of edges) {
+    const route = routes.get(edge.id);
+    if (!route) continue;
+    const dressed = dressArrival(route, ends.get(edge.id), boxes, nodes, edge);
+    if (dressed !== route) routes.set(edge.id, dressed);
+  }
   cached = { nodes, edges, kind, ends, routes };
   return cached;
 }

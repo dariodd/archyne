@@ -143,7 +143,7 @@ export function CanvasPreview({ code }: { code: string }) {
         const stored = readPositions(code);
         let nodes = placeNodes(parsed.nodes, stored ?? {}, parsed.kind);
         if (!stored) {
-          const laid = await autoLayout(nodes, parsed.edges, parsed.direction);
+          const laid = (await autoLayout(nodes, parsed.edges, parsed.direction)).positions;
           nodes = placeNodes(parsed.nodes, laid, parsed.kind);
         }
         const edges = annotateParallel(parsed.kind, parsed.edges);

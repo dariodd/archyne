@@ -18,7 +18,9 @@
  *   - **an arrowhead on a bend.** A connection meets a box square on, and the
  *     straight run before the head is what says which face it arrived at; a
  *     head on the rounded part of a corner reads as arriving sideways.
- *     Reported rather than failed, for now — see `noted` below.
+ *     Once watched rather than gated (`endsOf` could face a connection away
+ *     from its node and the line came back through the box); the joined nodes
+ *     are obstacles now, so the count gates.
  *   - **an arrowhead under a label.** A covered head takes with it the one
  *     thing the line was drawn to say: which of the two boxes it points at.
  *   - **a label sitting on a connection it does not name.** A label resting on
@@ -162,12 +164,39 @@ async function look(page: Page): Promise<Found> {
         })
         .filter((e): e is NonNullable<typeof e> => !!e && e.len > 0);
 
+      // Two edges that merely cross one another are fine — every drawing has
+      // them, hopping over, and they only touch in a point. What the reader
+      // notices is two drawing *along the same course*: parallel legs a few
+      // units apart for far too long. The sampled points cannot tell a
+      // crossing from a short overlap on their own, but which one it was is
+      // in the chords: parallel where they run alongside, square where they
+      // cross. So a near point counts only if the two paths are roughly
+      // parallel there. (All inline: the body must stay without named
+      // functions, since `keepNames` would inject a `__name` helper the page
+      // does not have.)
       const together: string[] = [];
       for (let i = 0; i < edges.length; i++) {
         for (let j = i + 1; j < edges.length; j++) {
           let near = 0;
-          for (const p of edges[i].pts)
-            if (edges[j].pts.some((q) => Math.hypot(q.x - p.x, q.y - p.y) < SAME_LINE)) near++;
+          for (let a = 0; a < edges[i].pts.length; a++) {
+            const p = edges[i].pts[a];
+            const la = edges[i].pts[Math.max(0, a - 1)];
+            const ha = edges[i].pts[Math.min(edges[i].pts.length - 1, a + 1)];
+            const ax = ha.x - la.x;
+            const ay = ha.y - la.y;
+            let hit = false;
+            for (let b = 0; b < edges[j].pts.length && !hit; b++) {
+              const q = edges[j].pts[b];
+              if (Math.hypot(q.x - p.x, q.y - p.y) >= SAME_LINE) continue;
+              const lb = edges[j].pts[Math.max(0, b - 1)];
+              const hb = edges[j].pts[Math.min(edges[j].pts.length - 1, b + 1)];
+              const bx = hb.x - lb.x;
+              const by = hb.y - lb.y;
+              const n = Math.hypot(ax, ay) * Math.hypot(bx, by);
+              hit = n !== 0 && Math.abs((ax * bx + ay * by) / n) >= 0.866;
+            }
+            if (hit) near++;
+          }
           const run = (near / SAMPLES) * edges[i].len;
           if (run >= TOLERATED_RUN) {
             const mixed = edges[i].dashed !== edges[j].dashed ? " — one of them dashed" : "";
@@ -393,6 +422,7 @@ async function look(page: Page): Promise<Found> {
 }
 
 let failures = 0;
+/** Counted and failed. */
 function check(what: string, wrong: string[]) {
   if (wrong.length === 0) {
     console.log(`  ✓ ${what}`);
@@ -403,32 +433,6 @@ function check(what: string, wrong: string[]) {
   for (const w of wrong.slice(0, 4)) console.error(`      ${w}`);
   if (wrong.length > 4) console.error(`      …and ${wrong.length - 4} more`);
 }
-
-/**
- * Counted and printed, but not failed.
- *
- * There is one open defect this catches and it is not in the placing of
- * labels or the spreading of corridors: `endsOf` picks the face a connection
- * meets by comparing the two boxes, and when the route then approaches from a
- * different side, `withStubs` steps out through the face anyway — so the line
- * overshoots the box and comes straight back, leaving the arrowhead on a
- * ten-unit spike (`Q 230,219 220,219` in the C4 context template). Four of the
- * repository's ninety-one connections do it.
- *
- * The fix belongs in the face choice, which is a change to the router rather
- * than to anything measured here, so the count is printed and watched instead
- * of gating: it is ready to become a `check` the day that lands.
- */
-function noted(what: string, wrong: string[]) {
-  if (wrong.length === 0) {
-    console.log(`  ✓ ${what}`);
-    return;
-  }
-  noticed += wrong.length;
-  console.log(`  · ${what} — ${wrong.length} known`);
-  for (const w of wrong.slice(0, 3)) console.log(`      ${w}`);
-}
-let noticed = 0;
 
 async function ready(page: Page) {
   await page.waitForFunction(
@@ -452,7 +456,7 @@ try {
     console.log(`\n${name} — ${found.edges} connections, ${found.labels} labels`);
     check("no connection is drawn on top of another", found.together);
     check("no connection is drawn along a group's border", found.onFrame);
-    noted("every arrowhead has straight line behind it", found.bentHeads);
+    check("every arrowhead has straight line behind it", found.bentHeads);
     check("no arrowhead is hidden under a label", found.heads);
     check("no label lies across a connection it does not name", found.onStranger);
     check("no label is over a box", found.onNode);
@@ -502,9 +506,6 @@ ${name}, rearranged — ${style}`);
     `\n${totals.edges} connections and ${totals.labels} labels across ` +
       `${TEMPLATES.length + FIXTURES.length} diagrams`,
   );
-  if (noticed > 0) {
-    console.log(`${noticed} arrowheads on a bend — a known defect in the face choice, watched`);
-  }
   console.log(
     failures === 0 ? "all of it legible" : `${failures} things a reader would notice`,
   );

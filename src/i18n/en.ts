@@ -26,12 +26,15 @@ export const en = {
   "toolbar.direction": "Direction",
   "toolbar.dirTB": "Top → Down",
   "toolbar.layoutAs": "Arrange as",
+  "toolbar.layoutAutoHint":
+    "Draws the file in every arrangement and keeps the one it reads best in.",
   "toolbar.layoutLayeredHint": "Ranks down the page, following the connections.",
   "toolbar.layoutBandsHint": "Tiers as bands, the things in a tier side by side.",
   "toolbar.layoutCompactHint": "Packed together, as little empty page as possible.",
   "toolbar.layoutTreeHint": "Branching out from one root.",
   "toolbar.layoutOrganicHint": "Settled as if the connections were springs.",
   "toolbar.layoutLayered": "Hierarchical",
+  "toolbar.layoutAuto": "Automatic",
   "toolbar.layoutBands": "Banded",
   "toolbar.layoutCompact": "Compact",
   "toolbar.layoutTree": "Tree",
@@ -51,6 +54,7 @@ export const en = {
   "import.title": "Import from {source}",
   "import.becomes": "Becomes a {kind}",
   "import.readAs": "Read as",
+  "import.readAsPage": "Page",
   "import.view": "How to look at it",
   "import.view.canvas": "Canvas",
   "import.view.mermaid": "Mermaid render",
@@ -146,6 +150,7 @@ export const en = {
   "item.subgraph": "Subgraph",
 
   "canvas.label": "Diagram canvas",
+  "canvas.arranging": "Arranging the diagram…",
   "canvas.brokenTitle": "This diagram cannot be drawn",
   "canvas.brokenBody":
     "The Mermaid source does not parse. The Mermaid tab in the side panel says where.",

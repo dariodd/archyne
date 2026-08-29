@@ -411,6 +411,56 @@ describe("rearranging the diagram", () => {
     expect(useGraphStore.getState().edges[0].data?.points).toHaveLength(1);
   });
 
+  it("shows the arrangement as in progress, then done", async () => {
+    await load(BENT);
+    useGraphStore.setState({ arranging: false });
+    const seen: boolean[] = [];
+    const unsub = useGraphStore.subscribe((s, prev) => {
+      if (s.arranging !== prev.arranging) seen.push(s.arranging);
+    });
+
+    await useGraphStore.getState().runAutoLayout();
+    unsub();
+
+    expect(seen).toEqual([true, false]);
+    expect(useGraphStore.getState().arranging).toBe(false);
+  });
+
+  it("remembers which arrangement the canvas sits in, and which one auto chose", async () => {
+    await load(BENT);
+    expect(useGraphStore.getState().lastArranged).toBeNull();
+
+    await useGraphStore.getState().runAutoLayout("bands");
+    expect(useGraphStore.getState().lastArranged).toBe("bands");
+
+    // `auto` hides the winner inside `autoLayout`, so the remembered value is
+    // exactly what the next test of the toolbar's tick reads off.
+    await useGraphStore.getState().runAutoLayout("auto");
+    const arranged = useGraphStore.getState().lastArranged;
+    expect(["layered", "bands", "rectpacking", "mrtree", "force"]).toContain(arranged);
+  });
+
+  it("clears the memory on a loaded document, keeps it on a typed edit", async () => {
+    await load(BENT);
+    await useGraphStore.getState().runAutoLayout("force");
+    expect(useGraphStore.getState().lastArranged).toBe("force");
+
+    // Loading replaces the picture, so the claim would be about the last one.
+    await load(BENT);
+    expect(useGraphStore.getState().lastArranged).toBeNull();
+
+    // A re-parse of the line being typed happens on top of the arrangement.
+    await useGraphStore.getState().runAutoLayout("mrtree");
+    await useGraphStore.getState().applyCode(BENT, { editing: true });
+    expect(useGraphStore.getState().lastArranged).toBe("mrtree");
+  });
+
+  it("claims no arrangement for a sequence diagram", async () => {
+    await load("sequenceDiagram\n  A->>B: hello\n");
+    await useGraphStore.getState().runAutoLayout();
+    expect(useGraphStore.getState().lastArranged).toBeNull();
+  });
+
   it("leaves a label where the user dragged it", async () => {
     // A dragged label is stored as an offset from the middle of its route,
     // not as a coordinate, so it follows the connection when everything moves

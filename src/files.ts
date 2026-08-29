@@ -104,6 +104,9 @@ const IMPORT_TYPES = [
       ],
       "application/xml": [".drawio", ".xml"],
       "application/vnd.ms-visio.drawing": [".vsdx"],
+      // A `.lucid` has no registered MIME, and it is a zip on disk — listed
+      // under the zip MIME is the closest honest home.
+      "application/zip": [".lucid"],
     },
   },
 ];

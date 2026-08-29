@@ -210,6 +210,20 @@ body,
   outline-offset: -1px;
 }
 
+/* The item whose value the canvas already holds — the arrangements menu ticks
+   whichever one last rearranged it. The tick rides at the far end of the row
+   so the names keep their alignment whether or not one of them is marked. */
+.menu-popover > button.current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.menu-tick {
+  color: var(--accent);
+  font-size: 12px;
+}
+
 /* A heading inside a panel — not an item, so it takes no focus and is not
    one of the things the arrow keys walk through. */
 .menu-heading {
@@ -1695,6 +1709,41 @@ body.resizing-side {
   color: var(--text);
 }
 
+/* "Arranging…" — a slow layout must not read as a dead canvas. Inert, so
+   the drawing underneath keeps panning and dropping shapes. */
+.canvas-arranging {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.canvas-arranging-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: canvas-arranging-spin 700ms linear infinite;
+}
+@keyframes canvas-arranging-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .read-only-preview {
   flex: 1;
   display: flex;
@@ -1735,6 +1784,7 @@ body.resizing-side {
 /* …but the canvas's own overlay chrome should still follow the UI. */
 [dir="rtl"] .canvas-wrap .context-menu,
 [dir="rtl"] .canvas-wrap .canvas-blank,
+[dir="rtl"] .canvas-wrap .canvas-arranging,
 [dir="rtl"] .canvas-wrap .read-only-banner,
 [dir="rtl"] .canvas-wrap .seq-editor {
   direction: rtl;
