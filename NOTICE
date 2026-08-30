@@ -43,7 +43,7 @@ and Archyne does not use them as its own branding, in its interface chrome,
 or to represent Archyne itself.
 
 If Microsoft would prefer this pack were not distributed with Archyne, please
-open an issue at https://github.com/dariodd/archyne/issues and it will be
+open an issue at https://github.com/archyne/archyne/issues and it will be
 removed promptly: it is one generated file and one loader entry, and every
 icon remains importable by the user from Microsoft's own download.
 

@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Versioning policy
 
 Archyne is pre-1.0, so the public surface can still change between minor
-versions. Once 1.0 ships, the following count as the public API for semver
-purposes:
+versions. The version number reaching `1.0.0-alpha.N` does not end that:
+semver orders a prerelease _before_ the release it prefixes, so
+`1.0.0-alpha.1` is still pre-1.0 and the alpha line continues. Once 1.0
+itself ships, the following count as the public API for semver purposes:
 
 - the **`.mmd` file format contract** — in particular the `%% graph:positions`
   and `%% graph:waypoints` comments, which must always leave the file valid
@@ -21,6 +23,40 @@ purposes:
 
 Breaking any of those requires a major version. The React component structure,
 CSS class names and internal store shape are _not_ public API.
+
+## [1.0.0-alpha.1] — 2026-08-30
+
+### Changed
+
+- **Archyne moved to its own name.** The repository is now
+  [`archyne/archyne`](https://github.com/archyne/archyne), the demo is at
+  <https://archyne.github.io/archyne/>, and the VS Code extension is published by the
+  `archyne` publisher rather than `naxeris`. Nothing about the software
+  changed; what changed is that every place it appears now says the same
+  word. The move was made deliberately early, while it costs almost nothing:
+  a project with real users cannot relocate its identity without spending
+  theirs.
+- **The extension's identifier is therefore `archyne.archyne`.** A
+  Marketplace extension ID is immutable and a publisher cannot be renamed, so
+  this is a new listing rather than a rename. The old `naxeris.archyne` is
+  _deprecated in favour of_ it, not removed — VS Code shows its installs a
+  Migrate button, and removing it would burn the name permanently. Its
+  published versions stay readable where they are.
+- **`https://dariodd.github.io/archyne/` is gone rather than redirected.**
+  Git and web URLs follow a transferred repository permanently, but GitHub
+  Pages does not, so that address is a plain 404 and this is the one link the
+  move genuinely breaks. The demo is at <https://archyne.github.io/archyne/>
+  and every reference in the project points there. It remains a platform's
+  address rather than Archyne's own, which is a thing to fix on the day a
+  domain is worth its upkeep, and not before.
+
+### Internal
+
+- The trusted publishers for `archyne` and `archyne-render` are registered
+  against the repository's owner, name and workflow filename, so both were
+  re-registered against `archyne/archyne` before this version was cut.
+  Publishing fails closed if they disagree, which is the desired behaviour and
+  also the thing to remember the next time anything moves.
 
 ## [0.6.0-alpha.1] — 2026-08-29
 
@@ -1107,7 +1143,7 @@ and roughly 13 000 searchable vendor icons bundled for architecture diagrams.
 
 ### Ways to run it
 
-- The hosted demo at <https://dariodd.github.io/archyne/>
+- The hosted demo at <https://archyne.github.io/archyne/>
 - `npx archyne`, which serves the build locally with no clone and no
   dependencies of its own
 - Desktop builds for Windows, macOS and Linux, attached to this release —

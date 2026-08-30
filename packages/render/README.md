@@ -4,7 +4,7 @@ Draw a Mermaid diagram as a self-contained SVG string — real geometry, real
 text, and its own colours inlined, so the picture survives the page that made
 it.
 
-This is [Archyne](https://github.com/dariodd/archyne)'s renderer, extracted. It
+This is [Archyne](https://github.com/archyne/archyne)'s renderer, extracted. It
 is **not an alternative to Mermaid**: Mermaid does the parsing, and this draws
 what it parsed. If you already have Mermaid, you already have half of it.
 

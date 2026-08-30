@@ -1,6 +1,6 @@
 {
   "name": "archyne",
-  "version": "0.6.0-alpha.1",
+  "version": "1.0.0-alpha.1",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -19,12 +19,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dariodd/archyne.git"
+    "url": "git+https://github.com/archyne/archyne.git"
   },
   "bugs": {
-    "url": "https://github.com/dariodd/archyne/issues"
+    "url": "https://github.com/archyne/archyne/issues"
   },
-  "homepage": "https://dariodd.github.io/archyne/",
+  "homepage": "https://archyne.github.io/archyne/",
   "keywords": [
     "mermaid",
     "diagram",

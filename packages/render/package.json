@@ -1,6 +1,6 @@
 {
   "name": "archyne-render",
-  "version": "0.6.0-alpha.1",
+  "version": "1.0.0-alpha.1",
   "description": "Render Mermaid diagrams to a self-contained SVG string, with orthogonal edge routing and ELK layout",
   "license": "MIT",
   "type": "module",
@@ -24,13 +24,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dariodd/archyne.git",
+    "url": "git+https://github.com/archyne/archyne.git",
     "directory": "packages/render"
   },
   "bugs": {
-    "url": "https://github.com/dariodd/archyne/issues"
+    "url": "https://github.com/archyne/archyne/issues"
   },
-  "homepage": "https://github.com/dariodd/archyne/tree/main/packages/render",
+  "homepage": "https://github.com/archyne/archyne/tree/main/packages/render",
   "keywords": [
     "mermaid",
     "svg",

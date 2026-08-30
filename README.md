@@ -14,14 +14,14 @@ VS Code. No server, no accounts, nothing leaves it. Self-host by serving the
 `dist/` folder from any static file server.
 
 <p align="center">
-  <a href="https://github.com/dariodd/archyne/actions/workflows/ci.yml"><img src="https://github.com/dariodd/archyne/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/archyne/archyne/actions/workflows/ci.yml"><img src="https://github.com/archyne/archyne/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://www.npmjs.com/package/archyne"><img src="https://img.shields.io/npm/v/archyne.svg" alt="npm"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
 </p>
 
 ## Try it
 
-**[Open the live demo →](https://dariodd.github.io/archyne/)** — it is the same
+**[Open the live demo →](https://archyne.github.io/archyne/)** — it is the same
 static build, running in your browser. Nothing is uploaded.
 
 Or run it locally, with no clone and no build:
@@ -34,7 +34,7 @@ npx archyne diagram.mmd     # …with a diagram already loaded
 Or inside the editor you already have open:
 
 ```sh
-code --install-extension naxeris.archyne
+code --install-extension archyne.archyne
 ```
 
 Archyne registers as an optional editor for `.mmd`, so the file stays VS Code's
@@ -42,12 +42,12 @@ Archyne registers as an optional editor for `.mmd`, so the file stays VS Code's
 ` ```mermaid ` block inside Markdown gets an **Open on canvas** action above the
 fence, which is where most Mermaid actually lives: the diagram is edited in
 place, and the rest of the document is left alone. It is on the
-[Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne)
-and on [Open VSX](https://open-vsx.org/extension/naxeris/archyne), for
+[Marketplace](https://marketplace.visualstudio.com/items?itemName=archyne.archyne)
+and on [Open VSX](https://open-vsx.org/extension/archyne/archyne), for
 VSCodium, Cursor, Windsurf, Gitpod and Theia.
 
 Desktop builds for Windows, macOS and Linux are attached to every
-[release](https://github.com/dariodd/archyne/releases/latest). They are **not
+[release](https://github.com/archyne/archyne/releases/latest). They are **not
 yet code-signed** — Windows warns, macOS needs one `xattr` command — and each
 release page says so; the web version and `npx archyne` avoid the question
 entirely.

@@ -12,7 +12,7 @@ Or run it without installing anything:
 npx archyne
 ```
 
-The web version needs no download at all: <https://dariodd.github.io/archyne/>
+The web version needs no download at all: <https://archyne.github.io/archyne/>
 
 ### These installers are not code-signed
 
@@ -31,7 +31,7 @@ archyne`, or accepting the warnings above.
 
 Everything runs locally either way — no server, no accounts, and no network
 requests of Archyne's own. See the
-[security policy](https://github.com/dariodd/archyne/blob/main/SECURITY.md)
+[security policy](https://github.com/archyne/archyne/blob/main/SECURITY.md)
 for the threat model.
 
 <!-- Absolute, not relative. This file is pasted into a GitHub Release body,

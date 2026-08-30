@@ -2,8 +2,8 @@
   "name": "archyne",
   "displayName": "Archyne — visual editor for Mermaid",
   "description": "Edit Mermaid diagrams on a canvas, with two-way sync to the text — in a .mmd file, or in a ```mermaid block inside your Markdown. The file stays ordinary, and VS Code keeps owning it.",
-  "version": "0.6.0",
-  "publisher": "naxeris",
+  "version": "1.0.0",
+  "publisher": "archyne",
   "license": "MIT",
   "private": true,
   "engines": {
@@ -27,13 +27,13 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dariodd/archyne.git",
+    "url": "git+https://github.com/archyne/archyne.git",
     "directory": "extensions/vscode"
   },
   "bugs": {
-    "url": "https://github.com/dariodd/archyne/issues"
+    "url": "https://github.com/archyne/archyne/issues"
   },
-  "homepage": "https://github.com/dariodd/archyne/tree/main/extensions/vscode",
+  "homepage": "https://github.com/archyne/archyne/tree/main/extensions/vscode",
   "main": "./out/extension.js",
   "activationEvents": [
     "onLanguage:markdown",
