@@ -29,19 +29,22 @@ CSS class names and internal store shape are _not_ public API.
 ### Changed
 
 - **Archyne moved to its own name.** The repository is now
-  [`archyne/archyne`](https://github.com/archyne/archyne), the demo is at
-  <https://archyne.github.io/archyne/>, and the VS Code extension is published by the
-  `archyne` publisher rather than `naxeris`. Nothing about the software
-  changed; what changed is that every place it appears now says the same
-  word. The move was made deliberately early, while it costs almost nothing:
+  [`archyne/archyne`](https://github.com/archyne/archyne) and the demo is at
+  <https://archyne.github.io/archyne/>. Nothing about the software changed;
+  what changed is where it lives. The move was made deliberately early, while it costs almost nothing:
   a project with real users cannot relocate its identity without spending
   theirs.
-- **The extension's identifier is therefore `archyne.archyne`.** A
-  Marketplace extension ID is immutable and a publisher cannot be renamed, so
-  this is a new listing rather than a rename. The old `naxeris.archyne` is
-  _deprecated in favour of_ it, not removed — VS Code shows its installs a
-  Migrate button, and removing it would burn the name permanently. Its
-  published versions stay readable where they are.
+- **The extension stays `naxeris.archyne`, and that is the right answer.**
+  Moving it to a publisher of the project's own name is not possible: a
+  Marketplace extension _name_ is unique across the whole registry, not per
+  publisher, so `archyne` is already reserved — by this extension. The
+  Marketplace offers no transfer between publishers either. The constraint
+  turns out to remove the reason for the move: the risk it was meant to close
+  was somebody else registering the publisher `archyne` and publishing
+  something that looked more official, and nobody can, because that publisher
+  is now held and the name is spoken for. What is left is a publisher ID that
+  reads oddly on the listing, and a display name fixes that without touching
+  the identifier anyone has installed.
 - **`https://dariodd.github.io/archyne/` is gone rather than redirected.**
   Git and web URLs follow a transferred repository permanently, but GitHub
   Pages does not, so that address is a plain 404 and this is the one link the

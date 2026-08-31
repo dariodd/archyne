@@ -34,7 +34,7 @@ npx archyne diagram.mmd     # …with a diagram already loaded
 Or inside the editor you already have open:
 
 ```sh
-code --install-extension archyne.archyne
+code --install-extension naxeris.archyne
 ```
 
 Archyne registers as an optional editor for `.mmd`, so the file stays VS Code's
@@ -42,8 +42,8 @@ Archyne registers as an optional editor for `.mmd`, so the file stays VS Code's
 ` ```mermaid ` block inside Markdown gets an **Open on canvas** action above the
 fence, which is where most Mermaid actually lives: the diagram is edited in
 place, and the rest of the document is left alone. It is on the
-[Marketplace](https://marketplace.visualstudio.com/items?itemName=archyne.archyne)
-and on [Open VSX](https://open-vsx.org/extension/archyne/archyne), for
+[Marketplace](https://marketplace.visualstudio.com/items?itemName=naxeris.archyne)
+and on [Open VSX](https://open-vsx.org/extension/naxeris/archyne), for
 VSCodium, Cursor, Windsurf, Gitpod and Theia.
 
 Desktop builds for Windows, macOS and Linux are attached to every
